@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  nim           String?        @unique
+  name          String         @db.Text
+  email         String         @unique
+  password      String
+  ktmPath       String?
+  role          UserRole       @default(MAHASISWA)
+  isVerified    Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+  messages      Message[]
+  refreshTokens RefreshToken[]
+  reports       Report[]
+
+  @@index([email, nim])
+  @@map("users")
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  updatedAt DateTime  @updatedAt
+  reports   Report[]
+
+  @@map("categories")
+}
+
+model Report {
+  id                 Int          @id @default(autoincrement())
+  registrationNumber String       @unique
+  title              String
+  description        String       @db.Text
+  status             ReportStatus @default(PENDING)
+  userId             Int?
+  categoryId         Int?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  closedAt           DateTime?
+  deletedAt          DateTime?
+  attachments        Attachment[]
+  messages           Message[]
+  category           Category?    @relation(fields: [categoryId], references: [id])
+  user               User?        @relation(fields: [userId], references: [id])
+
+  @@index([userId, status, categoryId])
+  @@index([categoryId], map: "reports_categoryId_fkey")
+  @@map("reports")
+}
+
+model Attachment {
+  id        Int       @id @default(autoincrement())
+  filePath  String
+  fileName  String
+  fileType  String
+  reportId  Int
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  report    Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("attachments")
+}
+
+model Message {
+  id        Int       @id @default(autoincrement())
+  content   String    @db.Text
+  senderId  Int
+  reportId  Int
+  createdAt DateTime  @default(now())
+  isRead    Boolean   @default(false)
+  deletedAt DateTime?
+  report    Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  sender    User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([reportId, createdAt])
+  @@index([senderId], map: "messages_senderId_fkey")
+  @@map("messages")
+}
+
+model RefreshToken {
+  id         Int      @id @default(autoincrement())
+  token      String   @unique @db.VarChar(500)
+  userId     Int
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  deviceId   String
+  deviceName String
+  ipAddress  String?
+  lastUsedAt DateTime @default(now())
+  userAgent  String   @db.Text
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+  @@index([userId, lastUsedAt])
+  @@map("refresh_tokens")
+}
+
+enum UserRole {
+  MAHASISWA
+  ADMIN
+}
+
+enum ReportStatus {
+  PENDING
+  IN_REVIEW
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
+  CANCELED
+}
