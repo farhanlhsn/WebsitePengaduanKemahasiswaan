@@ -6,17 +6,10 @@ import viteCompression from 'vite-plugin-compression'
 export default defineConfig({
   plugins: [
     react({
-      // Fix Emotion build issues
+      // Fix Emotion build issues with proper SWC configuration
       jsxImportSource: '@emotion/react',
       plugins: [
-        ['@swc/plugin-emotion', {
-          // Enable source maps for better debugging
-          sourceMap: true,
-          // Auto label for better debugging
-          autoLabel: 'dev-only',
-          // Optimize for production
-          labelFormat: '[local]',
-        }]
+        // Remove SWC emotion plugin as it conflicts with Vite's handling
       ]
     }),
     // Re-enable compression for production
@@ -40,7 +33,7 @@ export default defineConfig({
       // External dependencies that should not be bundled
       external: [],
       output: {
-        // More aggressive chunking for better caching
+        // Fix Emotion chunking to prevent initialization issues
         manualChunks: (id) => {
           // React ecosystem - smallest possible chunks
           if (id.includes('react/') || id.includes('react-dom/')) {
@@ -50,9 +43,9 @@ export default defineConfig({
             return 'react-router';
           }
           
-          // Emotion - separate chunk to avoid initialization issues
+          // Emotion - CRITICAL: Keep emotion in vendor chunk to ensure proper initialization
           if (id.includes('@emotion/')) {
-            return 'emotion';
+            return 'vendor-emotion';
           }
           
           // Material-UI - split into smaller chunks
@@ -186,7 +179,7 @@ export default defineConfig({
     cssCodeSplit: true,
     target: 'es2020', // Modern browsers for smaller bundle
     // Experimental options for smaller bundles
-    cssMinify: 'lightningcss', // Use lightningcss for better CSS minification
+    cssMinify: true, // Use esbuild for CSS minification (more compatible than lightningcss)
     reportCompressedSize: false, // Skip gzip size reporting for faster builds
     // Split CSS into smaller chunks
     assetsInlineLimit: 2048 // Inline assets smaller than 2KB
@@ -234,19 +227,8 @@ export default defineConfig({
     __DEV__: false,
     'process.env.NODE_ENV': '"production"'
   },
-  // Fix CSS processing
+  // Fix CSS processing for Tailwind
   css: {
-    postcss: {
-      plugins: [
-        require('tailwindcss'),
-        require('autoprefixer'),
-      ],
-    },
-    // Ensure proper CSS handling
-    preprocessorOptions: {
-      scss: {
-        additionalData: `@import "src/styles/variables.scss";`
-      }
-    }
+    postcss: './postcss.config.cjs'
   }
 })
