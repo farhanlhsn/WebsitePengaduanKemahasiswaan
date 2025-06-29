@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box, Drawer, List, ListItem, ListItemIcon, ListItemText, Avatar, Typography, Divider, Badge, Button
 } from '@mui/material';
@@ -24,16 +24,44 @@ const StyledListItem = styled(ListItem)(({ theme, active }) => ({
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   cursor: 'pointer',
   pointerEvents: 'auto', 
-  userSelect: 'none', 
+  userSelect: 'none',
+  position: 'relative',
+  overflow: 'hidden',
+  
+  // Enhanced active state styling
   backgroundColor: active ? alpha(theme.palette.primary.main, 0.12) : 'transparent',
-  border: active ? `1px solid ${alpha(theme.palette.primary.main, 0.2)}` : '1px solid transparent',
+  border: active ? `2px solid ${alpha(theme.palette.primary.main, 0.3)}` : '2px solid transparent',
+  
+  // Hover effects
   '&:hover': {
-    backgroundColor: active ? alpha(theme.palette.primary.main, 0.16) : alpha(theme.palette.grey[500], 0.08),
-    boxShadow: active ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}` : '0 2px 8px rgba(0,0,0,0.1)',
+    backgroundColor: active 
+      ? alpha(theme.palette.primary.main, 0.16) 
+      : alpha(theme.palette.grey[500], 0.08),
+    transform: 'translateX(4px)',
+    boxShadow: active 
+      ? `0 8px 24px ${alpha(theme.palette.primary.main, 0.25)}` 
+      : '0 4px 12px rgba(0,0,0,0.1)',
   },
+  
+  // Active state glow effect
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: active 
+      ? `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.1)}, transparent)`
+      : 'transparent',
+    borderRadius: 'inherit',
+    transition: 'all 0.3s ease',
+  },
+  
   '&:active': {
     transform: 'scale(0.98)',
   },
+  
   '& .MuiListItemIcon-root': {
     minWidth: 32,
     [theme.breakpoints.up('sm')]: {
@@ -41,8 +69,11 @@ const StyledListItem = styled(ListItem)(({ theme, active }) => ({
     },
     color: active ? theme.palette.primary.main : theme.palette.text.secondary,
     transition: 'color 0.2s ease',
-    pointerEvents: 'none', // Prevent icon from blocking clicks
+    pointerEvents: 'none',
+    zIndex: 1,
+    position: 'relative',
   },
+  
   '& .MuiListItemText-primary': {
     fontWeight: active ? 700 : 500,
     color: active ? theme.palette.primary.main : theme.palette.text.primary,
@@ -51,8 +82,26 @@ const StyledListItem = styled(ListItem)(({ theme, active }) => ({
       fontSize: '0.95rem',
     },
     transition: 'all 0.2s ease',
-    pointerEvents: 'none', // Prevent text from blocking clicks
-  }
+    pointerEvents: 'none',
+    zIndex: 1,
+    position: 'relative',
+  },
+  
+  // Animation for active state
+  ...(active && {
+    animation: 'slideIn 0.3s ease-out',
+  }),
+  
+  '@keyframes slideIn': {
+    '0%': {
+      transform: 'translateX(-10px)',
+      opacity: 0.8,
+    },
+    '100%': {
+      transform: 'translateX(0)',
+      opacity: 1,
+    },
+  },
 }));
 
 const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, activeMenu, onMenuChange }) => {
@@ -62,8 +111,22 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
   const { logout, user } = useAuthStore();
   const [deviceModalOpen, setDeviceModalOpen] = useState(false);
 
-  // Check if current path matches menu item
-  const isActive = (path) => location.pathname === path;
+  // Persist active menu in localStorage
+  useEffect(() => {
+    const savedActiveMenu = localStorage.getItem('student-active-menu');
+    if (savedActiveMenu && onMenuChange) {
+      onMenuChange(savedActiveMenu);
+    }
+  }, [onMenuChange]);
+
+  useEffect(() => {
+    if (activeMenu) {
+      localStorage.setItem('student-active-menu', activeMenu);
+    }
+  }, [activeMenu]);
+
+  // Check if current menu is active
+  const isActive = (menuId) => activeMenu === menuId;
 
   // Enhanced menu structure for admin
   const adminMenu = [
@@ -234,11 +297,20 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
       maxWidth: drawerWidth,
       display: 'flex', 
       flexDirection: 'column',
-      background: 'linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%)',
+      background: `linear-gradient(180deg, 
+        ${alpha(theme.palette.background.paper, 0.98)} 0%, 
+        ${alpha(theme.palette.background.default, 0.95)} 100%)`,
+      backdropFilter: 'blur(20px)',
       overflowX: 'hidden',
     }}>
       {/* Logo Section */}
-      <Box sx={{ p: { xs: 2, sm: 3 }, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+      <Box sx={{ 
+        p: { xs: 2, sm: 3 }, 
+        borderBottom: '1px solid rgba(0,0,0,0.06)',
+        background: `linear-gradient(135deg, 
+          ${alpha(theme.palette.primary.main, 0.05)} 0%, 
+          ${alpha(theme.palette.secondary.main, 0.05)} 100%)`
+      }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, mb: { xs: 1, sm: 2 } }}>
           <Box
             component="img"
@@ -254,7 +326,7 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
           <Box>
             <Typography variant="h6" fontWeight={800} sx={{ 
               fontSize: { xs: '1.2rem', sm: '1.6rem' },
-              background: 'black',
+              background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -296,7 +368,7 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
                   onClose();
                 }
               }}
-              active={isActive(item.path) ? 1 : 0}
+              active={isActive(item.id) ? 1 : 0}
               style={{ 
                 position: 'relative',
                 zIndex: 1,
@@ -385,7 +457,14 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
       </Box>
 
       {/* User Info */}
-      <Box sx={{ p: { xs: 2, sm: 3 }, borderTop: '1px solid rgba(0,0,0,0.06)', bgcolor: 'grey.50' }}>
+      <Box sx={{ 
+        p: { xs: 2, sm: 3 }, 
+        borderTop: '1px solid rgba(0,0,0,0.06)', 
+        bgcolor: 'grey.50',
+        background: `linear-gradient(135deg, 
+          ${alpha(theme.palette.background.default, 0.8)} 0%, 
+          ${alpha(theme.palette.background.paper, 0.9)} 100%)`
+      }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
           <Avatar sx={{ 
             width: { xs: 36, sm: 44 }, 
@@ -467,4 +546,4 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
   );
 };
 
-export default DashboardSidebar; 
+export default DashboardSidebar;
