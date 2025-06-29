@@ -43,7 +43,7 @@ import {
   People
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
-import Logo from '../assets/logo-ubh.png';
+import UBHLogo from '../components/ui/UBHLogo';
 
 const steps = [
   {
@@ -338,19 +338,14 @@ export default function HomePage() {
                 }}
               >
                 <Box sx={{ textAlign: 'center', mb: 3 }}>
-                  <Box
-                    component="img"
-                    src={Logo}
-                    alt="Logo Universitas Bung Hatta"
-                    sx={{ 
-                      width: 100, 
-                      height: 100, 
-                      mx: 'auto', 
-                      mb: 2,
+                  <UBHLogo
+                    size="hero"
+                    style={{ 
+                      margin: '0 auto 16px auto',
                       display: 'block',
-                      objectFit: 'contain',
                       filter: `drop-shadow(0 8px 20px ${alpha(theme.palette.primary.main, 0.3)})`
                     }}
+                    loading="eager"
                   />
                   <Typography variant="h6" fontWeight="bold" gutterBottom>
                     Universitas Bung Hatta

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, Typography } from '@mui/material';
+import React, { useState } from 'react';
+import { Box, Typography, Button } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
 const StyledRichTextContent = styled(Box)(({ theme }) => ({
@@ -105,6 +105,8 @@ const RichTextDisplay = ({
   variant = 'body1',
   maxLines = null,
 }) => {
+  const [showFull, setShowFull] = useState(false);
+
   // Utility function to strip HTML tags for plain text preview
   const getPlainText = (html) => {
     const div = document.createElement('div');
@@ -119,6 +121,8 @@ const RichTextDisplay = ({
   const displayContent = shouldTruncate 
     ? plainText.substring(0, (maxLines * 50)) + '...'
     : content;
+
+  const isContentLong = maxLines ? plainText.length > (maxLines * 50) : false;
 
   if (!content || (!content.trim())) {
     return (
@@ -146,6 +150,16 @@ const RichTextDisplay = ({
         />
       )}
       
+      {/* Show toggle button only if content is long and maxLines is specified */}
+      {maxLines && isContentLong && (
+        <Button
+          size="small"
+          onClick={() => setShowFull(!showFull)}
+          sx={{ mt: 1, fontSize: '0.75rem' }}
+        >
+          {showFull ? 'Tampilkan Lebih Sedikit' : 'Tampilkan Selengkapnya'}
+        </Button>
+      )}
     </Box>
   );
 };

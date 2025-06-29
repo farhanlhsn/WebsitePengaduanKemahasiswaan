@@ -165,3 +165,18 @@ exports.deleteReport = async (req, res) => {
     res.status(400).json(ResponseFormatter.error(err.message));
   }
 };
+
+exports.getReportStats = async (req, res) => {
+  try {
+    // Only allow ADMIN to get report stats
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json(ResponseFormatter.error('Unauthorized: Admin access required', 403));
+    }
+    
+    const stats = await ReportServices.getReportStats();
+    res.status(200).json(ResponseFormatter.success(stats, 'Report statistics retrieved successfully'));
+  } catch (error) {
+    console.error('getReportStats error:', error.message);
+    res.status(500).json(ResponseFormatter.error('Failed to get report statistics', 500));
+  }
+};

@@ -139,14 +139,14 @@ exports.verifyStudent = async (req, res) => {
   }
 };
 
-exports.getUserStats = async (req, res) => {
+exports.getUserVerificationStats = async (req, res) => {
   try {
-    console.log('getUserStats controller called');
-    const stats = await userServices.getUserStats();
+    console.log('getUserVerificationStats controller called');
+    const stats = await userServices.getUserVerificationStats();
     console.log('stats', stats);
     res.status(200).json(ResponseFormatter.success(stats, 'User statistics retrieved successfully'));
   } catch (error) {
-    console.error('getUserStats error:', error.message);
+    console.error('getUserVerificationStats error:', error.message);
     res.status(500).json(ResponseFormatter.error('Failed to get user statistics', 500));
   }
 };
@@ -165,5 +165,26 @@ exports.cleanupOldDeletedUsers = async (req, res) => {
   } catch (error) {
     console.error('cleanupOldDeletedUsers error:', error.message);
     res.status(500).json(ResponseFormatter.error('Failed to cleanup old deleted users', 500));
+  }
+};
+
+exports.getUserStatsById = async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const stats = await userServices.getUserStatsById(userId);
+    res.status(200).json(ResponseFormatter.success(stats, 'User statistics retrieved successfully'));
+  } catch (error) {
+    console.error('getUserStatsById error:', error.message);
+    res.status(500).json(ResponseFormatter.error('Failed to get user statistics', 500));
+  }
+};
+
+exports.getUserStats = async (req, res) => {
+  try {
+    const stats = await userServices.getUserVerificationStats();
+    res.status(200).json(ResponseFormatter.success(stats, 'User statistics retrieved successfully'));
+  } catch (error) {
+    console.error('getUserStats error:', error.message);
+    res.status(500).json(ResponseFormatter.error('Failed to get user statistics', 500));
   }
 };

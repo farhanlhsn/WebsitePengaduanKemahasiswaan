@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { Login, PersonAdd, Home, AccountCircle, HelpOutline } from '@mui/icons-material';
-import logo from '../assets/logo-ubh.png';
+import UBHLogo from './ui/UBHLogo';
 
 export default function Header() {
   const theme = useTheme();
@@ -45,22 +45,15 @@ export default function Header() {
                 color: 'inherit' 
               }}
             >
-              <Box
-                component="img"
-                src={logo}
-                alt="Logo Universitas Bung Hatta"
-                sx={{
-                  width: { xs: 40, md: 50 },
-                  height: { xs: 40, md: 50 },
-                  mr: 2,
-                  objectFit: 'contain',
+              <UBHLogo
+                size="medium"
+                style={{
+                  marginRight: 16,
                   filter: `drop-shadow(0 4px 12px ${alpha(theme.palette.primary.main, 0.3)})`,
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  '&:hover': {
-                    transform: 'scale(1.05)',
-                    filter: `drop-shadow(0 6px 16px ${alpha(theme.palette.primary.main, 0.4)})`
-                  }
                 }}
+                className="hover:scale-105 hover:drop-shadow-lg"
+                loading="eager"
               />
               <Box>
                 <Typography 

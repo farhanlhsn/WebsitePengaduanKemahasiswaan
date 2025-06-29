@@ -1,112 +1,186 @@
 import { createBrowserRouter } from "react-router-dom";
-import HomePage from "./HomePage.jsx";
-import LoginPage from "./LoginPage.jsx";
-import RegisterPage from "./RegisterPage.jsx";
-import Layout from "./layout.jsx";
-import ImprovedStudentDashboard from "./ImprovedStudentDashboard.jsx";
-import EnhancedAdminDashboard from "./EnhancedAdminDashboard.jsx";
-import ReportDetailPage from "./ReportDetailPage.jsx";
-import ProfilePage from "./ProfilePage.jsx";
-import SettingsPage from "./SettingsPage.jsx";
-import HelpPage from "./HelpPage.jsx";
-import AuthProvider from "../components/AuthProvider.jsx";
+import React, { Suspense } from "react";
+import LoadingSpinner from "../components/ui/LoadingSpinner";
+import { createLazyComponent, preloadComponent } from "../components/DynamicImportHelper";
 
+// Enhanced lazy loading with preloading strategies
+const HomePage = createLazyComponent(() => import("./HomePage.jsx"));
+const LoginPage = createLazyComponent(() => import("./LoginPage.jsx"));
+const RegisterPage = createLazyComponent(() => import("./RegisterPage.jsx"));
+const Layout = createLazyComponent(() => import("./layout.jsx"));
+const ImprovedStudentDashboard = createLazyComponent(() => import("./ImprovedStudentDashboard.jsx"));
+const EnhancedAdminDashboard = createLazyComponent(() => import("./EnhancedAdminDashboard.jsx"));
+const ReportDetailPage = createLazyComponent(() => import("./ReportDetailPage.jsx"));
+const ProfilePage = createLazyComponent(() => import("./ProfilePage.jsx"));
+const SettingsPage = createLazyComponent(() => import("./SettingsPage.jsx"));
+const HelpPage = createLazyComponent(() => import("./HelpPage.jsx"));
+const AuthProvider = createLazyComponent(() => import("../components/AuthProvider.jsx"));
+
+// Preload critical pages during idle time
+if ('requestIdleCallback' in window) {
+  requestIdleCallback(() => {
+    // Preload authentication pages (likely to be accessed)
+    preloadComponent(() => import("./LoginPage.jsx"));
+    preloadComponent(() => import("./RegisterPage.jsx"));
+    
+    // Preload layout after auth pages
+    setTimeout(() => {
+      preloadComponent(() => import("./layout.jsx"));
+      preloadComponent(() => import("../components/AuthProvider.jsx"));
+    }, 1000);
+  }, { timeout: 2000 });
+}
+
+// Enhanced wrapper with better error boundaries and loading states
+const EnhancedLazyWrapper = ({ children, loadingMessage = "Memuat halaman..." }) => (
+  <Suspense 
+    fallback={
+      <LoadingSpinner 
+        fullScreen 
+        message={loadingMessage}
+      />
+    }
+  >
+    {children}
+  </Suspense>
+);
+
+// Optimized auth wrapper with progressive loading
+const OptimizedAuthWrapper = ({ children, preloadDashboard = false }) => {
+  React.useEffect(() => {
+    if (preloadDashboard) {
+      // Preload dashboard components when user is likely to access them
+      setTimeout(() => {
+        preloadComponent(() => import("./ImprovedStudentDashboard.jsx"));
+      }, 2000);
+    }
+  }, [preloadDashboard]);
+
+  return (
+    <EnhancedLazyWrapper loadingMessage="Memverifikasi autentikasi...">
+      <AuthProvider>
+        <EnhancedLazyWrapper loadingMessage="Memuat konten dashboard...">
+          {children}
+        </EnhancedLazyWrapper>
+      </AuthProvider>
+    </EnhancedLazyWrapper>
+  );
+};
+
+// Route configuration with optimized loading
 export const router = createBrowserRouter([
     {
         path: "/",
         element: (
+            <EnhancedLazyWrapper loadingMessage="Memuat aplikasi...">
                 <Layout />
+            </EnhancedLazyWrapper>
         ),
         children: [
             {
                 index: true,
-                element: <HomePage />,
+                element: (
+                    <EnhancedLazyWrapper loadingMessage="Memuat beranda...">
+                        <HomePage />
+                    </EnhancedLazyWrapper>
+                ),
             },
             {
                 path: "/login",
-                element: <LoginPage />,
+                element: (
+                    <EnhancedLazyWrapper loadingMessage="Memuat halaman login...">
+                        <LoginPage />
+                    </EnhancedLazyWrapper>
+                ),
             },
             {
                 path: "/register",
-                element: <RegisterPage />,
+                element: (
+                    <EnhancedLazyWrapper loadingMessage="Memuat halaman registrasi...">
+                        <RegisterPage />
+                    </EnhancedLazyWrapper>
+                ),
             },
             {
                 path: "/help",
-                element: <HelpPage />,
+                element: (
+                    <EnhancedLazyWrapper loadingMessage="Memuat halaman bantuan...">
+                        <HelpPage />
+                    </EnhancedLazyWrapper>
+                ),
             },
         ]
     }, 
     {
         path: "/dashboard",
         element: (
-            <AuthProvider>
+            <OptimizedAuthWrapper preloadDashboard={true}>
                 <ImprovedStudentDashboard />
-            </AuthProvider>
+            </OptimizedAuthWrapper>
         ),
     },
     {
         path: "/report/:id",
         element: (
-            <AuthProvider>
+            <OptimizedAuthWrapper>
                 <ReportDetailPage />
-            </AuthProvider>
+            </OptimizedAuthWrapper>
         ),
     },
     {
         path: "/profile",
         element: (
-            <AuthProvider>
+            <OptimizedAuthWrapper>
                 <ProfilePage />
-            </AuthProvider>
+            </OptimizedAuthWrapper>
         ),
     },
     {
         path: "/settings",
         element: (
-            <AuthProvider>
+            <OptimizedAuthWrapper>
                 <SettingsPage />
-            </AuthProvider>
+            </OptimizedAuthWrapper>
         ),
     },
     {
         path: "/admin",
         element: (
-            <AuthProvider>
+            <OptimizedAuthWrapper>
                 <EnhancedAdminDashboard />
-            </AuthProvider>
+            </OptimizedAuthWrapper>
         ),
     },
     {
         path: "/admin/users",
         element: (
-            <AuthProvider>
+            <OptimizedAuthWrapper>
                 <EnhancedAdminDashboard />
-            </AuthProvider>
+            </OptimizedAuthWrapper>
         ),
     },
     {
         path: "/admin/reports",
         element: (
-            <AuthProvider>
+            <OptimizedAuthWrapper>
                 <EnhancedAdminDashboard />
-            </AuthProvider>
+            </OptimizedAuthWrapper>
         ),
     },
     {
         path: "/admin/chat",
         element: (
-            <AuthProvider>
+            <OptimizedAuthWrapper>
                 <EnhancedAdminDashboard />
-            </AuthProvider>
+            </OptimizedAuthWrapper>
         ),
     },
     {
         path: "/admin/users/:id",
         element: (
-            <AuthProvider>
+            <OptimizedAuthWrapper>
                 <EnhancedAdminDashboard />
-            </AuthProvider>
+            </OptimizedAuthWrapper>
         ),
     },
-    
 ]);

@@ -3,10 +3,25 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const compression = require('compression');
 const deviceTrackingMiddleware = require('./middlewares/deviceTrackingMiddleware');
 const prisma = require('./utils/prisma'); 
 
 const app = express();
+
+// Enable compression for all responses
+app.use(compression({
+  level: 6, // Compression level (1-9, where 9 is best compression but slowest)
+  threshold: 1024, // Only compress responses larger than 1KB
+  filter: (req, res) => {
+    // Don't compress if the request includes a cache-control header that includes no-transform
+    if (req.headers['cache-control'] && req.headers['cache-control'].includes('no-transform')) {
+      return false;
+    }
+    // Compress all other responses
+    return compression.filter(req, res);
+  }
+}));
 
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',

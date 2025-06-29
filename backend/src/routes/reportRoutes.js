@@ -38,6 +38,10 @@ router.post('/:id/restore', reportController.restoreReport);
 // DELETE /api/reports/:id
 router.delete('/:id', reportController.deleteReport);
 
+// Get report stats
+// GET /api/reports/stats
+router.get('/stats', reportController.getReportStats);
+
 // Upload attachment (max 10 file, 5MB per file, image akan di-compress <= 1MB)
 // POST /api/reports/:reportId/attachments
 // FormData: files[]

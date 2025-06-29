@@ -38,7 +38,7 @@ const CustomSpinner = styled(CircularProgress)(({ theme }) => ({
   },
 }));
 
-const LoadingSpinner = ({ 
+const LoadingSpinner = React.memo(({ 
   message = 'Memuat...', 
   size = 40, 
   variant = 'default',
@@ -101,6 +101,6 @@ const LoadingSpinner = ({
       )}
     </StyledLoadingContainer>
   );
-};
+});
 
 export default LoadingSpinner;

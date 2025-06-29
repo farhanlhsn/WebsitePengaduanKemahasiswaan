@@ -25,7 +25,7 @@ function stripHtml(html) {
   return div.textContent || div.innerText || '';
 }
 
-const ImprovedReportsTable = ({
+const ImprovedReportsTable = React.memo(({
   reports,
   loading,
   categories,
@@ -601,6 +601,6 @@ const ImprovedReportsTable = ({
       </GlassCard>
     </Box>
   );
-};
+});
 
 export default ImprovedReportsTable;

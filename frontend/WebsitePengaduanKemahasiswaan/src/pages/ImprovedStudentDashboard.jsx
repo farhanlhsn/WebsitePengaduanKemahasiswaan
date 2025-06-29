@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import {
   Box, Typography, Alert, IconButton, Grid, Container
 } from '@mui/material';
@@ -7,25 +7,28 @@ import {
   Menu as MenuIcon, Notifications 
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
 import useReportStore from '../stores/reportStore';
 import useCategoryStore from '../stores/categoryStore';
+import useUserStore from '../stores/userStore';
+import useAuthStore from '../stores/authStore';
 
-// Import enhanced components
-import DashboardSidebar from '../components/dashboard/Sidebar';
-import EnhancedStatCard from '../components/dashboard/EnhancedStatCard';
-import ImprovedReportsTable from '../components/dashboard/ImprovedReportsTable';
-import CreateReportModal from '../components/dashboard/CreateReportModal';
+// Lazy load heavy components
+const DashboardSidebar = React.lazy(() => import('../components/dashboard/Sidebar'));
+const EnhancedStatCard = React.lazy(() => import('../components/dashboard/EnhancedStatCard'));
+const ImprovedReportsTable = React.lazy(() => import('../components/dashboard/ImprovedReportsTable'));
+const CreateReportModal = React.lazy(() => import('../components/dashboard/CreateReportModal'));
+
+// Import lightweight components normally
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 const drawerWidth = 280;
 
-export default function ImprovedStudentDashboard() {
+export default React.memo(function ImprovedStudentDashboard() {
   const theme = useTheme();
-  const navigate = useNavigate();
   const { reports, loading, error, getUserReports, pagination, reset, createReport } = useReportStore();
   const { categories, getCategories } = useCategoryStore();
-
+  const { userStats, getUserStatsById } = useUserStore();
+  const { user } = useAuthStore();
   const [statusFilter, setStatusFilter] = React.useState('');
   const [categoryFilter, setCategoryFilter] = React.useState('');
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -34,30 +37,92 @@ export default function ImprovedStudentDashboard() {
   const [activeMenu, setActiveMenu] = React.useState('dashboard');
 
   // Statistics with enhanced calculations
-  const totalReports = reports.length;
-  const completedReports = reports.filter(r => r.status === 'RESOLVED').length;
-  const inProgressReports = reports.filter(r => ['IN_REVIEW', 'IN_PROGRESS'].includes(r.status)).length;
-  const pendingReports = reports.filter(r => r.status === 'PENDING').length;
-  const completionRate = totalReports > 0 ? (completedReports / totalReports) * 100 : 0;
+  // These stats should remain constant regardless of filtering - they represent overall user statistics
+  const safeUserStats = userStats || {
+    total: 0,
+    approved: 0, // This maps to RESOLVED status from backend
+    pending: 0,  // This maps to PENDING status from backend
+    rejected: 0, // This maps to REJECTED status from backend
+    inReview: 0, // This maps to IN_REVIEW status from backend
+    inProgress: 0, // This maps to IN_PROGRESS status from backend
+    resolved: 0, // This maps to RESOLVED status from backend
+    canceled: 0  // This maps to CANCELED status from backend
+  };
+  
+  // Debug log to track userStats changes
+  React.useEffect(() => {
+    if (userStats) {
+      console.log('userStats changed:', userStats);
+    }
+  }, [userStats]);
+  
+  // Ensure stats are calculated consistently and don't change with filtering
+  const totalReports = Number(safeUserStats.total) || 0;
+  const completedReports = Number(safeUserStats.approved || safeUserStats.resolved || 0); // Use resolved as completed
+  const inProgressReports = Number(safeUserStats.inProgress || 0); // Reports currently being processed
+  const pendingReports = Number(safeUserStats.pending || 0); // Reports waiting for review
+  const completionRate = totalReports > 0 ? Math.round((completedReports / totalReports) * 100) : 0;
+  
+  // Memoize calculated stats to prevent unnecessary recalculations
+  const memoizedStats = React.useMemo(() => ({
+    totalReports,
+    completedReports,
+    inProgressReports,
+    pendingReports,
+    completionRate
+  }), [safeUserStats]);
+  
+  // Log stats for debugging
+  React.useEffect(() => {
+    if (memoizedStats) {
+      console.log('Calculated stats:', memoizedStats);
+    }
+  }, [memoizedStats]);
 
   const searchTimeoutRef = React.useRef(null);
 
+  // Optimized useEffect - combine all data loading into one effect
   React.useEffect(() => {
-    getUserReports();
-    getCategories();
-  }, []);
+    if (user?.id) {
+      const loadInitialData = async () => {
+        try {
+          await Promise.all([
+            getUserReports(),
+            getCategories(),
+            getUserStatsById(user.id)
+          ]);
+        } catch (error) {
+          console.error('Failed to load initial data:', error);
+        }
+      };
+      loadInitialData();
+    }
+  }, [user?.id, getUserReports, getCategories, getUserStatsById]); // Add all dependencies
 
-  const handleStatusChange = (e) => {
+  // Define fetchFilteredReports first since it's used by other handlers
+  const fetchFilteredReports = React.useCallback((status, categoryId, search) => {
+    // Note: This function only filters the reports list, it should NOT affect the stats
+    // Stats are calculated from userStats which represents overall user statistics
+    reset();
+    const filters = {};
+    if (status) filters.status = status;
+    if (categoryId) filters.categoryId = categoryId;
+    if (search) filters.search = search;
+    getUserReports(filters, false);
+  }, []); // Remove dependencies to prevent initialization issues
+
+  // Memoize handlers to prevent unnecessary re-renders
+  const handleStatusChange = React.useCallback((e) => {
     setStatusFilter(e.target.value);
     fetchFilteredReports(e.target.value, categoryFilter, searchQuery);
-  };
+  }, [categoryFilter, searchQuery]);
 
-  const handleCategoryChange = (e) => {
+  const handleCategoryChange = React.useCallback((e) => {
     setCategoryFilter(e.target.value);
     fetchFilteredReports(statusFilter, e.target.value, searchQuery);
-  };
+  }, [statusFilter, searchQuery]);
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = React.useCallback((e) => {
     const value = e.target.value;
     setSearchQuery(value);
     
@@ -68,26 +133,17 @@ export default function ImprovedStudentDashboard() {
     searchTimeoutRef.current = setTimeout(() => {
       fetchFilteredReports(statusFilter, categoryFilter, value);
     }, 500);
-  };
+  }, [statusFilter, categoryFilter]);
 
-  const fetchFilteredReports = (status, categoryId, search) => {
-    reset();
-    const filters = {};
-    if (status) filters.status = status;
-    if (categoryId) filters.categoryId = categoryId;
-    if (search) filters.search = search;
-    getUserReports(filters, false);
-  };
-
-  const handleLoadMore = () => {
+  const handleLoadMore = React.useCallback(() => {
     getUserReports({}, true);
-  };
+  }, []); // Remove dependencies to prevent initialization issues
 
-  const handleDrawerToggle = () => {
+  const handleDrawerToggle = React.useCallback(() => {
     setMobileOpen(!mobileOpen);
-  };
+  }, [mobileOpen]);
 
-  const handleCreateReport = async (formData) => {
+  const handleCreateReport = React.useCallback(async (formData) => {
     try {
       await createReport(formData);
       setModalOpen(false);
@@ -96,7 +152,7 @@ export default function ImprovedStudentDashboard() {
       console.error('Failed to create report:', error);
       throw error;
     }
-  };
+  }, []); // Remove dependencies to prevent initialization issues
 
   if (loading && reports.length === 0) {
     return <LoadingSpinner fullScreen message="Memuat dashboard..." />;
@@ -152,71 +208,75 @@ export default function ImprovedStudentDashboard() {
 
             {/* Enhanced Statistics Cards */}
             <Box sx={{ px: { xs: 2, sm: 0 }, mb: 4 }}>
-              <Grid container spacing={{ xs: 2, sm: 3 }}>
-                <Grid item xs={6} sm={3}>
-                  <EnhancedStatCard
-                    title="Total Laporan"
-                    value={totalReports}
-                    icon={<Assignment />}
-                    color="#2E7D32"
-                    animateValue
-                    trend={totalReports > 0 ? 'up' : undefined}
-                    trendValue={totalReports > 0 ? '+' + totalReports : undefined}
-                  />
+              <Suspense fallback={<LoadingSpinner message="Memuat statistik..." />}>
+                <Grid container spacing={{ xs: 2, sm: 3 }}>
+                  <Grid item xs={6} sm={3}>
+                    <EnhancedStatCard
+                      title="Total Laporan"
+                      value={totalReports}
+                      icon={<Assignment />}
+                      color="#2E7D32"
+                      animateValue
+                      trend={totalReports > 0 ? 'up' : undefined}
+                      trendValue={totalReports > 0 ? '+' + totalReports : undefined}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={6} sm={3}>
+                    <EnhancedStatCard
+                      title="Menunggu"
+                      value={pendingReports}
+                      icon={<PendingActions />}
+                      color="#FF9800"
+                      animateValue
+                      subtitle="Perlu tindakan"
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={6} sm={3}>
+                    <EnhancedStatCard
+                      title="Diproses"
+                      value={inProgressReports}
+                      icon={<HourglassEmpty />}
+                      color="#2196F3"
+                      animateValue
+                      subtitle="Sedang ditangani"
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={6} sm={3}>
+                    <EnhancedStatCard
+                      title="Selesai"
+                      value={completedReports}
+                      icon={<CheckCircle />}
+                      color="#4CAF50"
+                      animateValue
+                      showProgress
+                      progressValue={completionRate}
+                    />
+                  </Grid>
                 </Grid>
-                
-                <Grid item xs={6} sm={3}>
-                  <EnhancedStatCard
-                    title="Menunggu"
-                    value={pendingReports}
-                    icon={<PendingActions />}
-                    color="#FF9800"
-                    animateValue
-                    subtitle="Perlu tindakan"
-                  />
-                </Grid>
-                
-                <Grid item xs={6} sm={3}>
-                  <EnhancedStatCard
-                    title="Diproses"
-                    value={inProgressReports}
-                    icon={<HourglassEmpty />}
-                    color="#2196F3"
-                    animateValue
-                    subtitle="Sedang ditangani"
-                  />
-                </Grid>
-                
-                <Grid item xs={6} sm={3}>
-                  <EnhancedStatCard
-                    title="Selesai"
-                    value={completedReports}
-                    icon={<CheckCircle />}
-                    color="#4CAF50"
-                    animateValue
-                    showProgress
-                    progressValue={completionRate}
-                  />
-                </Grid>
-              </Grid>
+              </Suspense>
             </Box>
 
             {/* Enhanced Reports Table */}
             <Box sx={{ width: '100%', mx: 0, px: { xs: 0, sm: 0 } }}>
-              <ImprovedReportsTable
-                reports={reports}
-                loading={loading}
-                categories={categories}
-                statusFilter={statusFilter}
-                categoryFilter={categoryFilter}
-                searchQuery={searchQuery}
-                onStatusChange={handleStatusChange}
-                onCategoryChange={handleCategoryChange}
-                onSearchChange={handleSearchChange}
-                onLoadMore={handleLoadMore}
-                hasNextPage={pagination.hasNextPage}
-                onCreateReport={() => setModalOpen(true)}
-              />
+              <Suspense fallback={<LoadingSpinner message="Memuat tabel laporan..." />}>
+                <ImprovedReportsTable
+                  reports={reports}
+                  loading={loading}
+                  categories={categories}
+                  statusFilter={statusFilter}
+                  categoryFilter={categoryFilter}
+                  searchQuery={searchQuery}
+                  onStatusChange={handleStatusChange}
+                  onCategoryChange={handleCategoryChange}
+                  onSearchChange={handleSearchChange}
+                  onLoadMore={handleLoadMore}
+                  hasNextPage={pagination.hasNextPage}
+                  onCreateReport={() => setModalOpen(true)}
+                />
+              </Suspense>
             </Box>
           </>
         );
@@ -258,20 +318,22 @@ export default function ImprovedStudentDashboard() {
 
             {/* Reports Table */}
             <Box sx={{ width: '100%', mx: 0 }}>
-              <ImprovedReportsTable
-                reports={reports}
-                loading={loading}
-                categories={categories}
-                statusFilter={statusFilter}
-                categoryFilter={categoryFilter}
-                searchQuery={searchQuery}
-                onStatusChange={handleStatusChange}
-                onCategoryChange={handleCategoryChange}
-                onSearchChange={handleSearchChange}
-                onLoadMore={handleLoadMore}
-                hasNextPage={pagination.hasNextPage}
-                onCreateReport={() => setModalOpen(true)}
-              />
+              <Suspense fallback={<LoadingSpinner message="Memuat tabel laporan..." />}>
+                <ImprovedReportsTable
+                  reports={reports}
+                  loading={loading}
+                  categories={categories}
+                  statusFilter={statusFilter}
+                  categoryFilter={categoryFilter}
+                  searchQuery={searchQuery}
+                  onStatusChange={handleStatusChange}
+                  onCategoryChange={handleCategoryChange}
+                  onSearchChange={handleSearchChange}
+                  onLoadMore={handleLoadMore}
+                  hasNextPage={pagination.hasNextPage}
+                  onCreateReport={() => setModalOpen(true)}
+                />
+              </Suspense>
             </Box>
           </>
         );
@@ -297,14 +359,16 @@ export default function ImprovedStudentDashboard() {
         height: { xs: 'auto', sm: '100vh' },
         flexShrink: 0 
       }}>
-        <DashboardSidebar 
-          open={mobileOpen} 
-          onClose={handleDrawerToggle}
-          drawerWidth={drawerWidth}
-          onCreateReport={() => setModalOpen(true)}
-          activeMenu={activeMenu}
-          onMenuChange={setActiveMenu}
-        />
+        <Suspense fallback={<LoadingSpinner fullScreen message="Memuat sidebar..." />}>
+          <DashboardSidebar 
+            open={mobileOpen} 
+            onClose={handleDrawerToggle}
+            drawerWidth={drawerWidth}
+            onCreateReport={() => setModalOpen(true)}
+            activeMenu={activeMenu}
+            onMenuChange={setActiveMenu}
+          />
+        </Suspense>
       </Box>
 
       {/* Main Content */}
@@ -348,12 +412,14 @@ export default function ImprovedStudentDashboard() {
       </Box>
 
       {/* Create Report Modal */}
-      <CreateReportModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        categories={categories}
-        onSubmit={handleCreateReport}
-      />
+      <Suspense fallback={<LoadingSpinner fullScreen message="Memuat modal..." />}>
+        <CreateReportModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          categories={categories}
+          onSubmit={handleCreateReport}
+        />
+      </Suspense>
     </Box>
   );
-}
+});

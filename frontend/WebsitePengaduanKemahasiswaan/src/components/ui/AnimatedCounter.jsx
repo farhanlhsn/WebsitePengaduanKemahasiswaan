@@ -3,8 +3,8 @@ import { Typography } from '@mui/material';
 
 const AnimatedCounter = ({ 
   end, 
-  duration = 2000, 
-  start = 0, 
+  duration = 1000, 
+  start = 1, 
   prefix = '', 
   suffix = '',
   ...props 

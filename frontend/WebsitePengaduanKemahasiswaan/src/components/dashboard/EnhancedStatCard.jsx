@@ -54,7 +54,7 @@ const IconContainer = styled(Box)(({ theme, cardcolor }) => ({
   },
 }));
 
-const EnhancedStatCard = ({ 
+const EnhancedStatCard = React.memo(({ 
   title, 
   value, 
   icon, 
@@ -181,6 +181,6 @@ const EnhancedStatCard = ({
       </Box>
     </StyledStatCard>
   );
-};
+});
 
 export default EnhancedStatCard;

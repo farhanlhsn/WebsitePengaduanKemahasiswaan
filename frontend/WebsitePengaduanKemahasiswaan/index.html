@@ -1,17 +1,133 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Performance and SEO Meta Tags -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Sistem Pengaduan Kemahasiswaan Universitas Bung Hatta - Laporkan masalah akademik dan non-akademik dengan mudah dan aman." />
+    <meta name="keywords" content="pengaduan, mahasiswa, universitas bung hatta, ubh, laporan, keluhan" />
+    <meta name="author" content="Universitas Bung Hatta" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1976d2" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Pengaduan UBH" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Pengaduan UBH" />
+    
+    <!-- Icons and Manifest -->
+    <link rel="icon" type="image/png" href="/optimized/logo-ubh.png" />
+    <link rel="apple-touch-icon" href="/optimized/logo-ubh.png" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Performance Optimization -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Remove preload for images that are not immediately visible -->
+    
+    <!-- Critical CSS will be inlined by Vite -->
+    
+    <!-- Font Loading with font-display: swap for better performance -->
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"
     />
+    
+    <!-- Security Headers (X-Frame-Options moved to server config) -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Sistem Pengaduan Kemahasiswaan UBH" />
+    <meta property="og:description" content="Laporkan masalah akademik dan non-akademik dengan mudah dan aman di Universitas Bung Hatta." />
+    <meta property="og:image" content="/optimized/logo-ubh.png" />
+    <meta property="og:url" content="https://pengaduan.bunghatta.ac.id" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="id_ID" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Sistem Pengaduan Kemahasiswaan UBH" />
+    <meta name="twitter:description" content="Laporkan masalah akademik dan non-akademik dengan mudah dan aman di Universitas Bung Hatta." />
+    <meta name="twitter:image" content="/optimized/logo-ubh.png" />
+    
     <title>Pelaporan dan Pengaduan Kemahasiswaan UBH</title>
+    
+    <!-- Critical inline styles for preventing layout shift -->
+    <style>
+      /* Critical above-the-fold styles */
+      #root {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      /* Loading spinner styles */
+      .loading-spinner {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+      }
+      
+      /* Prevent layout shift */
+      body {
+        margin: 0;
+        font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      /* Optimize font loading */
+      @font-face {
+        font-family: 'Roboto';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: local('Roboto'), url('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.woff2') format('woff2');
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Performance monitoring script -->
+    <script>
+      // Basic performance monitoring
+      window.addEventListener('load', () => {
+        // Report Web Vitals
+        if ('performance' in window) {
+          // First Contentful Paint
+          const paintEntries = performance.getEntriesByType('paint');
+          paintEntries.forEach(entry => {
+            console.log(`${entry.name}: ${entry.startTime}ms`);
+          });
+          
+          // Navigation timing
+          const navTiming = performance.getEntriesByType('navigation')[0];
+          if (navTiming) {
+            console.log(`Page Load Time: ${navTiming.loadEventEnd - navTiming.fetchStart}ms`);
+            console.log(`DOM Content Loaded: ${navTiming.domContentLoadedEventEnd - navTiming.fetchStart}ms`);
+          }
+        }
+      });
+      
+      // Error tracking
+      window.addEventListener('error', (event) => {
+        console.error('JavaScript Error:', event.error);
+      });
+      
+      // Unhandled promise rejection tracking
+      window.addEventListener('unhandledrejection', (event) => {
+        console.error('Unhandled Promise Rejection:', event.reason);
+      });
+    </script>
   </body>
 </html>

@@ -12,7 +12,7 @@ import { styled } from '@mui/material/styles';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
 import DeviceManagement from '../DeviceManagement';
-import logo from '../../assets/logo-ubh.png';
+import UBHLogo from '../ui/UBHLogo';
 
 const StyledListItem = styled(ListItem)(({ theme, active, level = 0 }) => ({
   borderRadius: 12,
@@ -312,16 +312,12 @@ const EnhancedAdminSidebar = ({
           ${alpha(theme.palette.secondary.main, 0.05)} 100%)`
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-          <Box
-            component="img"
-            src={logo}
-            alt="Logo Universitas Bung Hatta"
-            sx={{ 
-              width: 50, 
-              height: 50, 
-              objectFit: 'contain',
+          <UBHLogo
+            size="medium"
+            style={{
               filter: `drop-shadow(0 4px 12px ${alpha(theme.palette.primary.main, 0.3)})`
             }}
+            loading="eager"
           />
           <Box>
             <Typography variant="h6" fontWeight={800} sx={{ 

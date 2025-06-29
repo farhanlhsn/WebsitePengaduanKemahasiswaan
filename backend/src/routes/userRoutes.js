@@ -24,5 +24,6 @@ router.post('/:id/restore', userController.restoreUser);  // POST /api/users/123
 router.delete('/:id/permanent', userController.permanentDeleteUser);  // DELETE /api/users/123/permanent
 router.post('/cleanup', userController.cleanupOldDeletedUsers);       // POST /api/users/cleanup?daysOld=90
 router.get('/:id', userController.getUserById);           // GET /api/users/123?includeDeleted=true
+router.get('/:id/stats', userController.getUserStatsById);  // GET /api/users/123/stats
 
 module.exports = router;

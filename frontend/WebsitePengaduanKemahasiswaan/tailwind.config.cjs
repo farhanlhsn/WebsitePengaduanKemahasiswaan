@@ -1,7 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   // 1. Beri tahu Tailwind file mana saja yang menggunakan class-nya
-  content: ['./src/**/*.{js,jsx,ts,tsx}'],
+  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
   
   // 2. PENTING: Matikan Preflight agar tidak bentrok dengan CssBaseline MUI
   corePlugins: {

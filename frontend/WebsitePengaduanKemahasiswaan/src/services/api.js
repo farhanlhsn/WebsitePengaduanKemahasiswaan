@@ -194,6 +194,16 @@ export const restoreReport = async (reportId) => {
   return response.data.data;
 };
 
+export const getReportStats = async () => {
+  const response = await apiClient.get('/reports/stats');
+  return response.data.data;
+};
+
+export const getUserStatsById = async (userId) => {
+  const response = await apiClient.get(`/users/${userId}/stats`);
+  return response.data.data;
+};
+
 // ==================== CATEGORIES API ====================
 
 export const getCategories = async (includeDeleted = false) => {

@@ -3,6 +3,7 @@ import {
   getUserByEmail as apiGetUserByEmail,
   getUserById as apiGetUserById,
   getUserStats as apiGetUserStats,
+  getUserStatsById as apiGetUserStatsById,
   updateUser as apiUpdateUser,
   getAllUsers as apiGetAllUsers,
   verifyStudent as apiVerifyStudent,
@@ -20,6 +21,7 @@ const useUserStore = create((set, get) => ({
   stats: null,
   loading: false,
   error: null,
+  userStats: null,
 
   // Actions
   setLoading: (loading) => set({ loading }),
@@ -65,15 +67,17 @@ const useUserStore = create((set, get) => ({
     }
   },
 
-  // Get user stats
-  getUserStats: async () => {
+  // Get user stats by ID
+
+  getUserStatsById: async (userId) => {
     try {
+      console.log('getUserStatsById store called');
       set({ loading: true, error: null });
-      const stats = await apiGetUserStats();
-      set({ stats, loading: false });
-      return stats;
+      const userStats = await apiGetUserStatsById(userId);
+      set({ userStats, loading: false });
+      return userStats;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to fetch user stats' });
+      set({ loading: false, error: error.response?.data?.error || 'Failed to fetch user stats by ID' });
       throw error;
     }
   },
@@ -199,6 +203,7 @@ const useUserStore = create((set, get) => ({
     user: null,
     currentUser: null,
     stats: null,
+    userStats: null,
     loading: false,
     error: null
   })

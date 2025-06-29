@@ -11,7 +11,7 @@ import { alpha, styled, useTheme } from '@mui/material/styles';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
 import DeviceManagement from '../DeviceManagement';
-import logo from '../../assets/logo-ubh.png';
+import UBHLogo from '../ui/UBHLogo';
 
 const StyledListItem = styled(ListItem)(({ theme, active }) => ({
   borderRadius: 12,
@@ -104,7 +104,7 @@ const StyledListItem = styled(ListItem)(({ theme, active }) => ({
   },
 }));
 
-const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, activeMenu, onMenuChange }) => {
+const DashboardSidebar = React.memo(({ open, onClose, drawerWidth = 280, onCreateReport, activeMenu, onMenuChange }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -297,21 +297,15 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
       <Box sx={{ 
         p: { xs: 2, sm: 3 }, 
         borderBottom: '1px solid rgba(0,0,0,0.06)',
-        background: `linear-gradient(135deg, 
-          ${alpha(theme.palette.primary.main, 0.05)} 0%, 
-          ${alpha(theme.palette.secondary.main, 0.05)} 100%)`
+        
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, mb: { xs: 1, sm: 2 } }}>
-          <Box
-            component="img"
-            src={logo}
-            alt="Logo Universitas Bung Hatta"
-            sx={{ 
-              width: { xs: 60, sm: 80 }, 
-              height: { xs: 60, sm: 80 }, 
-              objectFit: 'contain',
+          <UBHLogo
+            size="large"
+            style={{
               filter: `drop-shadow(0 4px 12px ${alpha(theme.palette.primary.main, 0.2)})`
             }}
+            loading="eager"
           />
           <Box>
             <Typography variant="h6" fontWeight={800} sx={{ 
@@ -536,6 +530,6 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
       </Drawer>
     </>
   );
-};
+});
 
 export default DashboardSidebar;

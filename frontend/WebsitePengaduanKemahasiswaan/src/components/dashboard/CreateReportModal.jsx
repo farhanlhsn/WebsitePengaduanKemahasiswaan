@@ -53,7 +53,7 @@ const steps = [
   }
 ];
 
-const CreateReportModal = ({ open, onClose, categories, onSubmit }) => {
+const CreateReportModal = React.memo(({ open, onClose, categories, onSubmit }) => {
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -351,6 +351,6 @@ const CreateReportModal = ({ open, onClose, categories, onSubmit }) => {
       </DialogContent>
     </StyledDialog>
   );
-};
+});
 
 export default CreateReportModal; 

@@ -274,6 +274,28 @@ class ReportServices {
     }
   }
 
+  async getReportStats() {
+    try{
+      const data = await SoftDeleteHelper.findMany(prisma.report, {
+        select: {
+          status: true,
+        }
+      }, false)
+      const total = data.length;
+      const pending = data.filter(report => report.status === 'pending').length;
+      const approved = data.filter(report => report.status === 'approved').length;
+      const rejected = data.filter(report => report.status === 'rejected').length;
+      return {
+        total,
+        pending,
+        approved,
+        rejected
+      }
+    } catch (error) {
+      throw new Error('Error getting report stats');
+    }
+  }
+
 }
 
 module.exports = new ReportServices();

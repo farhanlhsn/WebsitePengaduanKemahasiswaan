@@ -138,7 +138,7 @@ class UserServices {
     }
   }
 
-  async getUserStats() {
+  async getUserVerificationStats() {
     try {
       const total = await SoftDeleteHelper.count(prisma.user);
       const deleted = await SoftDeleteHelper.count(prisma.user, {}, true) - total;
@@ -162,6 +162,42 @@ class UserServices {
       return await SoftDeleteHelper.cleanupOldDeleted(prisma.user, daysOld);
     } catch (error) {
       throw new Error('Error cleaning up old deleted users');
+    }
+  }
+
+  async getUserStatsById(userId) {
+    try{
+      const data = await SoftDeleteHelper.findMany(prisma.report, {
+        where: {userId: userId},
+        select: {
+          status: true,
+        }
+      },
+      false
+      )
+      const total = data.length;
+      const pending = data.filter(report => report.status === 'PENDING').length;
+      const inReview = data.filter(report => report.status === 'IN_REVIEW').length;
+      const inProgress = data.filter(report => report.status === 'IN_PROGRESS').length;
+      const resolved = data.filter(report => report.status === 'RESOLVED').length;
+      const rejected = data.filter(report => report.status === 'REJECTED').length;
+      const canceled = data.filter(report => report.status === 'CANCELED').length;
+      
+      return {
+        total,
+        pending, 
+        inReview,
+        inProgress,
+        resolved,
+        rejected,
+        canceled,
+        // For backward compatibility with frontend
+        approved: resolved,
+        // Total active reports (not canceled)
+        active: total - canceled
+      }
+    } catch (error) {
+      throw new Error('Error getting reports stats');
     }
   }
 }
