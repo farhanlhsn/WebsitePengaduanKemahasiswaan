@@ -227,16 +227,6 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
         }
       },
       badge: null
-    },
-    { 
-      id: 'tracking',
-      text: 'Lacak Progress', 
-      icon: <TrendingUp />, 
-      path: '/dashboard/tracking',
-      action: () => {
-        if (onMenuChange) onMenuChange('tracking');
-      },
-      badge: null
     }
   ];
 
