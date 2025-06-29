@@ -3,7 +3,7 @@ import HomePage from "./HomePage.jsx";
 import LoginPage from "./LoginPage.jsx";
 import RegisterPage from "./RegisterPage.jsx";
 import Layout from "./layout.jsx";
-import StudentDashboard from "./StudentDashboard.jsx";
+import ImprovedStudentDashboard from "./ImprovedStudentDashboard.jsx";
 import AdminDashboard from "./AdminDashboard.jsx";
 import ReportDetailPage from "./ReportDetailPage.jsx";
 import ProfilePage from "./ProfilePage.jsx";
@@ -40,7 +40,7 @@ export const router = createBrowserRouter([
         path: "/dashboard",
         element: (
             <AuthProvider>
-                <StudentDashboard />
+                <ImprovedStudentDashboard />
             </AuthProvider>
         ),
     },
