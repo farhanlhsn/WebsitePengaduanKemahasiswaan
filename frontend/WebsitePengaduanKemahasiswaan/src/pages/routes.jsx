@@ -4,7 +4,7 @@ import LoginPage from "./LoginPage.jsx";
 import RegisterPage from "./RegisterPage.jsx";
 import Layout from "./layout.jsx";
 import ImprovedStudentDashboard from "./ImprovedStudentDashboard.jsx";
-import AdminDashboard from "./AdminDashboard.jsx";
+import EnhancedAdminDashboard from "./EnhancedAdminDashboard.jsx";
 import ReportDetailPage from "./ReportDetailPage.jsx";
 import ProfilePage from "./ProfilePage.jsx";
 import SettingsPage from "./SettingsPage.jsx";
@@ -72,7 +72,7 @@ export const router = createBrowserRouter([
         path: "/admin",
         element: (
             <AuthProvider>
-                <AdminDashboard />
+                <EnhancedAdminDashboard />
             </AuthProvider>
         ),
     },
@@ -80,7 +80,7 @@ export const router = createBrowserRouter([
         path: "/admin/users",
         element: (
             <AuthProvider>
-                <AdminDashboard />
+                <EnhancedAdminDashboard />
             </AuthProvider>
         ),
     },
@@ -88,7 +88,15 @@ export const router = createBrowserRouter([
         path: "/admin/reports",
         element: (
             <AuthProvider>
-                <AdminDashboard />
+                <EnhancedAdminDashboard />
+            </AuthProvider>
+        ),
+    },
+    {
+        path: "/admin/chat",
+        element: (
+            <AuthProvider>
+                <EnhancedAdminDashboard />
             </AuthProvider>
         ),
     },
@@ -96,7 +104,7 @@ export const router = createBrowserRouter([
         path: "/admin/users/:id",
         element: (
             <AuthProvider>
-                <AdminDashboard />
+                <EnhancedAdminDashboard />
             </AuthProvider>
         ),
     },
