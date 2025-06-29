@@ -3,10 +3,12 @@ import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './pages/routes';
 
-// CRITICAL: Import MUI components synchronously to prevent initialization issues
+// CRITICAL: Import MUI and Emotion synchronously in correct order
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme';
+
+// Import other dependencies
 import axios from "axios";
 import './index.css';
 import { v4 as uuidv4 } from 'uuid';
@@ -37,7 +39,7 @@ const loadAdditionalFonts = () => {
   }
 };
 
-// Axios configuration - only configure essentials
+// Axios configuration
 axios.defaults.baseURL = "http://localhost:6060";
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 axios.defaults.headers.common['Accept'] = 'application/json';
@@ -56,11 +58,10 @@ export const getOrCreateDeviceFingerprint = () => {
 
 // Production optimizations
 if (process.env.NODE_ENV === 'production') {
-  // Load additional fonts after initial render
   setTimeout(loadAdditionalFonts, 100);
 }
 
-// Enhanced error boundary with better error handling
+// Enhanced error boundary
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -74,16 +75,6 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error('Application error:', error, errorInfo);
     this.setState({ errorInfo });
-    
-    // Report to error tracking service in production
-    if (process.env.NODE_ENV === 'production') {
-      // Add error reporting here (e.g., Sentry, LogRocket)
-      try {
-        // Example: Sentry.captureException(error, { extra: errorInfo });
-      } catch (reportingError) {
-        console.error('Failed to report error:', reportingError);
-      }
-    }
   }
 
   render() {
@@ -136,8 +127,6 @@ class ErrorBoundary extends React.Component {
                 fontWeight: '600',
                 transition: 'background-color 0.2s ease'
               }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#1B5E20'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#2E7D32'}
             >
               Refresh Halaman
             </button>
@@ -186,7 +175,7 @@ class ErrorBoundary extends React.Component {
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
-// Main App Component with better error handling
+// CRITICAL: Ensure proper initialization order
 const AppContent = () => (
   <ErrorBoundary>
     <ThemeProvider theme={theme}>
@@ -215,7 +204,7 @@ try {
 } catch (error) {
   console.error('Failed to render application:', error);
   
-  // Fallback rendering in case of critical errors
+  // Fallback rendering
   document.getElementById('root').innerHTML = `
     <div style="
       display: flex; 

@@ -18,76 +18,46 @@ export default defineConfig({
     }),
   ],
   build: {
-    // Use terser for more stable minification
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        // Prevent variable hoisting that causes initialization issues
-        hoist_vars: false,
-        hoist_funs: false,
-        // Keep function names to prevent initialization conflicts
-        keep_fnames: true,
-        // Prevent aggressive inlining that can cause circular dependencies
-        inline: 1,
-        // Reduce passes to prevent over-optimization
-        passes: 1,
-      },
-      mangle: {
-        // Keep class names to prevent Emotion conflicts
-        keep_classnames: true,
-        // Keep function names for better debugging
-        keep_fnames: true,
-      },
-      format: {
-        // Preserve comments that might be important for initialization
-        comments: false,
-      }
-    },
+    // Use esbuild for faster, more stable builds
+    minify: 'esbuild',
     rollupOptions: {
       output: {
-        // SAFE manual chunking - only split the largest dependencies
+        // CRITICAL: Very conservative chunking to prevent initialization issues
         manualChunks: (id) => {
-          // React ecosystem - keep together but separate from main
+          // Keep React ecosystem together
           if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
             return 'react-vendor';
           }
           
-          // Material-UI - largest dependency, split into logical groups
-          if (id.includes('@mui/material')) {
-            return 'mui-material';
-          }
-          if (id.includes('@mui/icons-material')) {
-            return 'mui-icons';
-          }
-          if (id.includes('@emotion/')) {
-            return 'emotion';
+          // CRITICAL: Keep ALL Emotion packages together to prevent circular deps
+          if (id.includes('@emotion/') || id.includes('emotion')) {
+            return 'emotion-vendor';
           }
           
-          // Charts - heavy library
+          // Keep Material-UI together with Emotion since they're tightly coupled
+          if (id.includes('@mui/')) {
+            return 'mui-vendor';
+          }
+          
+          // Charts - separate heavy library
           if (id.includes('recharts')) {
-            return 'charts';
+            return 'charts-vendor';
           }
           
-          // Other large dependencies
+          // Other utilities
           if (id.includes('axios')) {
-            return 'http-client';
-          }
-          if (id.includes('date-fns')) {
-            return 'date-utils';
-          }
-          if (id.includes('zustand')) {
-            return 'state-manager';
+            return 'utils-vendor';
           }
           
-          // Keep all other node_modules together
+          // Keep everything else together
           if (id.includes('node_modules')) {
             return 'vendor-misc';
           }
           
-          // Don't split application code to prevent initialization issues
+          // Don't split application code
           return undefined;
         },
-        // Use simple naming to prevent conflicts
+        // Simple naming to prevent conflicts
         chunkFileNames: 'js/[name].[hash].js',
         entryFileNames: 'js/[name].[hash].js',
         assetFileNames: (assetInfo) => {
@@ -106,23 +76,29 @@ export default defineConfig({
         },
         // Ensure proper module format
         format: 'es',
-        // Prevent hoisting issues
+        // CRITICAL: Prevent hoisting that can cause initialization issues
         hoistTransitiveImports: false,
         // Preserve module structure
         preserveModules: false,
-        // Ensure proper initialization order
+        // Don't inline dynamic imports
         inlineDynamicImports: false,
       },
-      // Re-enable conservative tree shaking
+      // Conservative tree shaking
       treeshake: {
-        moduleSideEffects: false,
+        moduleSideEffects: (id) => {
+          // Preserve side effects for Emotion and MUI
+          if (id.includes('@emotion/') || id.includes('@mui/')) {
+            return true;
+          }
+          return false;
+        },
         propertyReadSideEffects: false,
         unknownGlobalSideEffects: false
       },
     },
-    chunkSizeWarningLimit: 1000, // More reasonable limit
+    chunkSizeWarningLimit: 1500, // Reasonable limit
     sourcemap: false,
-    cssCodeSplit: true, // Re-enable CSS code splitting
+    cssCodeSplit: true,
     target: 'es2020',
     cssMinify: 'esbuild',
     reportCompressedSize: false,
@@ -138,45 +114,58 @@ export default defineConfig({
       'Cache-Control': 'public, max-age=31536000'
     }
   },
-  // Optimize dependencies - Force pre-bundling of problematic packages
+  // CRITICAL: Force pre-bundling of Emotion to prevent runtime issues
   optimizeDeps: {
     include: [
       'react',
       'react-dom',
       'react-router-dom',
+      // CRITICAL: Pre-bundle ALL Emotion packages together
       '@emotion/react',
       '@emotion/styled',
       '@emotion/cache',
       '@emotion/utils',
       '@emotion/serialize',
       '@emotion/sheet',
+      '@emotion/css',
+      '@emotion/server',
+      '@emotion/weak-memoization',
+      '@emotion/memoize',
+      '@emotion/hash',
+      '@emotion/unitless',
+      '@emotion/is-prop-valid',
+      // Material-UI core
       '@mui/material',
       '@mui/material/styles',
       '@mui/system',
+      '@mui/utils',
+      // Other dependencies
       'axios',
-      'zustand'
+      'zustand',
+      'date-fns',
+      'uuid'
     ],
     exclude: ['@vite/client', '@vite/env'],
     force: true,
-    // Ensure proper dependency resolution
+    // Conservative esbuild options
     esbuildOptions: {
       target: 'es2020',
       format: 'esm',
-      // Conservative optimization during pre-bundling
-      treeShaking: true,
+      treeShaking: false, // Disable for pre-bundling to prevent issues
+      keepNames: true,
     }
   },
   // Minimal esbuild configuration
   esbuild: {
-    // Keep more debugging info in production
+    // Keep debugging info
     drop: process.env.NODE_ENV === 'production' ? ['debugger'] : [],
     legalComments: 'none',
-    // Re-enable conservative optimizations
+    // Conservative optimizations
     treeShaking: true,
-    minifyIdentifiers: true,
+    minifyIdentifiers: false, // Keep identifiers for better debugging
     minifySyntax: true,
     minifyWhitespace: true,
-    // Keep function names for better error tracking
+    // CRITICAL: Keep function and class names
     keepNames: true,
   },
   // Define global constants
@@ -187,7 +176,6 @@ export default defineConfig({
   // CSS processing
   css: {
     postcss: './postcss.config.cjs',
-    // Ensure CSS modules work properly
     modules: false,
   },
   // Server configuration for development
@@ -196,14 +184,24 @@ export default defineConfig({
     host: true,
     open: false,
   },
-  // Resolve configuration
+  // CRITICAL: Resolve configuration to prevent multiple instances
   resolve: {
-    // Ensure proper module resolution
-    dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/styled'],
+    // Dedupe critical packages
+    dedupe: [
+      'react', 
+      'react-dom', 
+      '@emotion/react', 
+      '@emotion/styled',
+      '@emotion/cache',
+      '@mui/material',
+      '@mui/system'
+    ],
     alias: {
-      // Prevent multiple React instances
+      // Ensure single instances
       'react': 'react',
       'react-dom': 'react-dom',
+      '@emotion/react': '@emotion/react',
+      '@emotion/styled': '@emotion/styled',
     }
   }
 })
