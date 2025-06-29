@@ -1,14 +1,24 @@
-import React, { Suspense } from 'react';
+// CRITICAL: Import React FIRST before anything else
+import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { RouterProvider } from 'react-router-dom';
-import { router } from './pages/routes';
 
-// CRITICAL: Import MUI and Emotion synchronously in correct order
+// CRITICAL: Ensure React is available globally before any other imports
+if (typeof window !== 'undefined') {
+  window.React = React;
+  window.ReactDOM = ReactDOM;
+}
+
+// Now import other React-related dependencies
+import { Suspense } from 'react';
+import { RouterProvider } from 'react-router-dom';
+
+// Import MUI and Emotion AFTER React is established
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme';
 
 // Import other dependencies
+import { router } from './pages/routes';
 import axios from "axios";
 import './index.css';
 import { v4 as uuidv4 } from 'uuid';
@@ -79,8 +89,8 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div style={{ 
+      return React.createElement('div', {
+        style: { 
           display: 'flex', 
           flexDirection: 'column', 
           alignItems: 'center', 
@@ -90,121 +100,128 @@ class ErrorBoundary extends React.Component {
           textAlign: 'center',
           fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
           backgroundColor: '#f8f9fa'
-        }}>
-          <div style={{
+        }
+      }, [
+        React.createElement('div', {
+          key: 'error-container',
+          style: {
             maxWidth: '500px',
             padding: '32px',
             backgroundColor: 'white',
             borderRadius: '12px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
             border: '1px solid #e0e0e0'
-          }}>
-            <h2 style={{ 
+          }
+        }, [
+          React.createElement('h2', {
+            key: 'title',
+            style: { 
               color: '#2E7D32', 
               marginBottom: '16px',
               fontSize: '24px',
               fontWeight: '700'
-            }}>
-              Oops! Terjadi kesalahan.
-            </h2>
-            <p style={{ 
+            }
+          }, 'Oops! Terjadi kesalahan.'),
+          React.createElement('p', {
+            key: 'description',
+            style: { 
               color: '#666', 
               marginBottom: '24px',
               lineHeight: '1.5'
-            }}>
-              Aplikasi mengalami masalah teknis. Silakan refresh halaman atau hubungi administrator jika masalah berlanjut.
-            </p>
-            <button 
-              onClick={() => window.location.reload()}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: '#2E7D32',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '16px',
+            }
+          }, 'Aplikasi mengalami masalah teknis. Silakan refresh halaman atau hubungi administrator jika masalah berlanjut.'),
+          React.createElement('button', {
+            key: 'refresh-button',
+            onClick: () => window.location.reload(),
+            style: {
+              padding: '12px 24px',
+              backgroundColor: '#2E7D32',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: '600',
+              transition: 'background-color 0.2s ease'
+            }
+          }, 'Refresh Halaman'),
+          
+          process.env.NODE_ENV === 'development' && this.state.error && React.createElement('details', {
+            key: 'error-details',
+            style: { 
+              marginTop: '24px', 
+              textAlign: 'left',
+              backgroundColor: '#f5f5f5',
+              padding: '16px',
+              borderRadius: '8px'
+            }
+          }, [
+            React.createElement('summary', {
+              key: 'summary',
+              style: { 
+                cursor: 'pointer', 
+                color: '#666',
                 fontWeight: '600',
-                transition: 'background-color 0.2s ease'
-              }}
-            >
-              Refresh Halaman
-            </button>
-            
-            {process.env.NODE_ENV === 'development' && this.state.error && (
-              <details style={{ 
-                marginTop: '24px', 
-                textAlign: 'left',
-                backgroundColor: '#f5f5f5',
-                padding: '16px',
-                borderRadius: '8px'
-              }}>
-                <summary style={{ 
-                  cursor: 'pointer', 
-                  color: '#666',
-                  fontWeight: '600',
-                  marginBottom: '12px'
-                }}>
-                  Error Details (Development Only)
-                </summary>
-                <pre style={{ 
-                  marginTop: '12px', 
-                  padding: '12px', 
-                  backgroundColor: '#fff', 
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  overflow: 'auto',
-                  border: '1px solid #ddd',
-                  maxHeight: '200px'
-                }}>
-                  {this.state.error.toString()}
-                  {this.state.errorInfo && (
-                    '\n\nComponent Stack:' + this.state.errorInfo.componentStack
-                  )}
-                </pre>
-              </details>
-            )}
-          </div>
-        </div>
-      );
+                marginBottom: '12px'
+              }
+            }, 'Error Details (Development Only)'),
+            React.createElement('pre', {
+              key: 'error-stack',
+              style: { 
+                marginTop: '12px', 
+                padding: '12px', 
+                backgroundColor: '#fff', 
+                borderRadius: '4px',
+                fontSize: '12px',
+                overflow: 'auto',
+                border: '1px solid #ddd',
+                maxHeight: '200px'
+              }
+            }, [
+              this.state.error.toString(),
+              this.state.errorInfo && ('\n\nComponent Stack:' + this.state.errorInfo.componentStack)
+            ].filter(Boolean).join(''))
+          ])
+        ])
+      ]);
     }
 
     return this.props.children;
   }
 }
 
+// CRITICAL: Ensure React is fully loaded before creating root
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
-// CRITICAL: Ensure proper initialization order
-const AppContent = () => (
-  <ErrorBoundary>
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      {process.env.NODE_ENV === 'production' && (
-        <Suspense fallback={<LoadingSpinner fullScreen message="Mengoptimalkan performa..." />}>
-          <PerformanceOptimizer />
-        </Suspense>
-      )}
-      <RouterProvider router={router} />
-    </ThemeProvider>
-  </ErrorBoundary>
+// CRITICAL: Ensure proper initialization order with React.createElement
+const AppContent = () => React.createElement(ErrorBoundary, null,
+  React.createElement(ThemeProvider, { theme },
+    React.createElement(CssBaseline),
+    process.env.NODE_ENV === 'production' && React.createElement(Suspense, {
+      fallback: React.createElement(LoadingSpinner, {
+        fullScreen: true,
+        message: "Mengoptimalkan performa..."
+      })
+    }, React.createElement(PerformanceOptimizer)),
+    React.createElement(RouterProvider, { router })
+  )
 );
 
-// Render with proper error handling
+// CRITICAL: Render with proper error handling and React.createElement
 try {
   if (process.env.NODE_ENV === 'production') {
-    root.render(<AppContent />);
+    root.render(React.createElement(AppContent));
   } else {
     root.render(
-      <React.StrictMode>
-        <AppContent />
-      </React.StrictMode>
+      React.createElement(React.StrictMode, null,
+        React.createElement(AppContent)
+      )
     );
   }
 } catch (error) {
   console.error('Failed to render application:', error);
   
-  // Fallback rendering
+  // Fallback rendering without React
   document.getElementById('root').innerHTML = `
     <div style="
       display: flex; 
