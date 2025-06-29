@@ -8,60 +8,81 @@ import EnhancedStatCard from '../dashboard/EnhancedStatCard';
 import { useTheme } from '@mui/material/styles';
 
 const AdminDashboardStats = ({ 
-  userStats = {}, 
-  reportStats = {}, 
-  systemStats = {},
+  userStats = null, 
+  reportStats = null, 
+  systemStats = null,
   loading = false 
 }) => {
   const theme = useTheme();
 
+  // Provide safe defaults for all stats
+  const safeUserStats = userStats || {
+    total: 0,
+    active: 0,
+    growth: 0,
+    activeGrowth: 0
+  };
+
+  const safeReportStats = reportStats || {
+    total: 0,
+    resolved: 0,
+    pending: 0,
+    resolutionRate: 0
+  };
+
+  const safeSystemStats = systemStats || {
+    avgResponseTime: '0',
+    unreadMessages: 0,
+    uptime: '99.9'
+  };
+
   const statsData = [
     {
       title: 'Total Pengguna',
-      value: userStats.total || 0,
+      value: safeUserStats.total || 0,
       icon: <People />,
       color: '#2E7D32',
-      trend: userStats.growth > 0 ? 'up' : 'down',
-      trendValue: userStats.growth ? `+${userStats.growth}%` : undefined,
+      trend: safeUserStats.growth > 0 ? 'up' : 'down',
+      trendValue: safeUserStats.growth ? `+${safeUserStats.growth}%` : undefined,
       subtitle: 'Pengguna terdaftar'
     },
     {
       title: 'Total Laporan',
-      value: reportStats.total || 0,
+      value: safeReportStats.total || 0,
       icon: <Assignment />,
       color: '#1976D2',
       showProgress: true,
-      progressValue: reportStats.total > 0 ? (reportStats.resolved / reportStats.total) * 100 : 0,
+      progressValue: safeReportStats.total > 0 ? (safeReportStats.resolved / safeReportStats.total) * 100 : 0,
       subtitle: 'Laporan masuk'
     },
     {
       title: 'Laporan Selesai',
-      value: reportStats.resolved || 0,
+      value: safeReportStats.resolved || 0,
       icon: <CheckCircle />,
       color: '#388E3C',
       trend: 'up',
-      trendValue: reportStats.resolutionRate ? `${reportStats.resolutionRate}%` : undefined,
+      trendValue: safeReportStats.resolutionRate ? `${safeReportStats.resolutionRate}%` : undefined,
       subtitle: 'Tingkat penyelesaian'
     },
     {
       title: 'Menunggu Review',
-      value: reportStats.pending || 0,
+      value: safeReportStats.pending || 0,
       icon: <PendingActions />,
       color: '#F57C00',
       subtitle: 'Butuh perhatian'
     },
     {
       title: 'Pengguna Aktif',
-      value: userStats.active || 0,
+      value: safeUserStats.active || 0,
       icon: <TrendingUp />,
       color: '#7B1FA2',
       trend: 'up',
-      trendValue: userStats.activeGrowth ? `+${userStats.activeGrowth}%` : undefined,
+      trendValue: safeUserStats.activeGrowth ? `+${safeUserStats.activeGrowth}%` : undefined,
       subtitle: '30 hari terakhir'
     },
     {
       title: 'Waktu Respon Rata-rata',
-      value: systemStats.avgResponseTime || '0',
+      value: safeSystemStats.avgResponseTime || '0',
       icon: <Schedule />,
       color: '#00796B',
       suffix: 'h',
@@ -69,19 +90,19 @@ const AdminDashboardStats = ({
     },
     {
       title: 'Pesan Belum Dibaca',
-      value: systemStats.unreadMessages || 0,
+      value: safeSystemStats.unreadMessages || 0,
       icon: <Chat />,
       color: '#D32F2F',
       subtitle: 'Komunikasi pending'
     },
     {
       title: 'Sistem Uptime',
-      value: systemStats.uptime || '99.9',
+      value: safeSystemStats.uptime || '99.9',
       icon: <Security />,
       color: '#388E3C',
       suffix: '%',
       showProgress: true,
-      progressValue: parseFloat(systemStats.uptime || '99.9'),
+      progressValue: parseFloat(safeSystemStats.uptime || '99.9'),
       subtitle: 'Ketersediaan sistem'
     }
   ];
