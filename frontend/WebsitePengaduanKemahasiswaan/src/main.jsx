@@ -12,12 +12,13 @@ import { v4 as uuidv4 } from 'uuid';
 import { optimizeForProduction } from './components/DynamicImportHelper';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 
+// CRITICAL: Import fonts synchronously to prevent FOUC
+import '@fontsource/inter/400.css';
+
 // Lazy load PerformanceOptimizer to reduce initial bundle
 const PerformanceOptimizer = React.lazy(() => import('./components/PerformanceOptimizer'));
 
-// Optimize font loading - only load essential weights initially
-import '@fontsource/inter/400.css'; // Regular weight only
-// Lazy load other weights
+// Load additional fonts during idle time
 const loadAdditionalFonts = () => {
   if ('requestIdleCallback' in window) {
     requestIdleCallback(() => {
@@ -49,28 +50,30 @@ export const getOrCreateDeviceFingerprint = () => {
 
 // Production optimizations
 if (process.env.NODE_ENV === 'production') {
-  // Remove console logs and optimize for production
   optimizeForProduction();
-  
-  // Load additional resources only after initial render
   setTimeout(() => {
     loadAdditionalFonts();
   }, 100);
 }
 
-// Error boundary for better error handling
+// Enhanced error boundary
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true };
+    return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
     console.error('Application error:', error, errorInfo);
+    
+    // Report to error tracking service in production
+    if (process.env.NODE_ENV === 'production') {
+      // Add error reporting here
+    }
   }
 
   render() {
@@ -83,24 +86,47 @@ class ErrorBoundary extends React.Component {
           justifyContent: 'center', 
           height: '100vh',
           padding: '20px',
-          textAlign: 'center' 
+          textAlign: 'center',
+          fontFamily: 'Inter, sans-serif'
         }}>
-          <h2>Oops! Terjadi kesalahan.</h2>
-          <p>Silakan refresh halaman atau hubungi administrator.</p>
+          <h2 style={{ color: '#2E7D32', marginBottom: '16px' }}>
+            Oops! Terjadi kesalahan.
+          </h2>
+          <p style={{ color: '#666', marginBottom: '24px' }}>
+            Silakan refresh halaman atau hubungi administrator.
+          </p>
           <button 
             onClick={() => window.location.reload()}
             style={{
-              marginTop: '20px',
-              padding: '10px 20px',
+              padding: '12px 24px',
               backgroundColor: '#2E7D32',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: '600'
             }}
           >
             Refresh Halaman
           </button>
+          {process.env.NODE_ENV === 'development' && (
+            <details style={{ marginTop: '24px', textAlign: 'left' }}>
+              <summary style={{ cursor: 'pointer', color: '#666' }}>
+                Error Details (Development)
+              </summary>
+              <pre style={{ 
+                marginTop: '12px', 
+                padding: '12px', 
+                backgroundColor: '#f5f5f5', 
+                borderRadius: '4px',
+                fontSize: '12px',
+                overflow: 'auto'
+              }}>
+                {this.state.error?.toString()}
+              </pre>
+            </details>
+          )}
         </div>
       );
     }
@@ -111,7 +137,7 @@ class ErrorBoundary extends React.Component {
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
-// Use concurrent features for better performance
+// Main App Component
 const AppContent = () => (
   <ErrorBoundary>
     <ThemeProvider theme={theme}>
@@ -124,7 +150,7 @@ const AppContent = () => (
   </ErrorBoundary>
 );
 
-// Use React 18 concurrent features in production
+// Render with proper error handling
 if (process.env.NODE_ENV === 'production') {
   root.render(<AppContent />);
 } else {
