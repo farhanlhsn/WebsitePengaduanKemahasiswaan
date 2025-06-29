@@ -408,7 +408,9 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
       <Box sx={{ 
         borderTop: '1px solid rgba(0,0,0,0.06)', 
         py: 2,
-
+        background: `linear-gradient(135deg, 
+          ${alpha(theme.palette.background.default, 0.8)} 0%, 
+          ${alpha(theme.palette.background.paper, 0.9)} 100%)`
       }}>
         <List sx={{ 
           position: 'relative',
