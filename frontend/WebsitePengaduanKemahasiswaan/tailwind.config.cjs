@@ -1,7 +1,12 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  // 1. Beri tahu Tailwind file mana saja yang menggunakan class-nya
-  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
+  // 1. Fix: Add proper content configuration for Tailwind
+  content: [
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx}',
+    './src/**/*.{vue,svelte}',
+    './public/**/*.html'
+  ],
   
   // 2. PENTING: Matikan Preflight agar tidak bentrok dengan CssBaseline MUI
   corePlugins: {
@@ -26,4 +31,15 @@ module.exports = {
     },
   },
   plugins: [],
+  
+  // 4. Add safelist for dynamic classes that might be purged
+  safelist: [
+    'bg-primary-main',
+    'text-primary-main',
+    'border-primary-main',
+    'bg-secondary-main',
+    'text-secondary-main',
+    'hover:bg-primary-main',
+    'hover:text-white',
+  ]
 };

@@ -5,20 +5,33 @@ import viteCompression from 'vite-plugin-compression'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    react(),
-    // Temporarily disable compression for preview testing
-    // viteCompression({
-    //   algorithm: 'gzip',
-    //   ext: '.gz',
-    //   threshold: 1024,
-    //   deleteOriginFile: false
-    // }),
-    // viteCompression({
-    //   algorithm: 'brotliCompress',
-    //   ext: '.br',
-    //   threshold: 1024,
-    //   deleteOriginFile: false
-    // })
+    react({
+      // Fix Emotion build issues
+      jsxImportSource: '@emotion/react',
+      plugins: [
+        ['@swc/plugin-emotion', {
+          // Enable source maps for better debugging
+          sourceMap: true,
+          // Auto label for better debugging
+          autoLabel: 'dev-only',
+          // Optimize for production
+          labelFormat: '[local]',
+        }]
+      ]
+    }),
+    // Re-enable compression for production
+    viteCompression({
+      algorithm: 'gzip',
+      ext: '.gz',
+      threshold: 1024,
+      deleteOriginFile: false
+    }),
+    viteCompression({
+      algorithm: 'brotliCompress',
+      ext: '.br',
+      threshold: 1024,
+      deleteOriginFile: false
+    })
   ],
   build: {
     // Enable minification with esbuild (faster than terser)
@@ -35,6 +48,11 @@ export default defineConfig({
           }
           if (id.includes('react-router')) {
             return 'react-router';
+          }
+          
+          // Emotion - separate chunk to avoid initialization issues
+          if (id.includes('@emotion/')) {
+            return 'emotion';
           }
           
           // Material-UI - split into smaller chunks
@@ -65,10 +83,6 @@ export default defineConfig({
           
           if (id.includes('@mui/icons-material')) {
             return 'mui-icons';
-          }
-          
-          if (id.includes('@emotion/')) {
-            return 'emotion';
           }
           
           // Chart library
@@ -172,7 +186,7 @@ export default defineConfig({
     cssCodeSplit: true,
     target: 'es2020', // Modern browsers for smaller bundle
     // Experimental options for smaller bundles
-    cssMinify: true, // Use esbuild for CSS minification (more compatible)
+    cssMinify: 'lightningcss', // Use lightningcss for better CSS minification
     reportCompressedSize: false, // Skip gzip size reporting for faster builds
     // Split CSS into smaller chunks
     assetsInlineLimit: 2048 // Inline assets smaller than 2KB
@@ -219,5 +233,20 @@ export default defineConfig({
   define: {
     __DEV__: false,
     'process.env.NODE_ENV': '"production"'
+  },
+  // Fix CSS processing
+  css: {
+    postcss: {
+      plugins: [
+        require('tailwindcss'),
+        require('autoprefixer'),
+      ],
+    },
+    // Ensure proper CSS handling
+    preprocessorOptions: {
+      scss: {
+        additionalData: `@import "src/styles/variables.scss";`
+      }
+    }
   }
 })
