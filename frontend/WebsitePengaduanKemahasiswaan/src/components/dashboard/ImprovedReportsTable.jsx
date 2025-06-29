@@ -3,11 +3,10 @@ import {
   Box, Paper, Typography, Button, FormControl, InputLabel, Select, MenuItem,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   IconButton, CircularProgress, Card, CardContent, CardActions,
-  Skeleton, Fade, Zoom, Tooltip, Stack, useMediaQuery
+  Skeleton, Fade, Zoom, Tooltip, Stack, useMediaQuery, SwipeableDrawer
 } from '@mui/material';
 import { 
-  Visibility, AddCircle, Assignment, FilterList, ViewModule, ViewList,
-  SwipeableDrawer
+  Visibility, AddCircle, Assignment, FilterList, ViewModule, ViewList
 } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
@@ -15,8 +14,16 @@ import EnhancedButton from '../ui/EnhancedButton';
 import SearchInput from '../ui/SearchInput';
 import StatusBadge from '../ui/StatusBadge';
 import GlassCard from '../ui/GlassCard';
+import RichTextDisplay from '../ui/RichTextDisplay';
 
 const CATEGORY_COLOR = '#2E7D32';
+
+// Utility: strip HTML tags for plain text preview
+function stripHtml(html) {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return div.textContent || div.innerText || '';
+}
 
 const ImprovedReportsTable = ({
   reports,
@@ -138,22 +145,14 @@ const ImprovedReportsTable = ({
               </Box>
 
               {/* Description */}
-              <Typography 
-                variant="body2" 
-                color="text.secondary" 
-                sx={{ 
-                  mb: 2, 
-                  lineHeight: 1.5,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden'
-                }}
-              >
-                {report.description.length > 120 
-                  ? `${report.description.substring(0, 120)}...` 
-                  : report.description}
-              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <RichTextDisplay 
+                  content={report.description}
+                  variant="body2"
+                  maxLines={3}
+                  showFullButton={false}
+                />
+              </Box>
 
               {/* Category and Date */}
               <Stack 
@@ -300,9 +299,10 @@ const ImprovedReportsTable = ({
                       maxWidth: 180
                     }}
                   >
-                    {report.description.length > 30 
-                      ? `${report.description.substring(0, 30)}...` 
-                      : report.description}
+                    {(() => {
+                      const plain = stripHtml(report.description);
+                      return plain.length > 30 ? `${plain.substring(0, 30)}...` : plain;
+                    })()}
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -394,9 +394,10 @@ const ImprovedReportsTable = ({
                     {report.title}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {report.description.length > 50 
-                      ? `${report.description.substring(0, 50)}...` 
-                      : report.description}
+                    {(() => {
+                      const plain = stripHtml(report.description);
+                      return plain.length > 50 ? `${plain.substring(0, 50)}...` : plain;
+                    })()}
                   </Typography>
                 </TableCell>
                 <TableCell sx={{ py: 3 }}>
@@ -449,7 +450,7 @@ const ImprovedReportsTable = ({
   );
 
   return (
-    <Box sx={{ bgcolor: '#f8f9fa', minHeight: '100vh', pt: 0 }}>
+    <Box sx={{ bgcolor: '#f8f9fa', minHeight: '100%', pt: 0 }}>
       <GlassCard variant="glass" sx={{ borderRadius: { xs: 0, sm: 4 }, overflow: 'hidden' }}>
         {/* Header Section */}
         <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>

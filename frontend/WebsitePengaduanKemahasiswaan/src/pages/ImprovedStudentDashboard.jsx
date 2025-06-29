@@ -196,8 +196,6 @@ export default function ImprovedStudentDashboard() {
                     animateValue
                     showProgress
                     progressValue={completionRate}
-                    trend="up"
-                    trendValue={`${Math.round(completionRate)}%`}
                   />
                 </Grid>
               </Grid>

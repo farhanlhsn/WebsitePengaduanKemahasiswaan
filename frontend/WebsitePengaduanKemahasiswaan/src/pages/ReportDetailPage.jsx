@@ -16,6 +16,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { alpha } from '@mui/material/styles';
 import useReportStore from '../stores/reportStore';
 import DashboardSidebar from '../components/dashboard/Sidebar';
+import RichTextDisplay from '../components/ui/RichTextDisplay';
 
 // --- THEME COLORS (Based on Dashboard Screenshot) ---
 const THEME_COLORS = {
@@ -136,7 +137,7 @@ const ReportDetailPage = () => {
                   </Box>
                   <Box sx={{ p: { xs: 2, md: 3 }, minWidth: 0, flex: 1 }}>
                     <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2 }}>Deskripsi Laporan</Typography>
-                    <Box sx={{ p: 3, mb: 4, bgcolor: THEME_COLORS.background, borderRadius: 2, minWidth: 0, minHeight: '150px' }}><Typography variant="body1" sx={{ lineHeight: 1.8, wordBreak: 'break-word' }}>{report.description}</Typography></Box>
+                    <Box sx={{ p: 3, mb: 4, bgcolor: THEME_COLORS.background, borderRadius: 2, minWidth: 0, minHeight: '150px' }}><RichTextDisplay content={report.description} variant="body1" showFullButton={true} /></Box>
                     {report.attachments && report.attachments.length > 0 && (
                       <Box>
                         <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 3 }}><AttachFile sx={{ color: THEME_COLORS.primary }} /><Typography variant="h6" fontWeight={600}>Lampiran</Typography><Chip label={`${report.attachments.length} file`} size="small" sx={{ bgcolor: alpha(THEME_COLORS.primary, 0.1), color: THEME_COLORS.primary }} /></Stack>
@@ -156,7 +157,7 @@ const ReportDetailPage = () => {
                       <List sx={{ p: 0, minWidth: 0 }}>
                         {report.messages.map((message, index) => (
                           <React.Fragment key={message.id}>
-                            <ListItem alignItems="flex-start" sx={{ py: 2, px: { xs: 1, md: 2 }, minWidth: 0 }}><ListItemAvatar sx={{ mr: 1.5 }}><Avatar sx={{ width: 48, height: 48, bgcolor: message.sender.role === 'ADMIN' ? 'secondary.light' : alpha(THEME_COLORS.primary, 0.2) }}>{message.sender.name.charAt(0).toUpperCase()}</Avatar></ListItemAvatar><ListItemText sx={{ minWidth: 0 }} primary={<Stack direction="row" alignItems="center" spacing={2} sx={{ minWidth: 0 }}><Typography variant="subtitle1" fontWeight={700} sx={{ minWidth: 0, flex: 1 }}>{message.sender.name}</Typography><Chip label={message.sender.role === 'ADMIN' ? 'Admin' : 'Mahasiswa'} size="small" sx={{ bgcolor: message.sender.role === 'ADMIN' ? 'secondary.main' : THEME_COLORS.primary, color: 'white', flexShrink: 0 }}/></Stack>} secondary={<><Typography component="span" variant="body2" color="text.secondary" sx={{ display: 'block', mt: 0.5, mb: 1.5 }}>{formatDate(message.createdAt)}</Typography><Box sx={{ p: 2, mt: 1, bgcolor: THEME_COLORS.background, borderRadius: 2, display: 'block', maxWidth: '100%', minWidth: 0 }}><Typography variant="body1" sx={{ lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{message.content}</Typography></Box></>}/></ListItem>
+                            <ListItem alignItems="flex-start" sx={{ py: 2, px: { xs: 1, md: 2 }, minWidth: 0 }}><ListItemAvatar sx={{ mr: 1.5 }}><Avatar sx={{ width: 48, height: 48, bgcolor: message.sender.role === 'ADMIN' ? 'secondary.light' : alpha(THEME_COLORS.primary, 0.2) }}>{message.sender.name.charAt(0).toUpperCase()}</Avatar></ListItemAvatar><ListItemText sx={{ minWidth: 0 }} primary={<Stack direction="row" alignItems="center" spacing={2} sx={{ minWidth: 0 }}><Typography variant="subtitle1" fontWeight={700} sx={{ minWidth: 0, flex: 1 }}>{message.sender.name}</Typography><Chip label={message.sender.role === 'ADMIN' ? 'Admin' : 'Mahasiswa'} size="small" sx={{ bgcolor: message.sender.role === 'ADMIN' ? 'secondary.main' : THEME_COLORS.primary, color: 'white', flexShrink: 0 }}/></Stack>} secondary={<><Typography component="span" variant="body2" color="text.secondary" sx={{ display: 'block', mt: 0.5, mb: 1.5 }}>{formatDate(message.createdAt)}</Typography><Box sx={{ p: 2, mt: 1, bgcolor: THEME_COLORS.background, borderRadius: 2, display: 'block', maxWidth: '100%', minWidth: 0 }}><RichTextDisplay content={message.content} variant="body1" /></Box></>}/></ListItem>
                             {index < report.messages.length - 1 && <Divider variant="inset" component="li" />}
                           </React.Fragment>
                         ))}

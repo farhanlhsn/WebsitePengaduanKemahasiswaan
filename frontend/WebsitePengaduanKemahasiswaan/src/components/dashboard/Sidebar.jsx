@@ -63,11 +63,7 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
   const [deviceModalOpen, setDeviceModalOpen] = useState(false);
 
   // Check if current path matches menu item
-  const isActive = (path) => {
-    if (path === '/admin' && location.pathname === '/admin') return true;
-    if (path !== '/admin' && location.pathname.startsWith(path)) return true;
-    return false;
-  };
+  const isActive = (path) => location.pathname === path;
 
   // Enhanced menu structure for admin
   const adminMenu = [

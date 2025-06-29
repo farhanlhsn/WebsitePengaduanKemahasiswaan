@@ -10,6 +10,7 @@ import {
   AttachFile, Send 
 } from '@mui/icons-material';
 import { styled, alpha } from '@mui/material/styles';
+import RichTextEditor from '../ui/RichTextEditor';
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialog-paper': {
@@ -84,6 +85,17 @@ const CreateReportModal = ({ open, onClose, categories, onSubmit }) => {
     }
   };
 
+  const handleRichTextChange = (field) => (content) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: content
+    }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
   const handleFileChange = (event) => {
     const files = Array.from(event.target.files);
     setFormData(prev => ({
@@ -99,6 +111,13 @@ const CreateReportModal = ({ open, onClose, categories, onSubmit }) => {
     }));
   };
 
+  // Utility function to strip HTML tags and get plain text length
+  const getTextLength = (html) => {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return div.textContent || div.innerText || '';
+  };
+
   const validateStep = (step) => {
     const newErrors = {};
     
@@ -108,8 +127,9 @@ const CreateReportModal = ({ open, onClose, categories, onSubmit }) => {
         if (!formData.categoryId) newErrors.categoryId = 'Kategori wajib dipilih';
         break;
       case 1:
-        if (!formData.description.trim()) newErrors.description = 'Deskripsi laporan wajib diisi';
-        if (formData.description.length < 20) newErrors.description = 'Deskripsi minimal 20 karakter';
+        const plainTextDescription = getTextLength(formData.description);
+        if (!plainTextDescription.trim()) newErrors.description = 'Deskripsi laporan wajib diisi';
+        if (plainTextDescription.length < 20) newErrors.description = 'Deskripsi minimal 20 karakter';
         break;
     }
     
@@ -205,16 +225,14 @@ const CreateReportModal = ({ open, onClose, categories, onSubmit }) => {
       case 1:
         return (
           <Box sx={{ mt: 2 }}>
-            <TextField
-              fullWidth
-              multiline
-              rows={6}
+            <RichTextEditor
               label="Deskripsi Laporan"
               placeholder="Jelaskan masalah secara detail, kapan terjadi, dan dampaknya..."
               value={formData.description}
-              onChange={handleInputChange('description')}
+              onChange={handleRichTextChange('description')}
               error={!!errors.description}
-              helperText={errors.description}
+              helperText={errors.description || 'Gunakan toolbar di atas untuk format teks (bold, italic, list, dll)'}
+              minHeight={250}
             />
           </Box>
         );

@@ -73,8 +73,8 @@ const EnhancedStatCard = ({
   return (
     <StyledStatCard variant="glass" cardcolor={color}>
       <Box sx={{ position: 'relative', zIndex: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-          <Box sx={{ flex: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, mb: 2 }}>
+          <Box sx={{ flex: 1, pr: 1 }}>
             <Typography 
               variant="body2" 
               color="text.secondary" 

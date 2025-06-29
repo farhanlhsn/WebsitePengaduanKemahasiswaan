@@ -23,6 +23,7 @@ import useCategoryStore from '../stores/categoryStore';
 // Component imports
 import DashboardSidebar from '../components/dashboard/Sidebar';
 import StatusChart from '../components/dashboard/StatusChart';
+import RichTextDisplay from '../components/ui/RichTextDisplay';
 
 const drawerWidth = 280;
 
@@ -969,11 +970,14 @@ const ReportsManagementTable = ({
                     <Typography variant="body2" fontWeight={500} sx={{ mb: 0.5 }}>
                       {report.title}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {report.description.length > 50 
-                        ? `${report.description.substring(0, 50)}...` 
-                        : report.description}
-                    </Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <RichTextDisplay 
+                        content={report.description}
+                        variant="caption"
+                        maxLines={2}
+                        showFullButton={false}
+                      />
+                    </Box>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
