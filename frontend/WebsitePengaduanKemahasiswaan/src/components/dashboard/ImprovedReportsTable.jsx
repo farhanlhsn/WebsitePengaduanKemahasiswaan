@@ -3,10 +3,11 @@ import {
   Box, Paper, Typography, Button, FormControl, InputLabel, Select, MenuItem,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   IconButton, CircularProgress, Card, CardContent, CardActions,
-  Skeleton, Fade, Zoom, Tooltip, Stack
+  Skeleton, Fade, Zoom, Tooltip, Stack, useMediaQuery
 } from '@mui/material';
 import { 
-  Visibility, AddCircle, Assignment, FilterList, ViewModule, ViewList 
+  Visibility, AddCircle, Assignment, FilterList, ViewModule, ViewList,
+  SwipeableDrawer
 } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
@@ -33,7 +34,16 @@ const ImprovedReportsTable = ({
 }) => {
   const navigate = useNavigate();
   const theme = useTheme();
-  const [viewMode, setViewMode] = React.useState('table'); // 'table' or 'card'
+  const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const [viewMode, setViewMode] = React.useState(isMobile ? 'card' : 'table');
+
+  // Auto-switch to card view on mobile
+  React.useEffect(() => {
+    if (isMobile && viewMode === 'table') {
+      setViewMode('card');
+    }
+  }, [isMobile, viewMode]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('id-ID', { 
@@ -78,15 +88,46 @@ const ImprovedReportsTable = ({
   );
 
   const CardView = () => (
-    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: 3, p: 2 }}>
+    <Box sx={{ 
+      display: 'grid', 
+      gridTemplateColumns: {
+        xs: '1fr',
+        sm: 'repeat(auto-fill, minmax(320px, 1fr))',
+        md: 'repeat(auto-fill, minmax(350px, 1fr))'
+      }, 
+      gap: { xs: 2, sm: 3 }, 
+      p: { xs: 1, sm: 2 } 
+    }}>
       {reports.map((report, index) => (
         <Fade in timeout={300 + index * 100} key={report.id}>
-          <GlassCard variant="glass" hover>
-            <CardContent sx={{ p: 3 }}>
+          <GlassCard 
+            variant="glass" 
+            hover
+            sx={{
+              cursor: 'pointer',
+              '&:active': {
+                transform: 'scale(0.98)',
+              }
+            }}
+            onClick={() => navigate(`/report/${report.id}`)}
+          >
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               {/* Header */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }} noWrap>
+                <Box sx={{ flex: 1, minWidth: 0, pr: 1 }}>
+                  <Typography 
+                    variant="h6" 
+                    fontWeight={700} 
+                    sx={{ 
+                      mb: 0.5,
+                      fontSize: { xs: '1rem', sm: '1.25rem' },
+                      lineHeight: 1.3,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
+                    }}
+                  >
                     {report.title}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
@@ -97,14 +138,31 @@ const ImprovedReportsTable = ({
               </Box>
 
               {/* Description */}
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.5 }}>
+              <Typography 
+                variant="body2" 
+                color="text.secondary" 
+                sx={{ 
+                  mb: 2, 
+                  lineHeight: 1.5,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden'
+                }}
+              >
                 {report.description.length > 120 
                   ? `${report.description.substring(0, 120)}...` 
                   : report.description}
               </Typography>
 
               {/* Category and Date */}
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+              <Stack 
+                direction={{ xs: 'column', sm: 'row' }} 
+                justifyContent="space-between" 
+                alignItems={{ xs: 'flex-start', sm: 'center' }} 
+                spacing={1}
+                sx={{ mb: 2 }}
+              >
                 <Box
                   sx={{
                     px: 2,
@@ -112,9 +170,18 @@ const ImprovedReportsTable = ({
                     borderRadius: 2,
                     bgcolor: alpha(CATEGORY_COLOR, 0.1),
                     border: `1px solid ${alpha(CATEGORY_COLOR, 0.2)}`,
+                    maxWidth: '100%'
                   }}
                 >
-                  <Typography variant="caption" sx={{ color: CATEGORY_COLOR, fontWeight: 600 }}>
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      color: CATEGORY_COLOR, 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                    }}
+                    noWrap
+                  >
                     {report.category?.name || 'Tidak ada kategori'}
                   </Typography>
                 </Box>
@@ -124,11 +191,14 @@ const ImprovedReportsTable = ({
               </Stack>
             </CardContent>
 
-            <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
+            <CardActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 3 }, pt: 0 }}>
               <EnhancedButton
                 variant="outlined"
                 startIcon={<Visibility />}
-                onClick={() => navigate(`/report/${report.id}`)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/report/${report.id}`);
+                }}
                 fullWidth
                 size="small"
               >
@@ -141,8 +211,156 @@ const ImprovedReportsTable = ({
     </Box>
   );
 
-  const TableView = () => (
-    <TableContainer sx={{ overflowX: 'auto' }}>
+  const MobileTableView = () => (
+    <Box sx={{ 
+      overflowX: 'auto',
+      WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+      '&::-webkit-scrollbar': {
+        height: 8,
+        backgroundColor: 'rgba(0,0,0,0.1)',
+      },
+      '&::-webkit-scrollbar-thumb': {
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        borderRadius: 4,
+      },
+      '&::-webkit-scrollbar-track': {
+        backgroundColor: 'rgba(0,0,0,0.05)',
+      }
+    }}>
+      <Table 
+        size="small" 
+        sx={{ 
+          minWidth: 800, // Ensure minimum width for proper table layout
+          '& .MuiTableCell-root': {
+            whiteSpace: 'nowrap',
+            padding: { xs: '8px 4px', sm: '12px 8px' }
+          }
+        }}
+      >
+        <TableHead>
+          <TableRow>
+            <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', minWidth: 120 }}>
+              No. Registrasi
+            </TableCell>
+            <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', minWidth: 200 }}>
+              Judul Laporan
+            </TableCell>
+            <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', minWidth: 120 }}>
+              Kategori
+            </TableCell>
+            <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', minWidth: 100 }}>
+              Status
+            </TableCell>
+            <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', minWidth: 100 }}>
+              Tanggal
+            </TableCell>
+            <TableCell align="center" sx={{ fontWeight: 600, fontSize: '0.875rem', minWidth: 80 }}>
+              Aksi
+            </TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {reports.map((report, index) => (
+            <Fade in timeout={200 + index * 50} key={report.id}>
+              <TableRow 
+                sx={{ 
+                  '&:hover': { 
+                    bgcolor: alpha(theme.palette.primary.main, 0.02),
+                  },
+                  '&:last-child td': { border: 0 }
+                }}
+              >
+                <TableCell>
+                  <Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.8rem' }}>
+                    {report.registrationNumber}
+                  </Typography>
+                </TableCell>
+                <TableCell sx={{ maxWidth: 200 }}>
+                  <Typography 
+                    variant="body2" 
+                    fontWeight={500} 
+                    sx={{ 
+                      mb: 0.5,
+                      fontSize: '0.8rem',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {report.title}
+                  </Typography>
+                  <Typography 
+                    variant="caption" 
+                    color="text.secondary"
+                    sx={{
+                      display: 'block',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      maxWidth: 180
+                    }}
+                  >
+                    {report.description.length > 30 
+                      ? `${report.description.substring(0, 30)}...` 
+                      : report.description}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <Box
+                    sx={{
+                      px: 1.5,
+                      py: 0.5,
+                      borderRadius: 2,
+                      bgcolor: CATEGORY_COLOR,
+                      color: 'white',
+                      display: 'inline-block',
+                      fontWeight: 600,
+                      fontSize: '0.7rem',
+                      minWidth: 60,
+                      textAlign: 'center',
+                      maxWidth: 100,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {report.category?.name || 'N/A'}
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={report.status} size="small" />
+                </TableCell>
+                <TableCell>
+                  <Typography variant="caption" color="text.secondary">
+                    {formatDate(report.createdAt)}
+                  </Typography>
+                </TableCell>
+                <TableCell align="center">
+                  <Tooltip title="Lihat Detail">
+                    <IconButton 
+                      onClick={() => navigate(`/report/${report.id}`)}
+                      size="small"
+                      sx={{ 
+                        color: 'primary.main',
+                        '&:hover': {
+                          bgcolor: alpha(theme.palette.primary.main, 0.08)
+                        }
+                      }}
+                    >
+                      <Visibility fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
+              </TableRow>
+            </Fade>
+          ))}
+        </TableBody>
+      </Table>
+    </Box>
+  );
+
+  const DesktopTableView = () => (
+    <TableContainer>
       <Table size="medium">
         <TableHead>
           <TableRow>
@@ -252,36 +470,39 @@ const ImprovedReportsTable = ({
               </Typography>
             </Box>
             
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              {/* View Mode Toggle */}
-              <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 0.5, mr: 2 }}>
-                <Tooltip title="Tampilan Tabel">
-                  <IconButton 
-                    onClick={() => setViewMode('table')}
-                    color={viewMode === 'table' ? 'primary' : 'default'}
-                    size="small"
-                  >
-                    <ViewList />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Tampilan Kartu">
-                  <IconButton 
-                    onClick={() => setViewMode('card')}
-                    color={viewMode === 'card' ? 'primary' : 'default'}
-                    size="small"
-                  >
-                    <ViewModule />
-                  </IconButton>
-                </Tooltip>
-              </Box>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', width: { xs: '100%', sm: 'auto' } }}>
+              {/* View Mode Toggle - Only show on desktop */}
+              {!isMobile && (
+                <Box sx={{ display: 'flex', gap: 0.5, mr: 2 }}>
+                  <Tooltip title="Tampilan Tabel">
+                    <IconButton 
+                      onClick={() => setViewMode('table')}
+                      color={viewMode === 'table' ? 'primary' : 'default'}
+                      size="small"
+                    >
+                      <ViewList />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Tampilan Kartu">
+                    <IconButton 
+                      onClick={() => setViewMode('card')}
+                      color={viewMode === 'card' ? 'primary' : 'default'}
+                      size="small"
+                    >
+                      <ViewModule />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              )}
 
               <EnhancedButton
                 variant="contained"
                 startIcon={<AddCircle />}
                 onClick={onCreateReport || (() => navigate('/create-report'))}
-                size={window.innerWidth < 600 ? 'medium' : 'large'}
+                size={isTablet ? 'medium' : 'large'}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
-                {window.innerWidth < 600 ? 'Buat Laporan' : 'Buat Laporan Baru'}
+                {isTablet ? 'Buat Laporan' : 'Buat Laporan Baru'}
               </EnhancedButton>
             </Box>
           </Box>
@@ -352,7 +573,13 @@ const ImprovedReportsTable = ({
           <EmptyState />
         ) : (
           <>
-            {viewMode === 'card' ? <CardView /> : <TableView />}
+            {viewMode === 'card' ? (
+              <CardView />
+            ) : isMobile ? (
+              <MobileTableView />
+            ) : (
+              <DesktopTableView />
+            )}
 
             {/* Load More Button */}
             {hasNextPage && (
