@@ -4,10 +4,22 @@ import { TrendingUp, TrendingDown } from '@mui/icons-material';
 import { alpha, styled } from '@mui/material/styles';
 
 const StyledStatCard = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(4),
+  padding: theme.spacing(3),
+  [theme.breakpoints.up('sm')]: {
+    padding: theme.spacing(3),
+  },
+  [theme.breakpoints.up('md')]: {
+    padding: theme.spacing(4),
+  },
   borderRadius: 20,
   height: '100%',
-  minHeight: 180,
+  minHeight: 160,
+  [theme.breakpoints.up('sm')]: {
+    minHeight: 180,
+  },
+  [theme.breakpoints.up('md')]: {
+    minHeight: 200,
+  },
   boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
   transition: 'all 0.3s ease',
   border: '1px solid rgba(0,0,0,0.06)',
@@ -33,6 +45,23 @@ const StatCard = ({
 }) => {
   const isPositiveTrend = trend === 'up';
   
+  // Handle both hex colors and theme colors
+  const getColor = (colorProp) => {
+    if (typeof colorProp === 'string' && colorProp.startsWith('#')) {
+      return colorProp;
+    }
+    // Fallback for theme colors
+    switch(colorProp) {
+      case 'primary': return '#2E7D32';
+      case 'success': return '#4CAF50';
+      case 'warning': return '#FF9800';
+      case 'secondary': return '#FFC107';
+      default: return '#2E7D32';
+    }
+  };
+  
+  const cardColor = getColor(color);
+  
   return (
     <StyledStatCard>
       {/* Background decoration */}
@@ -43,44 +72,42 @@ const StatCard = ({
         width: 120,
         height: 120,
         borderRadius: '50%',
-        bgcolor: alpha(color === 'primary' ? '#2E7D32' : 
-                 color === 'success' ? '#4CAF50' :
-                 color === 'warning' ? '#FF9800' :
-                 color === 'secondary' ? '#FFC107' : '#2E7D32', 0.05),
+        bgcolor: alpha(cardColor, 0.05),
       }} />
       
       <Box sx={{ position: 'relative', zIndex: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: { xs: 2, sm: 3 } }}>
           <Box>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 1.5, fontWeight: 500 }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                mb: { xs: 1, sm: 1.5 }, 
+                fontWeight: 500,
+                fontSize: { xs: '0.875rem', sm: '0.875rem', md: '1rem' }
+              }}
+            >
               {title}
             </Typography>
-            <Typography variant="h3" fontWeight={800} sx={{ 
-              color: color === 'primary' ? 'primary.main' : 
-                     color === 'success' ? 'success.main' :
-                     color === 'warning' ? 'warning.main' :
-                     color === 'secondary' ? 'secondary.main' : 'text.primary',
-              letterSpacing: '-0.02em'
-            }}>
+            <Typography 
+              variant="h4" 
+              fontWeight={800} 
+              sx={{ 
+                fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
+                color: cardColor,
+                letterSpacing: '-0.02em'
+              }}
+            >
               {value}
             </Typography>
           </Box>
           <IconButton sx={{ 
-            bgcolor: alpha(color === 'primary' ? '#2E7D32' : 
-                     color === 'success' ? '#4CAF50' :
-                     color === 'warning' ? '#FF9800' :
-                     color === 'secondary' ? '#FFC107' : '#2E7D32', 0.1),
-            color: color === 'primary' ? 'primary.main' : 
-                   color === 'success' ? 'success.main' :
-                   color === 'warning' ? 'warning.main' :
-                   color === 'secondary' ? 'secondary.main' : 'primary.main',
-            width: 56,
-            height: 56,
+            bgcolor: alpha(cardColor, 0.1),
+            color: cardColor,
+            width: { xs: 40, sm: 48, md: 56 },
+            height: { xs: 40, sm: 48, md: 56 },
             '&:hover': { 
-              bgcolor: alpha(color === 'primary' ? '#2E7D32' : 
-                       color === 'success' ? '#4CAF50' :
-                       color === 'warning' ? '#FF9800' :
-                       color === 'secondary' ? '#FFC107' : '#2E7D32', 0.2) 
+              bgcolor: alpha(cardColor, 0.2) 
             }
           }}>
             {icon}
@@ -93,11 +120,11 @@ const StatCard = ({
               variant="determinate" 
               value={progressValue}
               sx={{ 
-                height: 8, 
+                height: { xs: 6, sm: 8 }, 
                 borderRadius: 4,
-                bgcolor: alpha(color === 'success' ? '#4CAF50' : '#2E7D32', 0.1),
+                bgcolor: alpha(cardColor, 0.1),
                 '& .MuiLinearProgress-bar': {
-                  bgcolor: color === 'success' ? 'success.main' : 'primary.main',
+                  bgcolor: cardColor,
                   borderRadius: 4
                 }
               }}

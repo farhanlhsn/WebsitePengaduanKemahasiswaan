@@ -15,24 +15,30 @@ import logo from '../../assets/logo-ubh.png';
 
 const StyledListItem = styled(ListItem)(({ theme, active }) => ({
   borderRadius: 12,
-  margin: '4px 16px',
-  padding: '12px 16px',
+  margin: '4px 8px',
+  padding: '8px 12px',
+  [theme.breakpoints.up('sm')]: {
+    margin: '4px 16px',
+    padding: '12px 16px',
+  },
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   cursor: 'pointer',
-  pointerEvents: 'auto', // Ensure pointer events are enabled
-  userSelect: 'none', // Prevent text selection
+  pointerEvents: 'auto', 
+  userSelect: 'none', 
   backgroundColor: active ? alpha(theme.palette.primary.main, 0.12) : 'transparent',
   border: active ? `1px solid ${alpha(theme.palette.primary.main, 0.2)}` : '1px solid transparent',
   '&:hover': {
     backgroundColor: active ? alpha(theme.palette.primary.main, 0.16) : alpha(theme.palette.grey[500], 0.08),
-    transform: 'translateX(4px)',
     boxShadow: active ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}` : '0 2px 8px rgba(0,0,0,0.1)',
   },
   '&:active': {
-    transform: 'translateX(4px) scale(0.98)',
+    transform: 'scale(0.98)',
   },
   '& .MuiListItemIcon-root': {
-    minWidth: 40,
+    minWidth: 32,
+    [theme.breakpoints.up('sm')]: {
+      minWidth: 40,
+    },
     color: active ? theme.palette.primary.main : theme.palette.text.secondary,
     transition: 'color 0.2s ease',
     pointerEvents: 'none', // Prevent icon from blocking clicks
@@ -40,7 +46,10 @@ const StyledListItem = styled(ListItem)(({ theme, active }) => ({
   '& .MuiListItemText-primary': {
     fontWeight: active ? 700 : 500,
     color: active ? theme.palette.primary.main : theme.palette.text.primary,
-    fontSize: '0.95rem',
+    fontSize: '0.85rem',
+    [theme.breakpoints.up('sm')]: {
+      fontSize: '0.95rem',
+    },
     transition: 'all 0.2s ease',
     pointerEvents: 'none', // Prevent text from blocking clicks
   }
@@ -225,58 +234,55 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
 
   const drawerContent = (
     <Box sx={{ 
-      height: '100%', 
+      height: '100vh', 
+      maxWidth: drawerWidth,
       display: 'flex', 
       flexDirection: 'column',
-      background: 'linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%)'
+      background: 'linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%)',
+      overflowX: 'hidden',
     }}>
       {/* Logo Section */}
-      <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+      <Box sx={{ p: { xs: 2, sm: 3 }, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, mb: { xs: 1, sm: 2 } }}>
           <Box
             component="img"
             src={logo}
             alt="Logo Universitas Bung Hatta"
             sx={{ 
-              width: 50, 
-              height: 50, 
+              width: { xs: 60, sm: 80 }, 
+              height: { xs: 60, sm: 80 }, 
               objectFit: 'contain',
               filter: `drop-shadow(0 4px 12px ${alpha(theme.palette.primary.main, 0.2)})`
             }}
           />
           <Box>
             <Typography variant="h6" fontWeight={800} sx={{ 
-              fontSize: '1.1rem',
-              background: user?.role === 'ADMIN' 
-                ? 'linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%)'
-                : 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+              fontSize: { xs: '1.2rem', sm: '1.6rem' },
+              background: 'black',
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
+              WebkitTextFillColor: 'transparent',
+              lineHeight: 1.2
             }}>
-              Portal {capitalizeFirstLetter(user?.role || 'Student')}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" fontWeight={500}>
-              {user?.role === 'ADMIN' ? 'Sistem Manajemen' : 'Pengaduan Mahasiswa'}
+              Portal {capitalizeFirstLetter(user?.role )}
             </Typography>
           </Box>
         </Box>
       </Box>
 
-
-
       {/* Main Menu */}
       <Box sx={{ 
-        flex: 1, 
-        py: 2, 
+        height: '100%',
+        py: 0, 
         overflowY: 'auto',
+        overflowX: 'hidden',
         position: 'relative',
-        zIndex: 10 
+        zIndex: 10,
       }}>
         <List sx={{ 
           position: 'relative',
           zIndex: 10,
-          pointerEvents: 'auto'
+          pointerEvents: 'auto',
         }}>
           {menu.map((item) => (
             <StyledListItem 
@@ -328,51 +334,18 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
             </StyledListItem>
           ))}
         </List>
-
-        {/* Quick Stats for Admin */}
-        {user?.role === 'ADMIN' && (
-          <Box sx={{ mx: 2, mt: 3, mb: 2 }}>
-            <Box sx={{ 
-              p: 2, 
-              borderRadius: 3, 
-              bgcolor: alpha(theme.palette.primary.main, 0.05),
-              border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
-            }}>
-              <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block' }}>
-                RINGKASAN HARI INI
-              </Typography>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Laporan Baru
-                </Typography>
-                <Typography variant="body2" fontWeight={600} color="primary.main">
-                  +5
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2" color="text.secondary">
-                  Pending Review
-                </Typography>
-                <Typography variant="body2" fontWeight={600} color="warning.main">
-                  12
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-        )}
       </Box>
 
       {/* Bottom Menu */}
       <Box sx={{ 
         borderTop: '1px solid rgba(0,0,0,0.06)', 
         py: 2,
-        position: 'relative',
-        zIndex: 10 
+
       }}>
         <List sx={{ 
           position: 'relative',
           zIndex: 10,
-          pointerEvents: 'auto'
+          pointerEvents: 'auto',
         }}>
           {bottomMenu.map((item) => (
             <StyledListItem 
@@ -416,25 +389,25 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
       </Box>
 
       {/* User Info */}
-      <Box sx={{ p: 3, borderTop: '1px solid rgba(0,0,0,0.06)', bgcolor: 'grey.50' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ p: { xs: 2, sm: 3 }, borderTop: '1px solid rgba(0,0,0,0.06)', bgcolor: 'grey.50' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
           <Avatar sx={{ 
-            width: 44, 
-            height: 44, 
+            width: { xs: 36, sm: 44 }, 
+            height: { xs: 36, sm: 44 }, 
             bgcolor: user?.role === 'ADMIN' ? 'success.main' : 'primary.main',
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
           }}>
             {user?.role === 'ADMIN' ? <AdminPanelSettings /> : <AccountCircle />}
           </Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="body2" fontWeight={700} noWrap>
+            <Typography variant="body2" fontWeight={700} noWrap sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
               {user?.name || 'Pengguna'}
             </Typography>
-            <Typography variant="caption" color="text.secondary" noWrap>
+            <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
               {user?.email || 'user@bunghatta.ac.id'}
             </Typography>
             {user?.role === 'ADMIN' && (
-              <Typography variant="caption" color="success.main" fontWeight={600} sx={{ display: 'block' }}>
+              <Typography variant="caption" color="success.main" fontWeight={600} sx={{ display: 'block', fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
                 Administrator
               </Typography>
             )}
@@ -465,8 +438,10 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
           '& .MuiDrawer-paper': { 
             boxSizing: 'border-box', 
             width: drawerWidth,
+            maxWidth: drawerWidth,
             border: 'none',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+            overflowX: 'hidden',
           },
         }}
       >
@@ -481,9 +456,11 @@ const DashboardSidebar = ({ open, onClose, drawerWidth = 280, onCreateReport, ac
           '& .MuiDrawer-paper': { 
             boxSizing: 'border-box', 
             width: drawerWidth,
+            maxWidth: drawerWidth,
             border: 'none',
             boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-            position: 'relative'
+            position: 'relative',
+            overflowX: 'hidden',
           },
         }}
         open

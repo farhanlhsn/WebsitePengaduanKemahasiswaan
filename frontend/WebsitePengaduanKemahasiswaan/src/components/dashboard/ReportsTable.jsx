@@ -47,52 +47,101 @@ const ReportsTable = ({
   const navigate = useNavigate();
 
   return (
-    <Paper sx={{ 
-      borderRadius: 4,
-      overflow: 'hidden',
-      boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-      border: '1px solid rgba(0,0,0,0.06)',
-      width: '100%'
+    <Box sx={{ 
+      bgcolor: '#f8f9fa',
+      minHeight: { xs: '100vh', sm: 'auto' },
+      pt: { xs: 0, sm: 0 }
     }}>
-      <Box sx={{ p: 4, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Paper sx={{ 
+        borderRadius: { xs: 0, sm: 4 },
+        overflow: 'hidden',
+        boxShadow: { xs: 'none', sm: '0 2px 12px rgba(0,0,0,0.08)' },
+        border: { xs: 'none', sm: '1px solid rgba(0,0,0,0.06)' },
+        width: '100%',
+        mx: { xs: 0, sm: 'auto' },
+        bgcolor: 'white'
+      }}>
+      <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        {/* Header Section */}
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'flex-start', sm: 'center' }, 
+          mb: 3,
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 0 }
+        }}>
           <Box>
-            <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>
+            <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
               Laporan Terbaru
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               Kelola dan pantau status laporan Anda
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddCircle />}
-            onClick={onCreateReport || (() => navigate('/create-report'))}
-            sx={{ 
-              borderRadius: 3,
-              textTransform: 'none',
-              fontWeight: 600,
-              px: 3,
-              py: 1.5,
-              boxShadow: 'none',
-              '&:hover': {
-                boxShadow: '0 4px 12px rgba(46, 125, 50, 0.25)'
-              }
-            }}
-          >
-            Buat Laporan
-          </Button>
+          
+          {/* Desktop Button */}
+          <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+            <Button
+              variant="contained"
+              startIcon={<AddCircle />}
+              onClick={onCreateReport || (() => navigate('/create-report'))}
+              sx={{ 
+                borderRadius: 3,
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 3,
+                py: 1.5,
+                boxShadow: 'none',
+                '&:hover': {
+                  boxShadow: '0 4px 12px rgba(46, 125, 50, 0.25)'
+                }
+              }}
+            >
+              Buat Laporan
+            </Button>
+          </Box>
+
+          {/* Mobile Button */}
+          <Box sx={{ display: { xs: 'block', sm: 'none' }, width: '100%' }}>
+            <Button
+              variant="contained"
+              startIcon={<AddCircle />}
+              onClick={onCreateReport || (() => navigate('/create-report'))}
+              fullWidth
+              sx={{ 
+                borderRadius: 3,
+                textTransform: 'none',
+                fontWeight: 600,
+                py: 1.5,
+                boxShadow: '0 2px 8px rgba(46, 125, 50, 0.25)',
+                '&:hover': {
+                  boxShadow: '0 4px 12px rgba(46, 125, 50, 0.35)'
+                }
+              }}
+            >
+              Buat Laporan Baru
+            </Button>
+          </Box>
         </Box>
 
         {/* Search and Filters */}
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: { xs: 1, sm: 2 }, 
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          flexDirection: { xs: 'column', sm: 'row' }
+        }}>
           <TextField
             size="small"
             placeholder="Cari laporan..."
             value={searchQuery || ''}
             onChange={onSearchChange}
             sx={{ 
-              minWidth: 280,
+              minWidth: { xs: '100%', sm: 280 },
+              width: { xs: '100%', sm: 'auto' },
+              order: { xs: 1, sm: 1 },
               '& .MuiOutlinedInput-root': {
                 borderRadius: 2,
                 backgroundColor: 'white'
@@ -107,41 +156,49 @@ const ReportsTable = ({
             }}
           />
           
-          <FormControl size="small" sx={{ minWidth: 180 }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={statusFilter}
-              label="Status"
-              onChange={onStatusChange}
-              sx={{ 
-                borderRadius: 2,
-                backgroundColor: 'white'
-              }}
-            >
-              <MenuItem value="">Semua Status</MenuItem>
-              {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                <MenuItem key={key} value={key}>{label}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          
-          <FormControl size="small" sx={{ minWidth: 180 }}>
-            <InputLabel>Kategori</InputLabel>
-            <Select
-              value={categoryFilter}
-              label="Kategori"
-              onChange={onCategoryChange}
-              sx={{ 
-                borderRadius: 2,
-                backgroundColor: 'white'
-              }}
-            >
-              <MenuItem value="">Semua Kategori</MenuItem>
-              {categories.map((cat) => (
-                <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: { xs: 1, sm: 2 }, 
+            width: { xs: '100%', sm: 'auto' },
+            order: { xs: 2, sm: 2 },
+            flexDirection: { xs: 'column', sm: 'row' }
+          }}>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 180 }, flex: { xs: 1, sm: 'none' } }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={statusFilter}
+                label="Status"
+                onChange={onStatusChange}
+                sx={{ 
+                  borderRadius: 2,
+                  backgroundColor: 'white'
+                }}
+              >
+                <MenuItem value="">Semua Status</MenuItem>
+                {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                  <MenuItem key={key} value={key}>{label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 180 }, flex: { xs: 1, sm: 'none' } }}>
+              <InputLabel>Kategori</InputLabel>
+              <Select
+                value={categoryFilter}
+                label="Kategori"
+                onChange={onCategoryChange}
+                sx={{ 
+                  borderRadius: 2,
+                  backgroundColor: 'white'
+                }}
+              >
+                <MenuItem value="">Semua Kategori</MenuItem>
+                {categories.map((cat) => (
+                  <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
         </Box>
       </Box>
 
@@ -174,7 +231,118 @@ const ReportsTable = ({
         </Box>
       ) : (
         <>
-          <TableContainer sx={{ width: '100%', px: 2 }}>
+          {/* Mobile Card Layout */}
+          <Box sx={{ display: { xs: 'block', lg: 'none' } }}>
+            {reports.map((report) => (
+              <Box
+                key={report.id}
+                sx={{
+                  p: 3,
+                  mb: 2,
+                  mx: 2,
+                  borderRadius: 3,
+                  bgcolor: 'white',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  border: '1px solid rgba(0,0,0,0.05)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                    transform: 'translateY(-2px)'
+                  }
+                }}
+                onClick={() => navigate(`/report/${report.id}`)}
+              >
+                {/* Card Header */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }} noWrap>
+                      {report.title}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                      #{report.registrationNumber}
+                    </Typography>
+                  </Box>
+                  <Chip
+                    label={STATUS_LABELS[report.status]}
+                    size="small"
+                    sx={{
+                      bgcolor: alpha(STATUS_COLORS[report.status], 0.15),
+                      color: STATUS_COLORS[report.status],
+                      fontWeight: 600,
+                      fontSize: '0.7rem',
+                      ml: 2,
+                      flexShrink: 0
+                    }}
+                  />
+                </Box>
+
+                {/* Card Body */}
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.5 }}>
+                  {report.description.length > 100 
+                    ? `${report.description.substring(0, 100)}...` 
+                    : report.description}
+                </Typography>
+
+                {/* Card Footer */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Chip 
+                      label={report.category?.name || 'Tidak ada kategori'}
+                      size="small"
+                      variant="outlined"
+                      sx={{ 
+                        fontSize: '0.7rem',
+                        height: 24,
+                        borderColor: CATEGORY_COLOR,
+                        color: CATEGORY_COLOR
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(report.createdAt).toLocaleDateString('id-ID')}
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
+
+            {/* Load More Button for Mobile */}
+            {hasNextPage && (
+              <Box sx={{ p: 2, textAlign: 'center' }}>
+                <Button
+                  onClick={onLoadMore}
+                  disabled={loading}
+                  variant="outlined"
+                  sx={{ 
+                    borderRadius: 3,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    px: 4
+                  }}
+                >
+                  {loading ? <CircularProgress size={20} /> : 'Muat Lebih Banyak'}
+                </Button>
+              </Box>
+            )}
+          </Box>
+
+          {/* Desktop Table Layout */}
+          <TableContainer sx={{ 
+            display: { xs: 'none', lg: 'block' },
+            width: '100%', 
+            px: { xs: 1, sm: 2 },
+            overflowX: 'auto',
+            '&::-webkit-scrollbar': {
+              height: 8,
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: '#f1f1f1',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: '#888',
+              borderRadius: 4,
+            },
+          }}>
             <Table size="medium" sx={{ width: '100%' }}>
               <TableHead>
                 <TableRow>
@@ -229,22 +397,19 @@ const ReportsTable = ({
                       />
                     </TableCell>
                     <TableCell sx={{ py: 3, px: 3 }}>
-                      <Chip 
-                        label={STATUS_LABELS[report.status]} 
+                      <Chip
+                        label={STATUS_LABELS[report.status]}
                         size="medium"
-                        sx={{ 
-                          bgcolor: alpha(STATUS_COLORS[report.status], 0.12),
+                        sx={{
+                          bgcolor: alpha(STATUS_COLORS[report.status], 0.15),
                           color: STATUS_COLORS[report.status],
                           fontWeight: 600,
-                          borderRadius: 2,
-                          px: 1.5,
-                          py: 0.5,
-                          minWidth: 80
+                          borderRadius: 2
                         }}
                       />
                     </TableCell>
                     <TableCell sx={{ py: 3, px: 3 }}>
-                      <Typography variant="body1" color="text.secondary">
+                      <Typography variant="body2" color="text.secondary">
                         {new Date(report.createdAt).toLocaleDateString('id-ID', { 
                           day: 'numeric',
                           month: 'short',
@@ -271,16 +436,18 @@ const ReportsTable = ({
             </Table>
           </TableContainer>
 
-          {/* Load More */}
+          {/* Load More Button for Desktop */}
           {hasNextPage && (
-            <Box sx={{ p: 4, textAlign: 'center', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+            <Box sx={{ display: { xs: 'none', lg: 'block' }, p: 3, textAlign: 'center', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
               <Button
                 onClick={onLoadMore}
                 disabled={loading}
+                variant="outlined"
                 sx={{ 
-                  borderRadius: 2,
+                  borderRadius: 3,
                   textTransform: 'none',
-                  fontWeight: 600
+                  fontWeight: 600,
+                  px: 4
                 }}
               >
                 {loading ? <CircularProgress size={20} /> : 'Muat Lebih Banyak'}
@@ -290,6 +457,7 @@ const ReportsTable = ({
         </>
       )}
     </Paper>
+    </Box>
   );
 };
 

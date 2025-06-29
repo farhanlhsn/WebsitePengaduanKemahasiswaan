@@ -214,8 +214,7 @@ const CreateReportModal = ({ open, onClose, categories, onSubmit }) => {
               value={formData.description}
               onChange={handleInputChange('description')}
               error={!!errors.description}
-              helperText={errors.description || `${formData.description.length}/500 karakter`}
-              inputProps={{ maxLength: 500 }}
+              helperText={errors.description}
             />
           </Box>
         );
