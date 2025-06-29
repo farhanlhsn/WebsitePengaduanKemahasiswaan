@@ -9,13 +9,13 @@ export default defineConfig({
       // Minimal React configuration to prevent conflicts
       jsxImportSource: 'react',
     }),
-    // Disable compression temporarily to isolate the issue
-    // viteCompression({
-    //   algorithm: 'gzip',
-    //   ext: '.gz',
-    //   threshold: 1024,
-    //   deleteOriginFile: false
-    // }),
+    // Re-enable compression now that the app is stable
+    viteCompression({
+      algorithm: 'gzip',
+      ext: '.gz',
+      threshold: 1024,
+      deleteOriginFile: false
+    }),
   ],
   build: {
     // Use terser for more stable minification
@@ -45,8 +45,48 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        // CRITICAL: Disable manual chunking entirely to prevent initialization issues
-        manualChunks: undefined,
+        // SAFE manual chunking - only split the largest dependencies
+        manualChunks: (id) => {
+          // React ecosystem - keep together but separate from main
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+            return 'react-vendor';
+          }
+          
+          // Material-UI - largest dependency, split into logical groups
+          if (id.includes('@mui/material')) {
+            return 'mui-material';
+          }
+          if (id.includes('@mui/icons-material')) {
+            return 'mui-icons';
+          }
+          if (id.includes('@emotion/')) {
+            return 'emotion';
+          }
+          
+          // Charts - heavy library
+          if (id.includes('recharts')) {
+            return 'charts';
+          }
+          
+          // Other large dependencies
+          if (id.includes('axios')) {
+            return 'http-client';
+          }
+          if (id.includes('date-fns')) {
+            return 'date-utils';
+          }
+          if (id.includes('zustand')) {
+            return 'state-manager';
+          }
+          
+          // Keep all other node_modules together
+          if (id.includes('node_modules')) {
+            return 'vendor-misc';
+          }
+          
+          // Don't split application code to prevent initialization issues
+          return undefined;
+        },
         // Use simple naming to prevent conflicts
         chunkFileNames: 'js/[name].[hash].js',
         entryFileNames: 'js/[name].[hash].js',
@@ -73,16 +113,20 @@ export default defineConfig({
         // Ensure proper initialization order
         inlineDynamicImports: false,
       },
-      // Disable tree shaking temporarily to prevent initialization issues
-      treeshake: false,
+      // Re-enable conservative tree shaking
+      treeshake: {
+        moduleSideEffects: false,
+        propertyReadSideEffects: false,
+        unknownGlobalSideEffects: false
+      },
     },
-    chunkSizeWarningLimit: 2000, // Increase limit since we're not chunking
+    chunkSizeWarningLimit: 1000, // More reasonable limit
     sourcemap: false,
-    cssCodeSplit: false, // Keep CSS together
+    cssCodeSplit: true, // Re-enable CSS code splitting
     target: 'es2020',
-    cssMinify: 'esbuild', // Use esbuild for CSS only
+    cssMinify: 'esbuild',
     reportCompressedSize: false,
-    assetsInlineLimit: 4096, // Inline more assets to reduce requests
+    assetsInlineLimit: 4096,
   },
   // Asset handling
   assetsInclude: ['**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.webp', '**/*.avif', '**/*.svg'],
@@ -118,8 +162,8 @@ export default defineConfig({
     esbuildOptions: {
       target: 'es2020',
       format: 'esm',
-      // Prevent aggressive optimization during pre-bundling
-      treeShaking: false,
+      // Conservative optimization during pre-bundling
+      treeShaking: true,
     }
   },
   // Minimal esbuild configuration
@@ -127,9 +171,9 @@ export default defineConfig({
     // Keep more debugging info in production
     drop: process.env.NODE_ENV === 'production' ? ['debugger'] : [],
     legalComments: 'none',
-    // Disable aggressive optimizations that can cause issues
-    treeShaking: false,
-    minifyIdentifiers: false,
+    // Re-enable conservative optimizations
+    treeShaking: true,
+    minifyIdentifiers: true,
     minifySyntax: true,
     minifyWhitespace: true,
     // Keep function names for better error tracking
