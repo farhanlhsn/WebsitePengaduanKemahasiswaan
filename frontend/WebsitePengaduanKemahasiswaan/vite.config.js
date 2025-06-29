@@ -6,104 +6,83 @@ import viteCompression from 'vite-plugin-compression'
 export default defineConfig({
   plugins: [
     react({
-      // Remove emotion-specific configuration to prevent conflicts
+      // Minimal React configuration to prevent conflicts
       jsxImportSource: 'react',
-      // Let Vite handle emotion naturally without forced configuration
     }),
-    // Re-enable compression for production
-    viteCompression({
-      algorithm: 'gzip',
-      ext: '.gz',
-      threshold: 1024,
-      deleteOriginFile: false
-    }),
-    viteCompression({
-      algorithm: 'brotliCompress',
-      ext: '.br',
-      threshold: 1024,
-      deleteOriginFile: false
-    })
+    // Disable compression temporarily to isolate the issue
+    // viteCompression({
+    //   algorithm: 'gzip',
+    //   ext: '.gz',
+    //   threshold: 1024,
+    //   deleteOriginFile: false
+    // }),
   ],
   build: {
-    // Enable minification with esbuild (faster than terser)
-    minify: 'esbuild',
+    // Use terser for more stable minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        // Prevent variable hoisting that causes initialization issues
+        hoist_vars: false,
+        hoist_funs: false,
+        // Keep function names to prevent initialization conflicts
+        keep_fnames: true,
+        // Prevent aggressive inlining that can cause circular dependencies
+        inline: 1,
+        // Reduce passes to prevent over-optimization
+        passes: 1,
+      },
+      mangle: {
+        // Keep class names to prevent Emotion conflicts
+        keep_classnames: true,
+        // Keep function names for better debugging
+        keep_fnames: true,
+      },
+      format: {
+        // Preserve comments that might be important for initialization
+        comments: false,
+      }
+    },
     rollupOptions: {
-      // External dependencies that should not be bundled
-      external: [],
       output: {
-        // CRITICAL FIX: Simplified chunking to prevent Emotion initialization issues
-        manualChunks: (id) => {
-          // Keep React core together
-          if (id.includes('react') || id.includes('react-dom')) {
-            return 'react-vendor';
-          }
-          
-          // CRITICAL: Keep ALL emotion packages together in one chunk
-          if (id.includes('@emotion/') || id.includes('emotion')) {
-            return 'emotion-vendor';
-          }
-          
-          // Keep MUI together (depends on emotion)
-          if (id.includes('@mui/')) {
-            return 'mui-vendor';
-          }
-          
-          // Other vendors
-          if (id.includes('node_modules')) {
-            return 'vendor';
-          }
-          
-          // App code
-          if (id.includes('/src/')) {
-            return 'app';
-          }
-        },
-        // Optimize chunk and asset names for better caching
-        chunkFileNames: (chunkInfo) => {
-          return `js/[name]-[hash].js`;
-        },
-        entryFileNames: `js/[name]-[hash].js`,
+        // CRITICAL: Disable manual chunking entirely to prevent initialization issues
+        manualChunks: undefined,
+        // Use simple naming to prevent conflicts
+        chunkFileNames: 'js/[name].[hash].js',
+        entryFileNames: 'js/[name].[hash].js',
         assetFileNames: (assetInfo) => {
           const info = assetInfo.name.split('.')
           const ext = info[info.length - 1]
           if (/\.(png|jpe?g|svg|gif|tiff|bmp|ico|webp|avif)$/i.test(assetInfo.name)) {
-            return `images/[name]-[hash][extname]`
+            return `images/[name].[hash][extname]`
           }
           if (/\.(woff2?|eot|ttf|otf)$/i.test(assetInfo.name)) {
-            return `fonts/[name]-[hash][extname]`
+            return `fonts/[name].[hash][extname]`
           }
           if (/\.(css)$/i.test(assetInfo.name)) {
-            return `css/[name]-[hash][extname]`
+            return `css/[name].[hash][extname]`
           }
-          return `assets/[name]-[hash][extname]`
+          return `assets/[name].[hash][extname]`
         },
         // Ensure proper module format
         format: 'es',
-        // Ensure proper exports
-        exports: 'named',
         // Prevent hoisting issues
-        hoistTransitiveImports: false
+        hoistTransitiveImports: false,
+        // Preserve module structure
+        preserveModules: false,
+        // Ensure proper initialization order
+        inlineDynamicImports: false,
       },
-      // Tree shaking optimizations
-      treeshake: {
-        moduleSideEffects: (id) => {
-          // Emotion needs side effects for proper initialization
-          if (id.includes('@emotion/')) {
-            return true;
-          }
-          return false;
-        },
-        propertyReadSideEffects: false,
-        unknownGlobalSideEffects: false
-      }
+      // Disable tree shaking temporarily to prevent initialization issues
+      treeshake: false,
     },
-    chunkSizeWarningLimit: 1000, // Increased to accommodate emotion vendor chunk
+    chunkSizeWarningLimit: 2000, // Increase limit since we're not chunking
     sourcemap: false,
-    cssCodeSplit: true,
+    cssCodeSplit: false, // Keep CSS together
     target: 'es2020',
-    cssMinify: true,
+    cssMinify: 'esbuild', // Use esbuild for CSS only
     reportCompressedSize: false,
-    assetsInlineLimit: 2048
+    assetsInlineLimit: 4096, // Inline more assets to reduce requests
   },
   // Asset handling
   assetsInclude: ['**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.webp', '**/*.avif', '**/*.svg'],
@@ -115,7 +94,7 @@ export default defineConfig({
       'Cache-Control': 'public, max-age=31536000'
     }
   },
-  // Optimize dependencies - CRITICAL: Include emotion in pre-bundling
+  // Optimize dependencies - Force pre-bundling of problematic packages
   optimizeDeps: {
     include: [
       'react',
@@ -123,32 +102,64 @@ export default defineConfig({
       'react-router-dom',
       '@emotion/react',
       '@emotion/styled',
+      '@emotion/cache',
+      '@emotion/utils',
+      '@emotion/serialize',
+      '@emotion/sheet',
       '@mui/material',
-      '@mui/material/Button',
-      '@mui/material/TextField',
-      '@mui/material/Box',
-      '@mui/material/Typography',
-      '@mui/material/Container'
+      '@mui/material/styles',
+      '@mui/system',
+      'axios',
+      'zustand'
     ],
     exclude: ['@vite/client', '@vite/env'],
-    force: true
+    force: true,
+    // Ensure proper dependency resolution
+    esbuildOptions: {
+      target: 'es2020',
+      format: 'esm',
+      // Prevent aggressive optimization during pre-bundling
+      treeShaking: false,
+    }
   },
-  // Performance optimizations
+  // Minimal esbuild configuration
   esbuild: {
-    drop: ['console', 'debugger'],
+    // Keep more debugging info in production
+    drop: process.env.NODE_ENV === 'production' ? ['debugger'] : [],
     legalComments: 'none',
-    treeShaking: true,
-    minifyIdentifiers: true,
+    // Disable aggressive optimizations that can cause issues
+    treeShaking: false,
+    minifyIdentifiers: false,
     minifySyntax: true,
-    minifyWhitespace: true
+    minifyWhitespace: true,
+    // Keep function names for better error tracking
+    keepNames: true,
   },
   // Define global constants
   define: {
-    __DEV__: false,
-    'process.env.NODE_ENV': '"production"'
+    __DEV__: process.env.NODE_ENV !== 'production',
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
   },
   // CSS processing
   css: {
-    postcss: './postcss.config.cjs'
+    postcss: './postcss.config.cjs',
+    // Ensure CSS modules work properly
+    modules: false,
+  },
+  // Server configuration for development
+  server: {
+    port: 5173,
+    host: true,
+    open: false,
+  },
+  // Resolve configuration
+  resolve: {
+    // Ensure proper module resolution
+    dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/styled'],
+    alias: {
+      // Prevent multiple React instances
+      'react': 'react',
+      'react-dom': 'react-dom',
+    }
   }
 })
