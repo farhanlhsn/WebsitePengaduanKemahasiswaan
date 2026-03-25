@@ -6,8 +6,102 @@ const cookieParser = require('cookie-parser');
 const compression = require('compression');
 const deviceTrackingMiddleware = require('./middlewares/deviceTrackingMiddleware');
 const prisma = require('./utils/prisma'); 
+const errorHandler = require('./middlewares/errorHandler');
+const { Server } = require('socket.io');
+const path = require('path');
 
 const app = express();
+const server = app.listen(3000, () => {
+  console.log('Server is running on port 3000');
+  console.log('Socket.io is running on the same port (3000)');
+});
+const io = new Server(server, {
+  cors: {
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+  
+  // Join a specific report room
+  socket.on('joinRoom', (data) => {
+    const { reportId, userId } = data;
+    const roomId = `report_${reportId}`;
+    
+    socket.join(roomId);
+    socket.userId = userId;
+    socket.currentRoom = roomId;
+    
+    console.log(`User ${userId} joined room ${roomId}`);
+    
+    // Notify others in the room
+    socket.to(roomId).emit('userJoined', {
+      userId,
+      timestamp: new Date().toISOString()
+    });
+  });
+  
+  // Leave a room
+  socket.on('leaveRoom', (data) => {
+    const { reportId, userId } = data;
+    const roomId = `report_${reportId}`;
+    
+    socket.leave(roomId);
+    
+    console.log(`User ${userId} left room ${roomId}`);
+    
+    // Notify others in the room
+    socket.to(roomId).emit('userLeft', {
+      userId,
+      timestamp: new Date().toISOString()
+    });
+  });
+  
+  // Handle typing indicators
+  socket.on('typing', (data) => {
+    const { reportId, userId, isTyping } = data;
+    const roomId = `report_${reportId}`;
+    
+    socket.to(roomId).emit('userTyping', {
+      userId,
+      isTyping,
+      timestamp: new Date().toISOString()
+    });
+  });
+  
+  // Handle message read receipts
+  socket.on('messageRead', (data) => {
+    const { reportId, messageId, userId } = data;
+    const roomId = `report_${reportId}`;
+    
+    socket.to(roomId).emit('messageReadReceipt', {
+      messageId,
+      userId,
+      timestamp: new Date().toISOString()
+    });
+  });
+  
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+    
+    // Notify current room about user leaving
+    if (socket.currentRoom && socket.userId) {
+      socket.to(socket.currentRoom).emit('userLeft', {
+        userId: socket.userId,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+  
+  // Handle connection errors
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
+  });
+});
 
 // Enable compression for all responses
 app.use(compression({
@@ -24,18 +118,49 @@ app.use(compression({
 }));
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true // Allow cookies
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:5173',  // Development
+      'http://localhost:4173',  // Preview/Production
+      'http://127.0.0.1:5173',  // Alternative localhost
+      'http://127.0.0.1:4173',  // Alternative localhost
+      process.env.FRONTEND_URL  // Environment variable
+    ].filter(Boolean); // Remove undefined values
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // Allow cookies
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'x-device-fingerprint'],
+  exposedHeaders: ['Content-Length', 'X-Requested-With']
 }));
 app.use(express.json());
 app.use(cookieParser()); // For parsing cookies
 app.use(morgan('dev')); // Logger untuk development
 app.use(deviceTrackingMiddleware); // Track device information
 
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Make io instance available to routes
+app.set('io', io);
+
 app.use('/v1/api/auth', require('./routes/authRoutes'));
 app.use('/v1/api/users', require('./routes/userRoutes'));
 app.use('/v1/api/categories', require('./routes/categoryRoutes'));
 app.use('/v1/api/reports', require('./routes/reportRoutes'));
+app.use('/v1/api/chat', require('./routes/chatRoutes'));
+app.use('/v1/api/audit-logs', require('./routes/auditLogRoutes'));
+app.use('/v1/api/admin', require('./routes/adminRoutes'));
+app.use('/v1/api/bulk-operations', require('./routes/bulkOperationsRoutes'));
 
 // Test koneksi database
 app.get('/api/health', async (req, res) => {
@@ -63,13 +188,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: err.message
-  });
-});
+// Error handling middleware (after all routes)
+app.use(errorHandler);
 
 module.exports = app;

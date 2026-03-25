@@ -1,5 +1,7 @@
 const prisma = require('../utils/prisma');
 const SoftDeleteHelper = require('../utils/softDelete');
+const { getLogger } = require('../utils/logger');
+const log = getLogger('user:service');
 
 class UserServices {
   async getUserById(userId, includeDeleted = false) {
@@ -26,15 +28,17 @@ class UserServices {
       if (!user) {
         throw new Error('User not found');
       }
+      log.info('getUserById success', { userId });
       return user;
     } catch (error) {
+      log.warn('getUserById failed', { userId, error: error.message });
       throw new Error('Error getting user by ID');
     }
   }
 
   async getAllUsers(includeDeleted = false) {
     try {
-      return await SoftDeleteHelper.findMany(
+      const users = await SoftDeleteHelper.findMany(
         prisma.user,
         {
           select: {
@@ -45,15 +49,22 @@ class UserServices {
             role: true,
             isVerified: true,
             createdAt: true,
-            updatedAt: true,
-            deletedAt: true
+            ktmPath: true,
+            deletedAt: true // Included for status tracking
           },
-          orderBy: { createdAt: 'desc' }
+          // Removing default orderBy to allow client-side or controller-level sorting if needed,
+          // but mostly because it might interfere with specific requirements.
+          // However, keeping a default order is usually good. 
+          // Let's keep it but ensure it doesn't break anything.
+          orderBy: { createdAt: 'desc' } 
         },
         includeDeleted
       );
+      log.info('getAllUsers success', { count: users.length });
+      return users;
     } catch (error) {
-      throw new Error('Error getting all users');
+      log.error('getAllUsers failed', { error: error.message });
+      throw new Error(`Error getting all users: ${error.message}`);
     }
   }
 
@@ -70,8 +81,10 @@ class UserServices {
         }
       });
 
+      log.info('updateUser success', { userId });
       return updatedUser;
     } catch (error) {
+      log.warn('updateUser failed', { userId, error: error.message });
       throw new Error('Error updating user');
     }
   }
@@ -79,8 +92,11 @@ class UserServices {
   async deleteUser(userId) {
     try {
       // Soft delete user
-      return await SoftDeleteHelper.softDelete(prisma.user, userId);
+      const result = await SoftDeleteHelper.softDelete(prisma.user, userId);
+      log.info('deleteUser success', { userId });
+      return result;
     } catch (error) {
+      log.warn('deleteUser failed', { userId, error: error.message });
       throw new Error('Error deleting user');
     }
   }
@@ -88,8 +104,11 @@ class UserServices {
   async restoreUser(userId) {
     try {
       // Restore soft deleted user
-      return await SoftDeleteHelper.restore(prisma.user, userId);
+      const result = await SoftDeleteHelper.restore(prisma.user, userId);
+      log.info('restoreUser success', { userId });
+      return result;
     } catch (error) {
+      log.warn('restoreUser failed', { userId, error: error.message });
       throw new Error('Error restoring user');
     }
   }
@@ -97,44 +116,56 @@ class UserServices {
   async permanentDeleteUser(userId) {
     try {
       // Hard delete user (be careful!)
-      return await SoftDeleteHelper.hardDelete(prisma.user, userId);
+      const result = await SoftDeleteHelper.hardDelete(prisma.user, userId);
+      log.info('permanentDeleteUser success', { userId });
+      return result;
     } catch (error) {
+      log.warn('permanentDeleteUser failed', { userId, error: error.message });
       throw new Error('Error permanently deleting user');
     }
   }
 
   async findUserByEmail(email, includeDeleted = false) {
     try {
-      return await SoftDeleteHelper.findUnique(
+      const result = await SoftDeleteHelper.findUnique(
         prisma.user,
         { where: { email } },
         includeDeleted
       );
+      log.info('findUserByEmail success', { email, found: !!result });
+      return result;
     } catch (error) {
+      log.warn('findUserByEmail failed', { email, error: error.message });
       throw new Error('Error finding user by email');
     }
   }
 
   async findUserByNim(nim, includeDeleted = false) {
     try {
-      return await SoftDeleteHelper.findUnique(
+      const result = await SoftDeleteHelper.findUnique(
         prisma.user,
         { where: { nim } },
         includeDeleted
       );
+      log.info('findUserByNim success', { nim, found: !!result });
+      return result;
     } catch (error) {
+      log.warn('findUserByNim failed', { nim, error: error.message });
       throw new Error('Error finding user by NIM');
     }
   }
 
-  async verifyStudent(userId) {
+  async verifyUser(userId) {
     try {
-      return await prisma.user.update({
+      const result = await prisma.user.update({
         where: { id: userId },
         data: { isVerified: true }
       });
+      log.info('verifyUser success', { userId });
+      return result;
     } catch (error) {
-      throw new Error('Error verifying student');
+      log.warn('verifyUser failed', { userId, error: error.message });
+      throw new Error('Error verifying user');
     }
   }
 
@@ -145,13 +176,16 @@ class UserServices {
       const verified = await SoftDeleteHelper.count(prisma.user, {
         where: { isVerified: true }
       });
-      return {
+      const result = {
         total,
         deleted,
         verified,
         unverified: total - verified
       };
+      log.info('getUserVerificationStats success', { total, verified });
+      return result;
     } catch (error) {
+      log.warn('getUserVerificationStats failed', { error: error.message });
       throw new Error('Error getting user stats');
     }
   }
@@ -159,8 +193,11 @@ class UserServices {
   async cleanupOldDeletedUsers(daysOld = 90) {
     try {
       // Cleanup users deleted more than 90 days ago
-      return await SoftDeleteHelper.cleanupOldDeleted(prisma.user, daysOld);
+      const result = await SoftDeleteHelper.cleanupOldDeleted(prisma.user, daysOld);
+      log.info('cleanupOldDeletedUsers success', { daysOld });
+      return result;
     } catch (error) {
+      log.warn('cleanupOldDeletedUsers failed', { error: error.message });
       throw new Error('Error cleaning up old deleted users');
     }
   }
@@ -183,7 +220,7 @@ class UserServices {
       const rejected = data.filter(report => report.status === 'REJECTED').length;
       const canceled = data.filter(report => report.status === 'CANCELED').length;
       
-      return {
+      const result = {
         total,
         pending, 
         inReview,
@@ -195,9 +232,50 @@ class UserServices {
         approved: resolved,
         // Total active reports (not canceled)
         active: total - canceled
-      }
+      };
+      log.info('getUserStatsById success', { userId });
+      return result;
     } catch (error) {
+      log.warn('getUserStatsById failed', { userId, error: error.message });
       throw new Error('Error getting reports stats');
+    }
+  }
+
+  async getUnverifiedStudent() {
+    try {
+      const unverifiedStudents = await SoftDeleteHelper.findMany(prisma.user, {
+        where: { role: 'MAHASISWA', isVerified: false }
+      });
+      const count = unverifiedStudents.length;
+      const result = {
+        unverifiedStudents,
+        count
+      };
+      log.info('getUnverifiedStudent success', { count });
+      return result;
+    }
+    catch (error) {
+      log.warn('getUnverifiedStudent failed', { error: error.message });
+      throw new Error('Error getting unverified students');
+    }
+  }
+
+  async getUnverifiedAdmin() {
+    try {
+      const unverifiedAdmins = await SoftDeleteHelper.findMany(prisma.user, {
+        where: { role: 'ADMIN', isVerified: false }
+      });
+      const count = unverifiedAdmins.length;
+      const result = {
+        unverifiedAdmins,
+        count
+      };
+      log.info('getUnverifiedAdmin success', { count });
+      return result;
+    }
+    catch (error) {
+      log.warn('getUnverifiedAdmin failed', { error: error.message });
+      throw new Error('Error getting unverified admins');
     }
   }
 }

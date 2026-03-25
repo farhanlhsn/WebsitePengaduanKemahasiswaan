@@ -2,15 +2,25 @@ const prisma = require('../utils/prisma');
 const SoftDeleteHelper = require('../utils/softDelete');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
-// Konfigurasi multer di luar class
+// Ensure attachments directory exists
+const attachmentsDir = path.join(__dirname, '../../uploads/reports/attachments');
+if (!fs.existsSync(attachmentsDir)) {
+  fs.mkdirSync(attachmentsDir, { recursive: true });
+}
+
+const ktmDir = path.join(__dirname, '../../uploads/ktm');
+if (!fs.existsSync(ktmDir)) {
+  fs.mkdirSync(ktmDir, { recursive: true });
+}
+
+// Configure multer to store in uploads/reports/attachments
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Simpan ke /uploads di root project
-    cb(null, path.join(__dirname, '../../uploads'));
+    cb(null, attachmentsDir);
   },
   filename: function (req, file, cb) {
-    // Gunakan timestamp + originalname agar unik
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, uniqueSuffix + '-' + file.originalname);
   }
@@ -31,12 +41,16 @@ class AttachmentServices {
       if (!Array.isArray(files)) files = [files];
       const attachments = [];
       for (const file of files) {
-        // Ambil path relative
-        const relPath = file.path.split('uploads').pop();
-        const relativePath = '/uploads/reports/attachments' + relPath.replace(/\\/g, '/');
+        // Construct public path
+        const relativePath = `/uploads/reports/attachments/${file.filename}`;
+        // Save file metadata to database
         const attachment = await prisma.attachment.create({
-          filePath: relativePath,
-          reportId: reportId
+          data: {
+            filePath: relativePath,
+            fileName: file.originalname,
+            fileType: file.mimetype,
+            reportId: parseInt(reportId)
+          }
         });
         attachments.push(attachment);
       }
@@ -44,6 +58,16 @@ class AttachmentServices {
     } catch (error) {
       throw new Error('Error uploading attachments: ' + error.message);
     }
+  }
+
+  async uploadKtm(userId, file) {
+    const relativePath = `/uploads/ktm/${file.filename}`;
+    return prisma.user.update({
+      where: { id: userId },
+      data: {
+        ktmPath: relativePath,
+      }
+    });
   }
 }
 

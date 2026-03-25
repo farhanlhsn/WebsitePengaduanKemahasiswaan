@@ -9,12 +9,20 @@ const LoginPage = createLazyComponent(() => import("./LoginPage.jsx"));
 const RegisterPage = createLazyComponent(() => import("./RegisterPage.jsx"));
 const Layout = createLazyComponent(() => import("./layout.jsx"));
 const ImprovedStudentDashboard = createLazyComponent(() => import("./ImprovedStudentDashboard.jsx"));
+const StudentChatPage = createLazyComponent(() => import("./StudentChatPage.jsx"));
 const EnhancedAdminDashboard = createLazyComponent(() => import("./EnhancedAdminDashboard.jsx"));
 const ReportDetailPage = createLazyComponent(() => import("./ReportDetailPage.jsx"));
+const AdminReportDetailPage = createLazyComponent(() => import("./AdminReportDetailPage.jsx"));
+const AuditLogPage = createLazyComponent(() => import("./AuditLogPage.jsx"));
+const UnverifiedUsersPage = createLazyComponent(() => import("./UnverifiedUsersPage.jsx"));
+const AdminAnalyticsPage = createLazyComponent(() => import("./AdminAnalyticsPage.jsx"));
+const CategoryManagementPage = createLazyComponent(() => import("./CategoryManagementPage.jsx"));
+const SystemSecurityPage = createLazyComponent(() => import("./SystemSecurityPage.jsx"));
 const ProfilePage = createLazyComponent(() => import("./ProfilePage.jsx"));
 const SettingsPage = createLazyComponent(() => import("./SettingsPage.jsx"));
 const HelpPage = createLazyComponent(() => import("./HelpPage.jsx"));
 const AuthProvider = createLazyComponent(() => import("../components/AuthProvider.jsx"));
+const Footer = createLazyComponent(() => import("../components/footer.jsx"));
 
 // Preload critical pages during idle time
 if ('requestIdleCallback' in window) {
@@ -120,6 +128,22 @@ export const router = createBrowserRouter([
         ),
     },
     {
+        path: "/dashboard/chat",
+        element: (
+            <OptimizedAuthWrapper preloadDashboard={true}>
+                <StudentChatPage />
+            </OptimizedAuthWrapper>
+        ),
+    },
+    {
+        path: "/dashboard/chat/:reportId",
+        element: (
+            <OptimizedAuthWrapper preloadDashboard={true}>
+                <StudentChatPage />
+            </OptimizedAuthWrapper>
+        ),
+    },
+    {
         path: "/report/:id",
         element: (
             <OptimizedAuthWrapper>
@@ -168,6 +192,14 @@ export const router = createBrowserRouter([
         ),
     },
     {
+        path: "/admin/reports/:id",
+        element: (
+            <OptimizedAuthWrapper>
+                <AdminReportDetailPage />
+            </OptimizedAuthWrapper>
+        ),
+    },
+    {
         path: "/admin/chat",
         element: (
             <OptimizedAuthWrapper>
@@ -180,6 +212,46 @@ export const router = createBrowserRouter([
         element: (
             <OptimizedAuthWrapper>
                 <EnhancedAdminDashboard />
+            </OptimizedAuthWrapper>
+        ),
+    },
+    {
+        path: "/admin/audit-logs",
+        element: (
+            <OptimizedAuthWrapper>
+                <AuditLogPage />
+            </OptimizedAuthWrapper>
+        ),
+    },
+    {
+        path: "/admin/unverified-users",
+        element: (
+            <OptimizedAuthWrapper>
+                <UnverifiedUsersPage />
+            </OptimizedAuthWrapper>
+        ),
+    },
+    {
+        path: "/admin/analytics",
+        element: (
+            <OptimizedAuthWrapper>
+                <AdminAnalyticsPage />
+            </OptimizedAuthWrapper>
+        ),
+    },
+    {
+        path: "/admin/categories",
+        element: (
+            <OptimizedAuthWrapper>
+                <CategoryManagementPage />
+            </OptimizedAuthWrapper>
+        ),
+    },
+    {
+        path: "/admin/system",
+        element: (
+            <OptimizedAuthWrapper>
+                <SystemSecurityPage />
             </OptimizedAuthWrapper>
         ),
     },

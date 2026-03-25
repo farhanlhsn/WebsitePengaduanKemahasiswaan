@@ -11,6 +11,7 @@ import {
 } from '@mui/icons-material';
 import { styled, alpha } from '@mui/material/styles';
 import RichTextEditor from '../ui/RichTextEditor';
+import { uploadAttachments } from '../../services/api';
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialog-paper': {
@@ -150,16 +151,17 @@ const CreateReportModal = React.memo(({ open, onClose, categories, onSubmit }) =
       };
 
       const createdReport = await onSubmit(reportData);
+      console.log('Created report:', createdReport);
+      console.log('Form data files:', formData.files);
       
       // If there are files and report was created successfully, upload them
       if (formData.files.length > 0 && createdReport?.id) {
-        // Import uploadAttachments function
-        const { uploadAttachments } = await import('../../services/api');
         try {
+          console.log('Uploading attachments...');
+          console.log(formData.files);
           await uploadAttachments(createdReport.id, formData.files);
         } catch (uploadError) {
           console.warn('Report created but failed to upload attachments:', uploadError);
-          // Don't throw error as the report was successfully created
         }
       }
 

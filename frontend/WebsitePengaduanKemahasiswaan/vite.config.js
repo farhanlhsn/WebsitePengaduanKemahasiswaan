@@ -140,26 +140,14 @@ export default defineConfig({
       'react-dom/client',
       // Then React Router
       'react-router-dom',
-      // Then Emotion (complete set)
+      // Then Emotion (only main packages - internal deps will be auto-included)
       '@emotion/react',
       '@emotion/styled',
       '@emotion/cache',
-      '@emotion/utils',
-      '@emotion/serialize',
-      '@emotion/sheet',
-      '@emotion/css',
-      '@emotion/server',
-      '@emotion/weak-memoization',
-      '@emotion/memoize',
-      '@emotion/hash',
-      '@emotion/unitless',
-      '@emotion/is-prop-valid',
-      // Then Material-UI (complete set)
+      // Then Material-UI (main packages only)
       '@mui/material',
       '@mui/material/styles',
       '@mui/system',
-      '@mui/utils',
-      '@mui/base',
       '@mui/material/Button',
       '@mui/material/TextField',
       '@mui/material/Box',
@@ -256,8 +244,8 @@ export default defineConfig({
       keepNames: true,
       minify: false,
       sourcemap: false,
-      // CRITICAL: Preserve all function names and structure
-      mangleProps: false,
+      // CRITICAL: Don't mangle properties - remove mangleProps entirely
+      // mangleProps should be undefined or a RegExp, not false
       reserveProps: /^(React|ReactDOM|emotion|styled|css|jsx|createElement|Fragment)$/,
     }
   },
@@ -300,7 +288,7 @@ export default defineConfig({
   },
   // CRITICAL: Resolve configuration to prevent conflicts
   resolve: {
-    // CRITICAL: Dedupe ALL packages that could cause conflicts
+    // CRITICAL: Dedupe packages that could cause conflicts (main packages only)
     dedupe: [
       'react', 
       'react-dom', 
@@ -309,20 +297,8 @@ export default defineConfig({
       '@emotion/react', 
       '@emotion/styled',
       '@emotion/cache',
-      '@emotion/utils',
-      '@emotion/serialize',
-      '@emotion/sheet',
-      '@emotion/css',
-      '@emotion/server',
-      '@emotion/weak-memoization',
-      '@emotion/memoize',
-      '@emotion/hash',
-      '@emotion/unitless',
-      '@emotion/is-prop-valid',
       '@mui/material',
       '@mui/system',
-      '@mui/utils',
-      '@mui/base',
       'react-router-dom'
     ],
     alias: {

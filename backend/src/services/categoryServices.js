@@ -1,5 +1,7 @@
 const prisma = require('../utils/prisma');
 const SoftDeleteHelper = require('../utils/softDelete');
+const { getLogger } = require('../utils/logger');
+const log = getLogger('category:service');
 
 class CategoryServices {
   async getCategoryById(categoryId, includeDeleted = false) {
@@ -32,11 +34,14 @@ class CategoryServices {
         }
       });
 
-      return {
+      const result = {
         ...category,
         _count: { reports: reportCount }
       };
+      log.info('getCategoryById success', { categoryId });
+      return result;
     } catch (error) {
+      log.warn('getCategoryById failed', { categoryId, error: error.message });
       throw new Error('Failed to get category by id');
     }
   }
@@ -71,18 +76,21 @@ class CategoryServices {
         }
       });
 
-      return {
+      const result = {
         ...category,
         _count: { reports: reportCount }
       };
+      log.info('getCategoryBySlug success', { slug });
+      return result;
     } catch (error) {
+      log.warn('getCategoryBySlug failed', { slug, error: error.message });
       throw new Error('Failed to get category by slug');
     }
   }
 
   async getAllCategories(includeDeleted = false) {
     try {
-      console.log('getAllCategories called with includeDeleted:', includeDeleted);
+      log.info('getAllCategories', { includeDeleted });
       
       const categories = await SoftDeleteHelper.findMany(
         prisma.category,
@@ -100,11 +108,11 @@ class CategoryServices {
         includeDeleted
       );
 
-      console.log('Categories fetched:', categories.length);
+      log.info('getAllCategories fetched', { count: categories.length });
       return categories;
 
     } catch (error) {
-      console.error('getAllCategories error:', error);
+      log.error('getAllCategories error', { error: error.message });
       throw new Error('Failed to get categories');
     }
   }
@@ -155,8 +163,10 @@ class CategoryServices {
         })
       );
 
+      log.info('getCategoriesWithReports', { count: categoriesWithCount.length });
       return categoriesWithCount;
     } catch (error) {
+      log.warn('getCategoriesWithReports failed', { error: error.message });
       throw new Error('Failed to get categories with reports');
     }
   }
@@ -209,8 +219,10 @@ class CategoryServices {
         },
       });
       
+      log.info('createCategory success', { id: newCategory.id, name: newCategory.name });
       return newCategory;
     } catch (error) {
+      log.warn('createCategory failed', { error: error.message });
       throw new Error(error.message || 'Failed to create category');
     }
   }
@@ -259,8 +271,10 @@ class CategoryServices {
         },
       });
       
+      log.info('updateCategory success', { id: updatedCategory.id });
       return updatedCategory;
     } catch (error) {
+      log.warn('updateCategory failed', { categoryId, error: error.message });
       throw new Error(error.message || 'Failed to update category');
     }
   }
@@ -278,8 +292,11 @@ class CategoryServices {
       }
 
       // Soft delete category
-      return await SoftDeleteHelper.softDelete(prisma.category, categoryId);
+      const result = await SoftDeleteHelper.softDelete(prisma.category, categoryId);
+      log.info('deleteCategory success', { categoryId });
+      return result;
     } catch (error) {
+      log.warn('deleteCategory failed', { categoryId, error: error.message });
       throw new Error(error.message || 'Failed to delete category');
     }
   }
@@ -313,8 +330,11 @@ class CategoryServices {
       }
 
       // Restore category
-      return await SoftDeleteHelper.restore(prisma.category, categoryId);
+      const result = await SoftDeleteHelper.restore(prisma.category, categoryId);
+      log.info('restoreCategory success', { categoryId });
+      return result;
     } catch (error) {
+      log.warn('restoreCategory failed', { categoryId, error: error.message });
       throw new Error(error.message || 'Failed to restore category');
     }
   }
@@ -333,8 +353,11 @@ class CategoryServices {
       }
 
       // Hard delete category
-      return await SoftDeleteHelper.hardDelete(prisma.category, categoryId);
+      const result = await SoftDeleteHelper.hardDelete(prisma.category, categoryId);
+      log.info('permanentDeleteCategory success', { categoryId });
+      return result;
     } catch (error) {
+      log.warn('permanentDeleteCategory failed', { categoryId, error: error.message });
       throw new Error(error.message || 'Failed to permanently delete category');
     }
   }
@@ -377,13 +400,16 @@ class CategoryServices {
         .sort((a, b) => b._count.reports - a._count.reports)
         .slice(0, 5);
 
-      return {
+      const result = {
         total,
         deleted,
         active: total,
         topCategories
       };
+      log.info('getCategoryStats success', { total, deleted });
+      return result;
     } catch (error) {
+      log.warn('getCategoryStats failed', { error: error.message });
       throw new Error('Failed to get category statistics');
     }
   }
@@ -391,8 +417,11 @@ class CategoryServices {
   async cleanupOldDeletedCategories(daysOld = 90) {
     try {
       // Cleanup categories deleted more than specified days ago
-      return await SoftDeleteHelper.cleanupOldDeleted(prisma.category, daysOld);
+      const result = await SoftDeleteHelper.cleanupOldDeleted(prisma.category, daysOld);
+      log.info('cleanupOldDeletedCategories success', { daysOld });
+      return result;
     } catch (error) {
+      log.warn('cleanupOldDeletedCategories failed', { error: error.message });
       throw new Error('Failed to cleanup old deleted categories');
     }
   }
@@ -438,8 +467,10 @@ class CategoryServices {
         })
       );
       
+      log.info('searchCategories success', { count: categoriesWithCount.length });
       return categoriesWithCount;
     } catch (error) {
+      log.warn('searchCategories failed', { error: error.message });
       throw new Error('Failed to search categories');
     }
   }

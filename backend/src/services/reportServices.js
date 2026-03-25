@@ -1,6 +1,8 @@
 const prisma = require('../utils/prisma');
 const SoftDeleteHelper = require('../utils/softDelete');
 const RegistrationGenerator = require('../utils/registrationGenerator');
+const { getLogger } = require('../utils/logger');
+const log = getLogger('report:service');
 
 class ReportServices {
   async getReportById(id, includeDeleted = false) {
@@ -37,6 +39,7 @@ class ReportServices {
               fileName: true,
               fileType: true,
               createdAt: true,
+              messageId: true
             }
           },
           messages: {
@@ -66,8 +69,12 @@ class ReportServices {
       if (!report) {
         throw new Error('Report not found');
       }
+      // Keep only report-level attachments (exclude chat attachments)
+      report.attachments = report.attachments.filter(att => att.messageId === null);
+      log.info('getReportById success', { id });
       return report;
     } catch (error) {
+      log.warn('getReportById failed', { id, error: error.message });
       throw new Error('Error getting report by ID');
     }
   }
@@ -125,22 +132,25 @@ class ReportServices {
 
       // Cek apakah masih ada halaman berikutnya
       let hasNextPage = false;
-      let result = reports;
+      let pageItems = reports;
       if (reports.length > limit) {
         hasNextPage = true;
-        result = reports.slice(0, limit);
+        pageItems = reports.slice(0, limit);
       }
 
-      return {
-        data: result,
+      const payload = {
+        data: pageItems,
         pagination: {
           totalItems,
           itemsPerPage: limit,
           hasNextPage,
-          lastItemId: result.length > 0 ? result[result.length - 1].id : null
+          lastItemId: pageItems.length > 0 ? pageItems[pageItems.length - 1].id : null
         }
       };
+      log.info('getAllReportsPaginated success', { totalItems, take: limit, hasNextPage });
+      return payload;
     } catch (error) {
+      log.warn('getAllReportsPaginated failed', { error: error.message });
       throw new Error('Error getting reports: ' + error.message);
     }
   }
@@ -200,22 +210,25 @@ class ReportServices {
       const reports = await SoftDeleteHelper.findMany(prisma.report, query, includeDeleted);
 
       let hasNextPage = false;
-      let result = reports;
+      let pageItems = reports;
       if (reports.length > limit) {
         hasNextPage = true;
-        result = reports.slice(0, limit);
+        pageItems = reports.slice(0, limit);
       }
 
-      return {
-        data: result,
+      const payload = {
+        data: pageItems,
         pagination: {
           totalItems,
           itemsPerPage: limit,
           hasNextPage,
-          lastItemId: result.length > 0 ? result[result.length - 1].id : null
+          lastItemId: pageItems.length > 0 ? pageItems[pageItems.length - 1].id : null
         }
       };
+      log.info('getAllReportsByUserIdPaginated success', { userId, totalItems, take: limit, hasNextPage });
+      return payload;
     } catch (error) {
+      log.warn('getAllReportsByUserIdPaginated failed', { userId, error: error.message });
       throw new Error('Error getting reports by user ID: ' + error.message);
     }
   }
@@ -239,19 +252,31 @@ class ReportServices {
         data: {
           ...reportData,
           registrationNumber
-        }
+        },
       });
+      log.info('createReport success', { id: report.id, userId: report.userId });
       return report;
     } catch (error) {
+      log.warn('createReport failed', { error: error.message });
       throw new Error('Error creating report: ' + error.message);
     }
   }
 
   async updateReportStatus(id, status) {
     try {
-      const report = await SoftDeleteHelper.update(prisma.report, id, { status });
+      const report = await prisma.report.update({
+        where: { id },
+        data: { status },
+        select: {
+          id: true,
+          status: true,
+          updatedAt: true,
+        }
+      });
+      log.info('updateReportStatus success', { id, status });
       return report;
     } catch (error) {
+      log.warn('updateReportStatus failed', { id, error: error.message });
       throw new Error('Error updating report status: ' + error.message);
     }
   }
@@ -259,8 +284,10 @@ class ReportServices {
   async restoreReport(id) {
     try {
       const report = await SoftDeleteHelper.restore(prisma.report, id);
+      log.info('restoreReport success', { id });
       return report;
     } catch (error) {
+      log.warn('restoreReport failed', { id, error: error.message });
       throw new Error('Error restoring report: ' + error.message);
     }
   }
@@ -268,31 +295,58 @@ class ReportServices {
   async deleteReport(id) {
     try {
       const report = await SoftDeleteHelper.softDelete(prisma.report, id);
+      log.info('deleteReport success', { id });
       return report;
     } catch (error) {
+      log.warn('deleteReport failed', { id, error: error.message });
       throw new Error('Error deleting report: ' + error.message);
+    }
+  }
+
+  async permanentDeleteReport(id) {
+    try {
+      const report = await SoftDeleteHelper.hardDelete(prisma.report, id);
+      log.info('permanentDeleteReport success', { id });
+      return report;
+    } catch (error) {
+      log.warn('permanentDeleteReport failed', { id, error: error.message });
+      throw new Error('Error permanently deleting report: ' + error.message);
     }
   }
 
   async getReportStats() {
     try{
+      log.info('getReportStats start');
       const data = await SoftDeleteHelper.findMany(prisma.report, {
         select: {
           status: true,
         }
       }, false)
+      log.info('getReportStats data retrieved', { count: data.length });
+      
       const total = data.length;
-      const pending = data.filter(report => report.status === 'pending').length;
-      const approved = data.filter(report => report.status === 'approved').length;
-      const rejected = data.filter(report => report.status === 'rejected').length;
-      return {
+      const pending = data.filter(report => report.status === 'PENDING').length;
+      const inReview = data.filter(report => report.status === 'IN_REVIEW').length;
+      const inProgress = data.filter(report => report.status === 'IN_PROGRESS').length;
+      const resolved = data.filter(report => report.status === 'RESOLVED').length;
+      const rejected = data.filter(report => report.status === 'REJECTED').length;
+      const canceled = data.filter(report => report.status === 'CANCELED').length;
+      
+      const stats = {
         total,
         pending,
-        approved,
-        rejected
-      }
+        inReview,
+        inProgress,
+        resolved,
+        rejected,
+        canceled
+      };
+      
+      log.info('getReportStats calculated');
+      return stats;
     } catch (error) {
-      throw new Error('Error getting report stats');
+      log.error('getReportStats failed', { error: error.message });
+      throw new Error('Error getting report stats: ' + error.message);
     }
   }
 

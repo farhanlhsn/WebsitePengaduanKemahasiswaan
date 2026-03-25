@@ -13,6 +13,9 @@ import {
 import { styled, alpha, useTheme } from '@mui/material/styles';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
+import useChatStore from '../../stores/chatStore';
+import useAuthStore from '../../stores/authStore';
+import chatApi from '../../services/chatApi';
 
 const ChatContainer = styled(Paper)(({ theme }) => ({
   height: '600px',
@@ -53,7 +56,9 @@ const MessagesContainer = styled(Box)(({ theme }) => ({
   },
 }));
 
-const MessageBubble = styled(Box)(({ theme, isOwn, isAdmin }) => ({
+const MessageBubble = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'isOwn' && prop !== 'isAdmin'
+})(({ theme, isOwn, isAdmin }) => ({
   maxWidth: '70%',
   padding: theme.spacing(1.5, 2),
   borderRadius: 18,
@@ -118,26 +123,38 @@ const StatusIcon = ({ status }) => {
   }
 };
 
+// Determine backend base for uploads by removing '/v1/api' from API URL
+const BACKEND_UPLOAD_URL = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL.replace(/\/v1\/api\/?$/,'')
+  : 'http://localhost:6060';
+
 const ChatInterface = ({ 
-  reportId,
-  reportTitle = '',
-  messages = [],
-  currentUser = null,
-  onSendMessage,
-  onSendFile,
-  loading = false,
   placeholder = false
 }) => {
   const theme = useTheme();
+  const { user } = useAuthStore();
+  const { 
+    currentReport, 
+    messages = [],
+    isMessagesLoading, 
+    error, 
+    sendMessage, 
+    deleteMessage,
+    sendTypingIndicator,
+    clearError
+  } = useChatStore();
+  
   const [newMessage, setNewMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [filePreviewOpen, setFilePreviewOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
   
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   // Auto scroll to bottom when new messages arrive
   useEffect(() => {
@@ -146,15 +163,30 @@ const ChatInterface = ({
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() && !selectedFile) return;
-    
+    if (!currentReport) return;
+
     try {
+      let attachments = [];
       if (selectedFile) {
-        await onSendFile?.(selectedFile, newMessage.trim());
-        setSelectedFile(null);
-      } else {
-        await onSendMessage?.(newMessage.trim());
+        // Upload the selected file first
+        const uploaded = await chatApi.uploadFile(selectedFile);
+        // uploaded is an array of attachment objects
+        attachments = uploaded.map(att => ({
+          fileName: att.fileName,
+          fileType: att.fileType,
+          filePath: att.filePath,
+        }));
       }
+
+      await sendMessage(newMessage.trim(), attachments);
       setNewMessage('');
+      setSelectedFile(null);
+      
+      // Stop typing indicator
+      if (isTyping) {
+        sendTypingIndicator(false);
+        setIsTyping(false);
+      }
     } catch (error) {
       console.error('Failed to send message:', error);
     }
@@ -166,6 +198,38 @@ const ChatInterface = ({
       handleSendMessage();
     }
   };
+
+  const handleInputChange = (e) => {
+    setNewMessage(e.target.value);
+    
+    // Handle typing indicator
+    if (!isTyping && e.target.value.trim()) {
+      setIsTyping(true);
+      sendTypingIndicator(true);
+    }
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Set new timeout to stop typing indicator
+    typingTimeoutRef.current = setTimeout(() => {
+      if (isTyping) {
+        setIsTyping(false);
+        sendTypingIndicator(false);
+      }
+    }, 1000);
+  };
+
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -225,8 +289,23 @@ const ChatInterface = ({
     );
   };
 
+  const handleDeleteMessage = async (messageId) => {
+    try {
+      await deleteMessage(messageId);
+      handleMenuClose();
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+    }
+  };
+
+  // Get current data
+  const reportId = currentReport?.registrationNumber;
+  const reportTitle = currentReport?.title || '';
+  const loading = isMessagesLoading; 
+  const currentUser = user;
+
   // Placeholder state
-  if (placeholder) {
+  if (placeholder || !currentReport) {
     return (
       <ChatContainer>
         <Box sx={{ 
@@ -247,8 +326,8 @@ const ChatInterface = ({
           </Typography>
           <Alert severity="info" sx={{ mt: 3, maxWidth: 400 }}>
             <Typography variant="body2">
-              Fitur chat akan terintegrasi dengan backend untuk komunikasi real-time 
-              antara admin dan pelapor berdasarkan ID laporan.
+              Pilih laporan dari daftar chat untuk memulai atau melanjutkan percakapan
+              dengan {user?.role === 'ADMIN' ? 'pelapor' : 'admin'}.
             </Typography>
           </Alert>
         </Box>
@@ -269,13 +348,13 @@ const ChatInterface = ({
               {reportTitle || `Laporan #${reportId}`}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              ID: {reportId}
+              Laporan: {reportId}
             </Typography>
           </Box>
         </Box>
         
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Badge badgeContent={messages.filter(m => !m.isRead).length} color="error">
+          <Badge badgeContent={messages?.filter(m => !m.isRead).length || 0} color="error">
             <IconButton size="small">
               <MoreVert />
             </IconButton>
@@ -289,7 +368,7 @@ const ChatInterface = ({
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
             <CircularProgress />
           </Box>
-        ) : messages.length === 0 ? (
+        ) : !messages || messages.length === 0 ? (
           <Box sx={{ 
             display: 'flex', 
             flexDirection: 'column', 
@@ -307,11 +386,17 @@ const ChatInterface = ({
           </Box>
         ) : (
           <Stack spacing={2} sx={{ p: 2 }}>
-            {messages.map((message, index) => {
+            {error && (
+              <Alert severity="error" onClose={clearError} sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+            
+            {messages?.map((message, index) => {
               const isOwn = message.senderId === currentUser?.id;
               const isAdmin = message.sender?.role === 'ADMIN';
               const showAvatar = index === 0 || 
-                messages[index - 1].senderId !== message.senderId;
+                messages?.[index - 1]?.senderId !== message.senderId;
               
               return (
                 <Box key={message.id}>
@@ -437,11 +522,12 @@ const ChatInterface = ({
           multiline
           maxRows={4}
           value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
+          onChange={handleInputChange}
           onKeyPress={handleKeyPress}
           placeholder="Ketik pesan..."
           variant="outlined"
           size="small"
+          disabled={!currentReport}
           sx={{
             '& .MuiOutlinedInput-root': {
               borderRadius: 3,
@@ -493,7 +579,7 @@ const ChatInterface = ({
           <Forward fontSize="small" sx={{ mr: 1 }} />
           Teruskan
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
+        <MenuItem onClick={() => handleDeleteMessage(selectedMessage?.id)}>
           <Delete fontSize="small" sx={{ mr: 1 }} />
           Hapus
         </MenuItem>
@@ -514,7 +600,7 @@ const ChatInterface = ({
             <Box sx={{ textAlign: 'center' }}>
               {previewFile.fileType?.startsWith('image/') ? (
                 <img 
-                  src={previewFile.filePath} 
+                  src={`${BACKEND_UPLOAD_URL}${previewFile.filePath}`} 
                   alt={previewFile.fileName}
                   style={{ maxWidth: '100%', maxHeight: '400px' }}
                 />
@@ -531,9 +617,17 @@ const ChatInterface = ({
           <Button onClick={() => setFilePreviewOpen(false)}>
             Tutup
           </Button>
-          <Button variant="contained" startIcon={<GetApp />}>
-            Download
-          </Button>
+          {previewFile && (
+            <Button 
+              variant="contained" 
+              startIcon={<GetApp />} 
+              component="a"
+              href={`${BACKEND_UPLOAD_URL}${previewFile.filePath}`} 
+              download={previewFile.fileName}
+            >
+              Download
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </ChatContainer>

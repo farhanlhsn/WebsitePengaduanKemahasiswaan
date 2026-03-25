@@ -2,39 +2,43 @@ import React from 'react';
 import { Grid, Box, Typography, LinearProgress } from '@mui/material';
 import { 
   People, Assignment, CheckCircle, PendingActions, 
-  TrendingUp, Schedule, Security, Chat
+  Schedule, Chat, Category, PersonAdd
 } from '@mui/icons-material';
 import EnhancedStatCard from '../dashboard/EnhancedStatCard';
 import { useTheme } from '@mui/material/styles';
 
 const AdminDashboardStats = ({ 
-  userStats = null, 
-  reportStats = null, 
-  systemStats = null,
+  dashboardStats = null, 
   loading = false 
 }) => {
   const theme = useTheme();
 
-  // Provide safe defaults for all stats
-  const safeUserStats = userStats || {
+  // Extract stats from comprehensive dashboard stats
+  const safeUserStats = dashboardStats?.users || {
     total: 0,
-    active: 0,
-    growth: 0,
-    activeGrowth: 0
+    verified: 0,
+    unverified: 0,
+    deleted: 0
   };
 
-  const safeReportStats = reportStats || {
+  const safeReportStats = dashboardStats?.reports || {
     total: 0,
     resolved: 0,
     pending: 0,
-    resolutionRate: 0
+    inProgress: 0,
+    inReview: 0,
+    rejected: 0
   };
 
-  const safeSystemStats = systemStats || {
-    avgResponseTime: '0',
-    unreadMessages: 0,
-    uptime: '99.9'
+  const safeCategoryStats = dashboardStats?.categories || {
+    total: 0,
+    active: 0
   };
+
+  // Calculate resolution rate
+  const resolutionRate = safeReportStats.total > 0 
+    ? ((safeReportStats.resolved / safeReportStats.total) * 100).toFixed(1)
+    : 0;
 
   const statsData = [
     {
@@ -42,9 +46,14 @@ const AdminDashboardStats = ({
       value: safeUserStats.total || 0,
       icon: <People />,
       color: '#2E7D32',
-      trend: safeUserStats.growth > 0 ? 'up' : 'down',
-      trendValue: safeUserStats.growth ? `+${safeUserStats.growth}%` : undefined,
-      subtitle: 'Pengguna terdaftar'
+      subtitle: `${safeUserStats.verified || 0} verified, ${safeUserStats.unverified || 0} pending`,
+    },
+    {
+      title: 'Unverified Users',
+      value: safeUserStats.unverified || 0,
+      icon: <PersonAdd />,
+      color: '#F57C00',
+      subtitle: 'Perlu verifikasi',
     },
     {
       title: 'Total Laporan',
@@ -52,58 +61,43 @@ const AdminDashboardStats = ({
       icon: <Assignment />,
       color: '#1976D2',
       showProgress: true,
-      progressValue: safeReportStats.total > 0 ? (safeReportStats.resolved / safeReportStats.total) * 100 : 0,
-      subtitle: 'Laporan masuk'
+      progressValue: resolutionRate,
+      subtitle: `${resolutionRate}% resolved`,
     },
     {
       title: 'Laporan Selesai',
       value: safeReportStats.resolved || 0,
       icon: <CheckCircle />,
       color: '#388E3C',
-      trend: 'up',
-      trendValue: safeReportStats.resolutionRate ? `${safeReportStats.resolutionRate}%` : undefined,
-      subtitle: 'Tingkat penyelesaian'
+      subtitle: 'Tingkat penyelesaian',
     },
     {
-      title: 'Menunggu Review',
+      title: 'Pending',
       value: safeReportStats.pending || 0,
       icon: <PendingActions />,
-      color: '#F57C00',
-      subtitle: 'Butuh perhatian'
+      color: '#ED6C02',
+      subtitle: 'Menunggu review',
     },
     {
-      title: 'Pengguna Aktif',
-      value: safeUserStats.active || 0,
-      icon: <TrendingUp />,
-      color: '#7B1FA2',
-      trend: 'up',
-      trendValue: safeUserStats.activeGrowth ? `+${safeUserStats.activeGrowth}%` : undefined,
-      subtitle: '30 hari terakhir'
-    },
-    {
-      title: 'Waktu Respon Rata-rata',
-      value: safeSystemStats.avgResponseTime || '0',
+      title: 'In Review',
+      value: safeReportStats.inReview || 0,
       icon: <Schedule />,
-      color: '#00796B',
-      suffix: 'h',
-      subtitle: 'Jam kerja'
+      color: '#0288D1',
+      subtitle: 'Sedang direview',
     },
     {
-      title: 'Pesan Belum Dibaca',
-      value: safeSystemStats.unreadMessages || 0,
-      icon: <Chat />,
-      color: '#D32F2F',
-      subtitle: 'Komunikasi pending'
+      title: 'In Progress',
+      value: safeReportStats.inProgress || 0,
+      icon: <Schedule />,
+      color: '#F57C00',
+      subtitle: 'Dalam proses',
     },
     {
-      title: 'Sistem Uptime',
-      value: safeSystemStats.uptime || '99.9',
-      icon: <Security />,
-      color: '#388E3C',
-      suffix: '%',
-      showProgress: true,
-      progressValue: parseFloat(safeSystemStats.uptime || '99.9'),
-      subtitle: 'Ketersediaan sistem'
+      title: 'Total Kategori',
+      value: safeCategoryStats.total || 0,
+      icon: <Category />,
+      color: '#7B1FA2',
+      subtitle: `${safeCategoryStats.active || 0} aktif`,
     }
   ];
 
@@ -130,29 +124,39 @@ const AdminDashboardStats = ({
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={700} gutterBottom sx={{ mb: 3 }}>
-        Ringkasan Sistem
-      </Typography>
-      
-      <Grid container spacing={3}>
+      {/* High Priority Stats - Larger cards for important metrics */}
+      <Grid container spacing={3} sx={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', // Membuat kolom yang fleksibel
+        gridGap: '20px',
+        mb: 3
+      }}>
         {statsData.map((stat, index) => (
-          <Grid item xs={12} sm={6} lg={3} key={stat.title}>
+          <Grid 
+            key={index} 
+            item 
+            xs={12} 
+            sm={6} 
+            lg={3}
+            sx={{
+              // On very wide screens, make cards slightly larger
+              '@media (min-width: 1920px)': {
+                minHeight: 220
+              }
+            }}
+          >
             <EnhancedStatCard
               title={stat.title}
               value={stat.value}
               icon={stat.icon}
               color={stat.color}
-              trend={stat.trend}
-              trendValue={stat.trendValue}
-              showProgress={stat.showProgress}
-              progressValue={stat.progressValue}
               subtitle={stat.subtitle}
-              suffix={stat.suffix}
-              animateValue={true}
+              animateValue
             />
           </Grid>
         ))}
       </Grid>
+
     </Box>
   );
 };

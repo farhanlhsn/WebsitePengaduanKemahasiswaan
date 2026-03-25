@@ -39,10 +39,7 @@ export default function Footer() {
     <Box 
       component="footer" 
       sx={{ 
-        background: `linear-gradient(135deg, 
-          ${theme.palette.primary.main} 0%, 
-          ${theme.palette.primary.dark} 50%,
-          ${alpha(theme.palette.primary.dark, 0.9)} 100%)`,
+        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
         color: 'white',
         pt: { xs: 4, md: 6 },
         pb: { xs: 2, md: 3 },
@@ -55,42 +52,32 @@ export default function Footer() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          opacity: 0.5
+          background: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M30 30c0-9.94-8.06-18-18-18s-18 8.06-18 18h18zm0-18c0 9.94 8.06 18 18 18s18-8.06 18-18H30zM12 30c0-9.94 8.06-18 18-18s18 8.06 18 18H12zm18 18c0-9.94-8.06-18-18-18s-18 8.06-18 18h18z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          opacity: 0.3
         }
       }}
     >
       <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
-        {/* Simplified Header Section */}
         <Box sx={{ textAlign: 'center', mb: { xs: 3, md: 4 } }}>
           <Typography 
             variant="h5" 
             gutterBottom 
-            sx={{ 
-              fontWeight: 700,
-              mb: 1,
-              fontSize: { xs: '1.5rem', md: '2rem' }
-            }}
+            sx={{ fontWeight: 700, mb: 1, fontSize: { xs: '1.5rem', md: '2rem' } }}
           >
             Layanan Pengaduan Mahasiswa
           </Typography>
           <Typography 
             variant="body1" 
-            sx={{ 
-              opacity: 0.9,
-              maxWidth: 500,
-              mx: 'auto',
-              fontWeight: 400,
-              fontSize: { xs: '0.9rem', md: '1rem' }
-            }}
+            sx={{ opacity: 0.9, maxWidth: 500, mx: 'auto', fontWeight: 400, fontSize: { xs: '0.9rem', md: '1rem' } }}
           >
             Universitas Bung Hatta
           </Typography>
         </Box>
 
-        <Grid container spacing={{ xs: 3, md: 4 }} justifyContent="center" alignItems="stretch">
-          {/* Informasi Kontak - More Compact */}
-          <Grid sx={{ width: { xs: '100%', md: '33.333%' } }}>
+        {/************** PERUBAHAN UTAMA DI SINI *************/}
+        <Grid container spacing={{ xs: 3, md: 4 }} justifyContent="center">
+          {/* Informasi Kontak */}
+          <Grid xs={12} sm={6} md={4}>
             <Box sx={{ 
               background: alpha(theme.palette.common.white, 0.08),
               borderRadius: 3,
@@ -107,24 +94,19 @@ export default function Footer() {
                   Kontak
                 </Typography>
               </Box>
-              
               <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: { xs: 'center', md: 'flex-start' }, mb: 2 }}>
                 <LocationOn sx={{ mr: 1.5, fontSize: 18, mt: 0.2, opacity: 0.7 }} />
-                <Box>
-                  <Typography variant="body2" sx={{ opacity: 0.9, lineHeight: 1.5, fontSize: { xs: '0.85rem', md: '0.9rem' } }}>
-                    Jl. Bagindo Aziz Chan No. 8<br />
-                    Padang, Sumatera Barat
-                  </Typography>
-                </Box>
+                <Typography variant="body2" sx={{ opacity: 0.9, lineHeight: 1.5, fontSize: { xs: '0.85rem', md: '0.9rem' } }}>
+                  Jl. Bagindo Aziz Chan No. 8<br />
+                  Padang, Sumatera Barat
+                </Typography>
               </Box>
-              
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' }, mb: 2 }}>
                 <Phone sx={{ mr: 1.5, fontSize: 18, opacity: 0.7 }} />
                 <Typography variant="body2" sx={{ opacity: 0.9, fontSize: { xs: '0.85rem', md: '0.9rem' } }}>
                   (0751) 7051266
                 </Typography>
               </Box>
-              
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' } }}>
                 <Email sx={{ mr: 1.5, fontSize: 18, opacity: 0.7 }} />
                 <Typography variant="body2" sx={{ opacity: 0.9, fontSize: { xs: '0.85rem', md: '0.9rem' } }}>
@@ -134,8 +116,8 @@ export default function Footer() {
             </Box>
           </Grid>
 
-          {/* Link Cepat - More Compact */}
-          <Grid sx={{ width: { xs: '100%', md: '33.333%' } }}>
+          {/* Link Cepat */}
+          <Grid xs={12} sm={6} md={4}>
             <Box sx={{ 
               background: alpha(theme.palette.common.white, 0.08),
               borderRadius: 3,
@@ -152,78 +134,16 @@ export default function Footer() {
                   Link Cepat
                 </Typography>
               </Box>
-              
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: { xs: 'center', md: 'stretch' } }}>
-                <MuiLink 
-                  href="https://bunghatta.ac.id/" 
-                  color="inherit" 
-                  underline="none"
-                  target="_blank" 
-                  rel="noopener"
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: { xs: 'center', md: 'flex-start' },
-                    py: 0.8,
-                    px: 1.5,
-                    borderRadius: 2,
-                    fontSize: { xs: '0.85rem', md: '0.9rem' },
-                    transition: 'all 0.2s ease',
-                    maxWidth: { xs: 'fit-content', md: '100%' },
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.common.white, 0.1),
-                      transform: 'translateX(4px)'
-                    }
-                  }}
-                >
+                <MuiLink href="https://bunghatta.ac.id/" color="inherit" underline="none" target="_blank" rel="noopener" sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' }, py: 0.8, px: 1.5, borderRadius: 2, fontSize: { xs: '0.85rem', md: '0.9rem' }, transition: 'all 0.2s ease', '&:hover': { backgroundColor: alpha(theme.palette.common.white, 0.1), transform: 'translateX(4px)' } }}>
                   <Language sx={{ mr: 1.5, fontSize: 16 }} />
                   Website Utama UBH
                 </MuiLink>
-                
-                <MuiLink 
-                  href="#" 
-                  color="inherit" 
-                  underline="none"
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: { xs: 'center', md: 'flex-start' },
-                    py: 0.8,
-                    px: 1.5,
-                    borderRadius: 2,
-                    fontSize: { xs: '0.85rem', md: '0.9rem' },
-                    transition: 'all 0.2s ease',
-                    maxWidth: { xs: 'fit-content', md: '100%' },
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.common.white, 0.1),
-                      transform: 'translateX(4px)'
-                    }
-                  }}
-                >
+                <MuiLink href="#" color="inherit" underline="none" sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' }, py: 0.8, px: 1.5, borderRadius: 2, fontSize: { xs: '0.85rem', md: '0.9rem' }, transition: 'all 0.2s ease', '&:hover': { backgroundColor: alpha(theme.palette.common.white, 0.1), transform: 'translateX(4px)' } }}>
                   <Support sx={{ mr: 1.5, fontSize: 16 }} />
                   Panduan Penggunaan
                 </MuiLink>
-                
-                <MuiLink 
-                  href="#" 
-                  color="inherit" 
-                  underline="none"
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: { xs: 'center', md: 'flex-start' },
-                    py: 0.8,
-                    px: 1.5,
-                    borderRadius: 2,
-                    fontSize: { xs: '0.85rem', md: '0.9rem' },
-                    transition: 'all 0.2s ease',
-                    maxWidth: { xs: 'fit-content', md: '100%' },
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.common.white, 0.1),
-                      transform: 'translateX(4px)'
-                    }
-                  }}
-                >
+                <MuiLink href="#" color="inherit" underline="none" sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' }, py: 0.8, px: 1.5, borderRadius: 2, fontSize: { xs: '0.85rem', md: '0.9rem' }, transition: 'all 0.2s ease', '&:hover': { backgroundColor: alpha(theme.palette.common.white, 0.1), transform: 'translateX(4px)' } }}>
                   <Info sx={{ mr: 1.5, fontSize: 16 }} />
                   FAQ & Bantuan
                 </MuiLink>
@@ -231,8 +151,8 @@ export default function Footer() {
             </Box>
           </Grid>
 
-          {/* Media Sosial - More Compact */}
-          <Grid sx={{ width: { xs: '100%', md: '33.333%' } }}>
+          {/* Media Sosial */}
+          <Grid xs={12} sm={12} md={4}>
             <Box sx={{ 
               background: alpha(theme.palette.common.white, 0.08),
               borderRadius: 3,
@@ -249,168 +169,28 @@ export default function Footer() {
                   Ikuti Kami
                 </Typography>
               </Box>
-              
-              <Typography variant="body2" sx={{ 
-                mb: 2.5, 
-                opacity: 0.9, 
-                lineHeight: 1.5,
-                fontSize: { xs: '0.85rem', md: '0.9rem' }
-              }}>
+              <Typography variant="body2" sx={{ mb: 2.5, opacity: 0.9, lineHeight: 1.5, fontSize: { xs: '0.85rem', md: '0.9rem' } }}>
                 Terhubung dengan komunitas UBH
               </Typography>
-              
-              <Box sx={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(3, 1fr)', 
-                gap: 1.5, 
-                justifyItems: 'center',
-                mt: 'auto',
-                maxWidth: '160px',
-                mx: 'auto'
-              }}>
-                <IconButton 
-                  href="https://www.facebook.com/bunghatta.univ" 
-                  target="_blank"
-                  sx={{ 
-                    width: 44,
-                    height: 44,
-                    background: alpha(theme.palette.common.white, 0.15),
-                    color: 'white',
-                    border: `1px solid ${alpha(theme.palette.common.white, 0.2)}`,
-                    '&:hover': { 
-                      backgroundColor: '#1877F2',
-                      transform: 'scale(1.05)',
-                      boxShadow: `0 4px 12px ${alpha('#1877F2', 0.4)}`
-                    },
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <Facebook fontSize="small" />
-                </IconButton>
-                
-                <IconButton 
-                  href="https://www.instagram.com/universitasbunghatta/" 
-                  target="_blank"
-                  sx={{ 
-                    width: 44,
-                    height: 44,
-                    background: alpha(theme.palette.common.white, 0.15),
-                    color: 'white',
-                    border: `1px solid ${alpha(theme.palette.common.white, 0.2)}`,
-                    '&:hover': { 
-                      background: 'linear-gradient(45deg, #E4405F, #C13584)',
-                      transform: 'scale(1.05)',
-                      boxShadow: `0 4px 12px ${alpha('#E4405F', 0.4)}`
-                    },
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <Instagram fontSize="small" />
-                </IconButton>
-                
-                <IconButton 
-                  href="https://twitter.com/beritabunghatta" 
-                  target="_blank"
-                  sx={{ 
-                    width: 44,
-                    height: 44,
-                    background: alpha(theme.palette.common.white, 0.15),
-                    color: 'white',
-                    border: `1px solid ${alpha(theme.palette.common.white, 0.2)}`,
-                    '&:hover': { 
-                      backgroundColor: '#1DA1F2',
-                      transform: 'scale(1.05)',
-                      boxShadow: `0 4px 12px ${alpha('#1DA1F2', 0.4)}`
-                    },
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <Twitter fontSize="small" />
-                </IconButton>
-                
-                <IconButton 
-                  href="https://www.linkedin.com/school/universitasbunghatta/" 
-                  target="_blank"
-                  sx={{ 
-                    width: 44,
-                    height: 44,
-                    background: alpha(theme.palette.common.white, 0.15),
-                    color: 'white',
-                    border: `1px solid ${alpha(theme.palette.common.white, 0.2)}`,
-                    '&:hover': { 
-                      backgroundColor: '#0077B5',
-                      transform: 'scale(1.05)',
-                      boxShadow: `0 4px 12px ${alpha('#0077B5', 0.4)}`
-                    },
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <LinkedIn fontSize="small" />
-                </IconButton>
-                
-                <IconButton 
-                  href="https://www.tiktok.com/@universitasbunghatta" 
-                  target="_blank"
-                  sx={{ 
-                    width: 44,
-                    height: 44,
-                    background: alpha(theme.palette.common.white, 0.15),
-                    color: 'white',
-                    border: `1px solid ${alpha(theme.palette.common.white, 0.2)}`,
-                    '&:hover': { 
-                      backgroundColor: '#000000',
-                      transform: 'scale(1.05)',
-                      boxShadow: `0 4px 12px ${alpha('#000000', 0.4)}`
-                    },
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <TikTokIcon />
-                </IconButton>
-                
-                <IconButton 
-                  href="https://bunghatta.ac.id/" 
-                  target="_blank"
-                  sx={{ 
-                    width: 44,
-                    height: 44,
-                    background: alpha(theme.palette.common.white, 0.15),
-                    color: 'white',
-                    border: `1px solid ${alpha(theme.palette.common.white, 0.2)}`,
-                    '&:hover': { 
-                      backgroundColor: theme.palette.secondary.main,
-                      transform: 'scale(1.05)',
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.secondary.main, 0.4)}`
-                    },
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <Language fontSize="small" />
-                </IconButton>
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, flexWrap: 'wrap', mt: 'auto' }}>
+                <IconButton href="https://www.facebook.com/bunghatta.univ" target="_blank" sx={{ width: 44, height: 44, background: alpha(theme.palette.common.white, 0.15), color: 'white', '&:hover': { backgroundColor: '#1877F2' } }}><Facebook fontSize="small" /></IconButton>
+                <IconButton href="https://www.instagram.com/universitasbunghatta/" target="_blank" sx={{ width: 44, height: 44, background: alpha(theme.palette.common.white, 0.15), color: 'white', '&:hover': { background: 'linear-gradient(45deg, #E4405F, #C13584)' } }}><Instagram fontSize="small" /></IconButton>
+                <IconButton href="https://twitter.com/beritabunghatta" target="_blank" sx={{ width: 44, height: 44, background: alpha(theme.palette.common.white, 0.15), color: 'white', '&:hover': { backgroundColor: '#1DA1F2' } }}><Twitter fontSize="small" /></IconButton>
+                <IconButton href="https://www.linkedin.com/school/universitasbunghatta/" target="_blank" sx={{ width: 44, height: 44, background: alpha(theme.palette.common.white, 0.15), color: 'white', '&:hover': { backgroundColor: '#0077B5' } }}><LinkedIn fontSize="small" /></IconButton>
+                <IconButton href="https://www.tiktok.com/@universitasbunghatta" target="_blank" sx={{ width: 44, height: 44, background: alpha(theme.palette.common.white, 0.15), color: 'white', '&:hover': { backgroundColor: '#000000' } }}><TikTokIcon /></IconButton>
+                <IconButton href="https://bunghatta.ac.id/" target="_blank" sx={{ width: 44, height: 44, background: alpha(theme.palette.common.white, 0.15), color: 'white', '&:hover': { backgroundColor: theme.palette.secondary.main } }}><Language fontSize="small" /></IconButton>
               </Box>
             </Box>
           </Grid>
         </Grid>
         
-        <Divider sx={{ 
-          my: { xs: 3, md: 4 }, 
-          borderColor: alpha(theme.palette.common.white, 0.2)
-        }} />
+        <Divider sx={{ my: { xs: 3, md: 4 }, borderColor: alpha(theme.palette.common.white, 0.2) }} />
         
         <Box sx={{ textAlign: 'center' }}>
-          <Typography variant="body1" sx={{ 
-            mb: 1, 
-            fontWeight: 500,
-            fontSize: { xs: '0.9rem', md: '1rem' }
-          }}>
-            © {new Date().getFullYear()} Divisi Kemahasiswaan Universitas Bung Hatta
+          <Typography variant="body1" sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '0.9rem', md: '1rem' } }}>
+            © {new Date().getFullYear()} Muhammad Farhan Al Hasan
           </Typography>
-          <Typography variant="body2" sx={{ 
-            opacity: 0.8, 
-            maxWidth: 500, 
-            mx: 'auto',
-            fontSize: { xs: '0.8rem', md: '0.9rem' }
-          }}>
+          <Typography variant="body2" sx={{ opacity: 0.8, maxWidth: 500, mx: 'auto', fontSize: { xs: '0.8rem', md: '0.9rem' } }}>
             Dikembangkan untuk melayani aspirasi mahasiswa dengan lebih baik
           </Typography>
         </Box>

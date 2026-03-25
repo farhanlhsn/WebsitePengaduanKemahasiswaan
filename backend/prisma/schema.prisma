@@ -24,7 +24,6 @@ model User {
   refreshTokens RefreshToken[]
   reports       Report[]
 
-  @@index([email, nim])
   @@map("users")
 }
 
@@ -59,18 +58,22 @@ model Report {
 
   @@index([userId, status, categoryId])
   @@index([categoryId], map: "reports_categoryId_fkey")
+  @@index([status])
+  @@index([status, categoryId])
   @@map("reports")
 }
 
 model Attachment {
-  id        Int       @id @default(autoincrement())
-  filePath  String
-  fileName  String
-  fileType  String
-  reportId  Int
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
-  report    Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  id         Int       @id @default(autoincrement())
+  filePath   String
+  fileName   String
+  fileType   String
+  reportId   Int
+  messageId  Int?      
+  createdAt  DateTime  @default(now())
+  deletedAt  DateTime?
+  report     Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  message    Message?  @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   @@index([reportId])
   @@map("attachments")
@@ -86,6 +89,7 @@ model Message {
   deletedAt DateTime?
   report    Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
   sender    User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  attachments Attachment[]
 
   @@index([reportId, createdAt])
   @@index([senderId], map: "messages_senderId_fkey")
@@ -122,4 +126,35 @@ enum ReportStatus {
   RESOLVED
   REJECTED
   CANCELED
+}
+
+enum AuditEntity { 
+  USER 
+  REPORT 
+}
+
+enum AuditAction { 
+  SOFT_DELETE 
+  RESTORE 
+  HARD_DELETE
+  UPDATE_STATUS
+  VERIFY_MAHASISWA 
+}
+
+model AuditLog {
+  id          Int          @id @default(autoincrement())
+  entityType  AuditEntity
+  action      AuditAction
+  entityId    Int
+  actorId     Int
+  actorName   String?
+  actorRole   String
+  ip          String?
+  userAgent   String?
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([actorId])
 }

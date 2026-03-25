@@ -4,19 +4,24 @@ import {
   Divider, Dialog, DialogTitle, DialogContent, DialogActions,
   Alert, CircularProgress, Card, CardContent, CardActions, CardHeader,
   List, ListItem, ListItemAvatar, ListItemText, Tooltip, Stack, useTheme,
-  IconButton
+  IconButton, AppBar, Toolbar
 } from '@mui/material';
 import {
   ArrowBack, Assignment, AccessTime, Person, Category,
   Delete, Restore, Download, Visibility, AttachFile,
   School, Email, Today, CheckCircle, HourglassEmpty,
-  Cancel, Error, Pending, Chat, Menu as MenuIcon
+  Cancel, Error, Pending, Chat, Menu as MenuIcon, Send, Description, Close as CloseIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { alpha } from '@mui/material/styles';
 import useReportStore from '../stores/reportStore';
-import DashboardSidebar from '../components/dashboard/Sidebar';
+import useChatStore from '../stores/chatStore';
+import { DocViewerPlus } from 'react-doc-viewer-plus';
+import { Document, Page, pdfjs } from 'react-pdf';
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+import DashboardSidebar from '../components/dashboard/StudentSidebar';
 import RichTextDisplay from '../components/ui/RichTextDisplay';
+import ChatInterface from '../components/chat/ChatInterface';
 
 // --- THEME COLORS (Based on Dashboard Screenshot) ---
 const THEME_COLORS = {
@@ -73,15 +78,27 @@ const ActionDialog = ({ open, onClose, onConfirm, title, icon, color, confirmTex
 
 const drawerWidth = 280;
 
+// Determine backend host to serve uploaded files
+const BACKEND_UPLOAD_URL = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL.replace(/\/v1\/api\/?$/,'')
+  : 'http://localhost:6060';
+
 const ReportDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const theme = useTheme();
   const { getReportById, deleteReport, restoreReport, loading, error } = useReportStore();
+  const { selectReport, currentReport } = useChatStore();
   const [report, setReport] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [restoreDialog, setRestoreDialog] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [previewAttachment, setPreviewAttachment] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [pdfPreviewAttachment, setPdfPreviewAttachment] = useState(null);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [numPages, setNumPages] = useState(null);
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -96,8 +113,45 @@ const ReportDetailPage = () => {
   const handleDelete = async () => { await deleteReport(id); setDeleteDialog(false); navigate('/dashboard'); };
   const handleRestore = async () => { await restoreReport(id); setRestoreDialog(false); const updatedReport = await getReportById(id); setReport(updatedReport); };
   const handleDrawerToggle = () => { setMobileOpen(!mobileOpen); };
+  const handleSidebarToggle = () => { setSidebarOpen(!sidebarOpen); };
+  
+  const handleOpenChat = async () => {
+    if (report) {
+      await selectReport(report);
+      navigate(`/dashboard/chat/${report.id}`);
+    }
+  };
   const formatDate = (dateString) => { if (!dateString) return 'N/A'; return new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
   const getFileTypeIcon = (fileType) => { if (fileType?.startsWith('image/')) return '🖼️'; if (fileType?.startsWith('video/')) return '🎥'; if (fileType?.includes('pdf')) return '📄'; return '📁'; };
+
+  const handleAttachmentPreview = (attachment) => {
+    const isDoc = attachment.fileType.includes('msword') ||
+                  attachment.fileType.includes('officedocument.wordprocessingml.document');
+    if (isDoc) {
+      // Direct download for Word documents
+      const url = `${BACKEND_UPLOAD_URL}${attachment.filePath}`;
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachment.fileName;
+      document.body.appendChild(link);
+      link.click();
+      if (link.parentNode) link.parentNode.removeChild(link);
+      return;
+    }
+    const isPdf = attachment.fileType.includes('pdf');
+    if (isPdf) {
+      setPdfPreviewAttachment(attachment);
+      setPdfPreviewOpen(true);
+      return;
+    }
+    // Use DocViewerPlus for other types
+    setPreviewAttachment(attachment);
+    setPreviewOpen(true);
+  };
+  const handlePreviewClose = () => {
+    setPreviewOpen(false);
+    setPreviewAttachment(null);
+  };
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', bgcolor: THEME_COLORS.background }}><CircularProgress sx={{ color: THEME_COLORS.primary }} /></Box>;
   if (error || !report) return <Box sx={{ minHeight: '100vh', bgcolor: THEME_COLORS.background, py: 5 }}><Container maxWidth="md"><Alert severity={error ? "error" : "info"} sx={{ borderRadius: 3, fontSize: '1.1rem', p: 3 }}>{error || 'Laporan tidak ditemukan atau gagal dimuat.'}</Alert></Container></Box>;
@@ -106,8 +160,22 @@ const ReportDetailPage = () => {
 
   return (
     <Box sx={{ display: 'flex', bgcolor: THEME_COLORS.background }}>
-      <DashboardSidebar open={mobileOpen} onClose={handleDrawerToggle} drawerWidth={drawerWidth} activeMenu="reports" onMenuChange={() => { }} />
-      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, width: { sm: `calc(100% - ${drawerWidth}px)` }, minHeight: '100vh' }}>
+      <DashboardSidebar 
+        open={mobileOpen} 
+        onClose={handleDrawerToggle} 
+        drawerWidth={drawerWidth} 
+        activeMenu="reports" 
+        onMenuChange={() => { }}
+        sidebarOpen={sidebarOpen}
+        onSidebarToggle={handleSidebarToggle}
+      />
+      <Box component="main" sx={{ 
+        flexGrow: 1, 
+        p: { xs: 2, md: 3 }, 
+        width: { sm: sidebarOpen ? `calc(100% - ${drawerWidth}px)` : '100%' }, 
+        minHeight: '100vh',
+        transition: 'width 0.3s ease'
+      }}>
         <Container maxWidth="lg" sx={{ px: { xs: 0, sm: 2 } }}>
           <Box sx={{ mb: 4 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -132,7 +200,7 @@ const ReportDetailPage = () => {
                 <Paper sx={{ ...cardStyle, width: '100%' }}>
                   <Box sx={{ p: { xs: 2, md: 3 }, borderBottom: '1px solid', borderColor: 'divider' }}>
                     <Grid container spacing={2} alignItems="center" sx={{ minWidth: 0 }}>
-                      <Grid item xs={12} md={8} sx={{ minWidth: 0 }}><Stack direction="row" spacing={2} alignItems="center" sx={{ minWidth: 0 }}><Avatar sx={{ bgcolor: alpha(THEME_COLORS.primary, 0.1), color: THEME_COLORS.primary, width: 56, height: 56, flexShrink: 0 }}><Assignment sx={{ fontSize: 28 }} /></Avatar><Box sx={{ minWidth: 0, flex: 1 }}><Typography variant="h5" fontWeight={700} sx={{ wordBreak: 'break-word' }}>{report.title}</Typography><Typography variant="body1" color="text.secondary">#{report.registrationNumber}</Typography></Box></Stack></Grid>
+                      <Grid item xs={12} md={8} sx={{ minWidth: 0 }}><Stack direction="row" spacing={2} alignItems="center" sx={{ minWidth: 0 }}><Avatar sx={{ bgcolor: alpha(THEME_COLORS.primary, 0.1), color: THEME_COLORS.primary, width: 56, height: 56, flexShrink: 0 }}><Assignment sx={{ fontSize: 28 }} /></Avatar><Box sx={{ minWidth: 0, flex: 1 }}><Typography variant="h5" fontWeight={700} sx={{ wordBreak: 'break-word' }}>{report.title}</Typography><Typography variant="body1" color="text.secondary">No. Laporan: {report.registrationNumber}</Typography></Box></Stack></Grid>
                     </Grid>
                   </Box>
                   <Box sx={{ p: { xs: 2, md: 3 }, minWidth: 0, flex: 1 }}>
@@ -143,28 +211,13 @@ const ReportDetailPage = () => {
                         <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 3 }}><AttachFile sx={{ color: THEME_COLORS.primary }} /><Typography variant="h6" fontWeight={600}>Lampiran</Typography><Chip label={`${report.attachments.length} file`} size="small" sx={{ bgcolor: alpha(THEME_COLORS.primary, 0.1), color: THEME_COLORS.primary }} /></Stack>
                         <Grid container spacing={2} sx={{ minWidth: 0 }}>
                           {report.attachments.map((attachment) => (
-                            <Grid item xs={12} sm={6} md={4} key={attachment.id} sx={{ minWidth: 0 }}><Card variant="outlined" sx={{ borderRadius: 2, borderColor: 'grey.200', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}><CardContent sx={{ minWidth: 0, flex: 1 }}><Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1, minWidth: 0 }}><Typography sx={{ fontSize: '2rem', flexShrink: 0 }}>{getFileTypeIcon(attachment.fileType)}</Typography><Box sx={{ minWidth: 0, flex: 1, overflow: 'hidden' }}><Tooltip title={attachment.fileName || 'Unknown file'}><Typography variant="subtitle1" fontWeight={600} noWrap sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{attachment.fileName || 'Unknown file'}</Typography></Tooltip></Box></Stack></CardContent><CardActions sx={{ px: 2, pb: 2, justifyContent: 'space-between' }}><Button size="small" startIcon={<Visibility />} href={`/api/attachments/${attachment.filePath}`} target="_blank" variant="text" sx={{ color: 'text.secondary' }}>Lihat</Button><Button size="small" startIcon={<Download />} href={`/api/attachments/${attachment.filePath}`} download={attachment.fileName} variant="contained" sx={{ ml: 'auto', bgcolor: THEME_COLORS.primary, '&:hover': { bgcolor: '#388E3C' } }}>Unduh</Button></CardActions></Card></Grid>
+                            <Grid item xs={12} sm={6} md={4} key={attachment.id} sx={{ minWidth: 0 }}><Card variant="outlined" sx={{ borderRadius: 2, borderColor: 'grey.200', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}><CardContent sx={{ minWidth: 0, flex: 1 }}><Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1, minWidth: 0 }}><Typography sx={{ fontSize: '2rem', flexShrink: 0 }}>{getFileTypeIcon(attachment.fileType)}</Typography><Box sx={{ minWidth: 0, flex: 1, overflow: 'hidden' }}><Tooltip title={attachment.fileName || 'Unknown file'}><Typography variant="subtitle1" fontWeight={600} noWrap sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{attachment.fileName || 'Unknown file'}</Typography></Tooltip></Box></Stack></CardContent><CardActions sx={{ px: 2, pb: 2, justifyContent: 'space-between' }}><Button size="small" startIcon={<Visibility />} onClick={() => handleAttachmentPreview(attachment)} variant="text" sx={{ color: 'text.secondary' }}>Lihat</Button><Button size="small" startIcon={<Download />} component="a" href={`${BACKEND_UPLOAD_URL}${attachment.filePath}`} download={attachment.fileName} variant="contained" sx={{ ml: 'auto', bgcolor: THEME_COLORS.primary, '&:hover': { bgcolor: '#388E3C' } }}>Unduh</Button></CardActions></Card></Grid>
                           ))}
                         </Grid>
                       </Box>
                     )}
                   </Box>
                 </Paper>
-                {report.messages && report.messages.length > 0 && (
-                  <Paper sx={{ ...cardStyle, width: '100%' }}>
-                    <CardHeader avatar={<Avatar sx={{ bgcolor: alpha(THEME_COLORS.primary, 0.1), color: THEME_COLORS.primary }}><Chat /></Avatar>} title={<Typography variant="h6" fontWeight={600}>Komunikasi & Pesan</Typography>} subheader={`${report.messages.length} pesan dalam percakapan`} sx={{ borderBottom: '1px solid', borderColor: 'divider' }} />
-                    <Box sx={{ p: { xs: 1, md: 2 }, minWidth: 0 }}>
-                      <List sx={{ p: 0, minWidth: 0 }}>
-                        {report.messages.map((message, index) => (
-                          <React.Fragment key={message.id}>
-                            <ListItem alignItems="flex-start" sx={{ py: 2, px: { xs: 1, md: 2 }, minWidth: 0 }}><ListItemAvatar sx={{ mr: 1.5 }}><Avatar sx={{ width: 48, height: 48, bgcolor: message.sender.role === 'ADMIN' ? 'secondary.light' : alpha(THEME_COLORS.primary, 0.2) }}>{message.sender.name.charAt(0).toUpperCase()}</Avatar></ListItemAvatar><ListItemText sx={{ minWidth: 0 }} primary={<Stack direction="row" alignItems="center" spacing={2} sx={{ minWidth: 0 }}><Typography variant="subtitle1" fontWeight={700} sx={{ minWidth: 0, flex: 1 }}>{message.sender.name}</Typography><Chip label={message.sender.role === 'ADMIN' ? 'Admin' : 'Mahasiswa'} size="small" sx={{ bgcolor: message.sender.role === 'ADMIN' ? 'secondary.main' : THEME_COLORS.primary, color: 'white', flexShrink: 0 }}/></Stack>} secondary={<><Typography component="span" variant="body2" color="text.secondary" sx={{ display: 'block', mt: 0.5, mb: 1.5 }}>{formatDate(message.createdAt)}</Typography><Box sx={{ p: 2, mt: 1, bgcolor: THEME_COLORS.background, borderRadius: 2, display: 'block', maxWidth: '100%', minWidth: 0 }}><RichTextDisplay content={message.content} variant="body1" /></Box></>}/></ListItem>
-                            {index < report.messages.length - 1 && <Divider variant="inset" component="li" />}
-                          </React.Fragment>
-                        ))}
-                      </List>
-                    </Box>
-                  </Paper>
-                )}
               </Stack>
             </Box>
 
@@ -196,7 +249,12 @@ const ReportDetailPage = () => {
                     <InfoItem icon={<CheckCircle />} label="Status" value={currentStatus.label} color={currentStatus.color} />
                   </Stack>
                   <Divider sx={{ my: 1 }} /><Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2 }}>Aksi</Typography>
-                  {report.deletedAt ? (<Button fullWidth variant="contained" startIcon={<Restore />} onClick={() => setRestoreDialog(true)} sx={{ py: 1.5, borderRadius: 2, fontWeight: 600, bgcolor: THEME_COLORS.primary, '&:hover': { bgcolor: '#388E3C' } }}>Pulihkan Laporan</Button>) : (<Button fullWidth variant="outlined" color="error" startIcon={<Delete />} onClick={() => setDeleteDialog(true)} sx={{ py: 1.5, borderRadius: 2, fontWeight: 600 }}>Hapus Laporan</Button>)}
+                  <Stack spacing={2}>
+                    <Button fullWidth variant="contained" startIcon={<Chat />} onClick={handleOpenChat} sx={{ py: 1.5, borderRadius: 2, fontWeight: 600, bgcolor: THEME_COLORS.primary, '&:hover': { bgcolor: '#388E3C' } }}>
+                      Chat dengan Admin
+                    </Button>
+                    {report.deletedAt ? (<Button fullWidth variant="contained" startIcon={<Restore />} onClick={() => setRestoreDialog(true)} sx={{ py: 1.5, borderRadius: 2, fontWeight: 600, bgcolor: THEME_COLORS.primary, '&:hover': { bgcolor: '#388E3C' } }}>Pulihkan Laporan</Button>) : (<Button fullWidth variant="outlined" color="error" startIcon={<Delete />} onClick={() => setDeleteDialog(true)} sx={{ py: 1.5, borderRadius: 2, fontWeight: 600 }}>Hapus Laporan</Button>)}
+                  </Stack>
                 </Paper>
               </Stack>
             </Box>
@@ -204,6 +262,39 @@ const ReportDetailPage = () => {
 
           <ActionDialog open={deleteDialog} onClose={() => setDeleteDialog(false)} onConfirm={handleDelete} title="Hapus Laporan" icon={<Delete />} color="error" confirmText="Ya, Hapus"><Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>Apakah Anda yakin ingin menghapus laporan ini?</Alert><Typography color="text.secondary">Aksi ini akan memindahkan laporan ke arsip (soft delete) dan dapat dipulihkan nanti.</Typography></ActionDialog>
           <ActionDialog open={restoreDialog} onClose={() => setRestoreDialog(false)} onConfirm={handleRestore} title="Pulihkan Laporan" icon={<Restore />} color="success" confirmText="Ya, Pulihkan" buttonColor={THEME_COLORS.primary}><Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>Apakah Anda yakin ingin memulihkan laporan ini?</Alert><Typography color="text.secondary">Laporan akan dikembalikan ke status aktif dan terlihat di daftar utama.</Typography></ActionDialog>
+
+          {/* Custom PDF Preview Dialog */}
+          <Dialog fullScreen open={pdfPreviewOpen} onClose={() => { setPdfPreviewOpen(false); setPdfPreviewAttachment(null); setNumPages(null); }} PaperProps={{ sx: { bgcolor: 'rgba(0,0,0,0.9)' } }}>
+            <AppBar position="static" color="transparent" elevation={0}>
+              <Toolbar>
+                <IconButton edge="start" color="inherit" onClick={() => { setPdfPreviewOpen(false); setPdfPreviewAttachment(null); setNumPages(null); }}>
+                  <CloseIcon sx={{ color: '#fff' }} />
+                </IconButton>
+                <Typography variant="h6" sx={{ flex: 1, color: '#fff' }}>
+                  {pdfPreviewAttachment?.fileName}
+                </Typography>
+                <Button variant="contained" startIcon={<Download />} component="a" href={`${BACKEND_UPLOAD_URL}${pdfPreviewAttachment?.filePath}`} download={pdfPreviewAttachment?.fileName} sx={{ color: '#fff' }}>
+                  Unduh
+                </Button>
+              </Toolbar>
+            </AppBar>
+            <Box sx={{ flex: 1, overflow: 'auto', p: 2, display: 'flex', justifyContent: 'center' }}>
+              <Document file={`${BACKEND_UPLOAD_URL}${pdfPreviewAttachment?.filePath}`} onLoadSuccess={({ numPages }) => setNumPages(numPages)} loading={<CircularProgress />}>
+                {Array.from(new Array(numPages), (_x, i) => (
+                  <Page key={`page_${i + 1}`} pageNumber={i + 1} width={600} />
+                ))}
+              </Document>
+            </Box>
+          </Dialog>
+
+          {/* DocViewerPlus fallback for other files */}
+          {previewAttachment && (
+            <DocViewerPlus
+              previewFile={{ fileUrl: `${BACKEND_UPLOAD_URL}${previewAttachment.filePath}`, fileName: previewAttachment.fileName }}
+              visibleViewerPlus={previewOpen}
+              onVisibleChange={handlePreviewClose}
+            />
+          )}
         </Container>
       </Box>
     </Box>

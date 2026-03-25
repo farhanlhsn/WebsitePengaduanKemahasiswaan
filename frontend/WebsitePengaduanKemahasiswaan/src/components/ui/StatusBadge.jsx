@@ -30,6 +30,18 @@ const STATUS_CONFIG = {
     icon: <CheckCircle />,
     bgColor: '#E8F5E8'
   },
+  ACTIVE: { 
+    label: 'Aktif', 
+    color: '#4CAF50', 
+    icon: <CheckCircle />,
+    bgColor: '#E8F5E8'
+  },
+  DELETED: { 
+    label: 'Dihapus', 
+    color: '#F44336', 
+    icon: <Cancel />,
+    bgColor: '#FFEBEE'
+  },
   REJECTED: { 
     label: 'Ditolak', 
     color: '#F44336', 

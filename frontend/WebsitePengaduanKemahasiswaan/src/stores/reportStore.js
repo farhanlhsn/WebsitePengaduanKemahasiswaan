@@ -163,6 +163,7 @@ const useReportStore = create((set, get) => ({
         ),
         loading: false
       }));
+      console.log(updatedReport);
       return updatedReport;
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to update report status';

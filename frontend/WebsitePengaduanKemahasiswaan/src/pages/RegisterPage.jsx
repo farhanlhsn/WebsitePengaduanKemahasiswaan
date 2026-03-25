@@ -71,7 +71,7 @@ export default function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    ktmFile: null
+    ktm: null
   });
   const [validationErrors, setValidationErrors] = useState({});
 
@@ -101,10 +101,38 @@ export default function RegisterPage() {
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
-    setFormData(prev => ({
-      ...prev,
-      ktmFile: file
-    }));
+    if (file) {
+      // Validasi file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        setValidationErrors(prev => ({
+          ...prev,
+          ktm: 'File harus berupa gambar (JPEG, JPG, PNG, atau WebP)'
+        }));
+        return;
+      }
+      
+      // Validasi file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        setValidationErrors(prev => ({
+          ...prev,
+          ktm: 'Ukuran file maksimal 5MB'
+        }));
+        return;
+      }
+      
+      // Clear validation errors if file is valid
+      setValidationErrors(prev => ({
+        ...prev,
+        ktm: ''
+      }));
+      
+      setFormData(prev => ({
+        ...prev,
+        ktm: file
+      }));
+    }
   };
 
   const validateStep = (step) => {
@@ -112,7 +140,11 @@ export default function RegisterPage() {
     
     switch (step) {
       case 0:
-        if (!formData.nim.trim()) errors.nim = 'NIM harus diisi';
+        if (!formData.nim.trim()) {
+          errors.nim = 'NIM harus diisi';
+        } else if (!/^\d{8,}$/.test(formData.nim.trim())) {
+          errors.nim = 'NIM harus minimal 8 digit angka';
+        }
         if (!formData.fullName.trim()) errors.fullName = 'Nama lengkap harus diisi';
         if (!formData.email.trim()) {
           errors.email = 'Email harus diisi';
@@ -125,6 +157,8 @@ export default function RegisterPage() {
           errors.password = 'Password harus diisi';
         } else if (formData.password.length < 6) {
           errors.password = 'Password minimal 6 karakter';
+        } else if (!/^(?=.*[a-zA-Z])(?=.*\d)/.test(formData.password)) {
+          errors.password = 'Password harus mengandung huruf dan angka';
         }
         if (!formData.confirmPassword) {
           errors.confirmPassword = 'Konfirmasi password harus diisi';
@@ -133,7 +167,17 @@ export default function RegisterPage() {
         }
         break;
       case 2:
-        if (!formData.ktmFile) errors.ktmFile = 'File KTM harus diunggah';
+        if (!formData.ktm) {
+          errors.ktm = 'File KTM harus diunggah';
+        } else {
+          // Double check file validation
+          const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+          if (!allowedTypes.includes(formData.ktm.type)) {
+            errors.ktm = 'File harus berupa gambar (JPEG, JPG, PNG, atau WebP)';
+          } else if (formData.ktm.size > 5 * 1024 * 1024) {
+            errors.ktm = 'Ukuran file maksimal 5MB';
+          }
+        }
         break;
     }
     
@@ -152,16 +196,17 @@ export default function RegisterPage() {
     
     try {
       const userData = {
-        nim: formData.nim,
-        name: formData.fullName,
-        email: formData.email,
+        nim: formData.nim.trim(),
+        name: formData.fullName.trim(),
+        email: formData.email.trim(),
         password: formData.password
       };
       
-      await registerStudent(userData);
+      await registerStudent(userData, formData.ktm);
       handleNext(); // Go to success step
     } catch (error) {
       console.error('Registration error:', error);
+      // Error handling sudah di handle di authStore
     }
   };
 
@@ -397,18 +442,18 @@ export default function RegisterPage() {
                 sx={{
                   display: 'block',
                   border: '3px dashed',
-                  borderColor: formData.ktmFile ? 'success.main' : alpha(theme.palette.primary.main, 0.5),
+                  borderColor: formData.ktm ? 'success.main' : alpha(theme.palette.primary.main, 0.5),
                   borderRadius: 4,
                   p: 6,
                   textAlign: 'center',
-                  bgcolor: formData.ktmFile 
+                  bgcolor: formData.ktm 
                     ? alpha(theme.palette.success.main, 0.1) 
                     : alpha(theme.palette.primary.main, 0.05),
                   cursor: 'pointer',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   '&:hover': {
-                    borderColor: formData.ktmFile ? 'success.main' : 'primary.main',
-                    bgcolor: formData.ktmFile 
+                    borderColor: formData.ktm ? 'success.main' : 'primary.main',
+                    bgcolor: formData.ktm 
                       ? alpha(theme.palette.success.main, 0.15) 
                       : alpha(theme.palette.primary.main, 0.1),
                     transform: 'translateY(-4px)',
@@ -416,7 +461,7 @@ export default function RegisterPage() {
                   }
                 }}
               >
-                {formData.ktmFile ? (
+                {formData.ktm ? (
                   <Slide direction="up" in mountOnEnter unmountOnExit>
                     <Box>
                       <CheckCircle 
@@ -431,7 +476,7 @@ export default function RegisterPage() {
                         File Berhasil Dipilih!
                       </Typography>
                       <Chip 
-                        label={formData.ktmFile.name} 
+                        label={formData.ktm.name} 
                         color="success" 
                         variant="outlined"
                         sx={{ mt: 1, fontSize: '1rem', py: 2 }}

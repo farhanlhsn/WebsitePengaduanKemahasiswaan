@@ -16,7 +16,7 @@ import { useNavigate } from 'react-router-dom';
 
 const ProfilePage = () => {
   const theme = useTheme();
-  const { user, devices } = useAuthStore();
+  const { user, devices, getUserDevices } = useAuthStore();
   const { updateUser, loading, error, clearError } = useUserStore();
   const currentDevice = devices.find(device => device.isCurrent);
   const navigate = useNavigate();
@@ -25,8 +25,6 @@ const ProfilePage = () => {
     name: '',
     email: '',
     nim: '',
-    fakultas: '',
-    address: ''
   });
 
   useEffect(() => {
@@ -35,9 +33,8 @@ const ProfilePage = () => {
         name: user.name || '',
         email: user.email || '',
         nim: user.nim || '',
-        fakultas: user.fakultas || '',
-        address: user.address || ''
       });
+      getUserDevices();
     }
   }, [user]);
 
@@ -63,19 +60,21 @@ const ProfilePage = () => {
       name: user.name || '',
       email: user.email || '',
       nim: user.nim || '',
-      fakultas: user.fakultas || '',
       address: user.address || ''
     });
     setEditMode(false);
     clearError();
   };
 
-  const formatDate = (dateString) => {
+  const formatLastAccess = (dateString) => {
     if (!dateString) return 'Tidak diketahui';
-    return new Date(dateString).toLocaleDateString('id-ID', {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
       day: 'numeric',
       month: 'long',
-      year: 'numeric'
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -235,25 +234,6 @@ const ProfilePage = () => {
 
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Fakultas
-                  </Typography>
-                  {editMode ? (
-                    <TextField
-                      fullWidth
-                      size="small"
-                      value={formData.fakultas}
-                      onChange={handleInputChange('fakultas')}
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    />
-                  ) : (
-                    <Typography variant="body1" fontWeight={500}>
-                      {user.fakultas || '-'}
-                    </Typography>
-                  )}
-                </Box>
-
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
                     NIM
                   </Typography>
                   {editMode ? (
@@ -293,7 +273,7 @@ const ProfilePage = () => {
                     Login Terakhir
                   </Typography>
                   <Typography variant="body1" fontWeight={500}>
-                    {formatDate(currentDevice?.lastAccess)}
+                    {formatLastAccess(currentDevice?.lastAccess)}
                   </Typography>
                 </Box>
 

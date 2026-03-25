@@ -16,7 +16,9 @@ const StyledToolbar = styled(Paper)(({ theme }) => ({
   gap: theme.spacing(0.5),
 }));
 
-const StyledEditor = styled(Box)(({ theme, error }) => ({
+const StyledEditor = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'error',
+})(({ theme, error }) => ({
   minHeight: '200px',
   padding: theme.spacing(2),
   fontSize: '16px',
@@ -86,7 +88,9 @@ const StyledEditor = styled(Box)(({ theme, error }) => ({
   }),
 }));
 
-const StyledContainer = styled(Paper)(({ theme, error }) => ({
+const StyledContainer = styled(Paper, {
+  shouldForwardProp: (prop) => prop !== 'error',
+})(({ theme, error }) => ({
   border: `1px solid ${error ? theme.palette.error.main : theme.palette.divider}`,
   borderRadius: theme.shape.borderRadius,
   overflow: 'hidden',

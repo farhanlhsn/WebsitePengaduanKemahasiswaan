@@ -590,7 +590,7 @@ const ImprovedReportsTable = React.memo(({
                   loading={loading}
                   loadingText="Memuat..."
                   variant="outlined"
-                  size="large"
+                  size="small"
                 >
                   Muat Lebih Banyak
                 </EnhancedButton>

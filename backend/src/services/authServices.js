@@ -4,11 +4,14 @@ const jwt = require('jsonwebtoken');
 const { getDeviceInfo } = require('../utils/deviceDetection');
 const axios = require('axios');
 const dotenv = require('dotenv');
+const { getLogger } = require('../utils/logger');
+const log = getLogger('auth:service');
 dotenv.config();
 
 class AuthServices {
   async login(data, req) {
     try {
+      log.info('Service login invoked', { email: data?.email });
       const user = await prisma.user.findUnique({
         where: { email: data.email }
       });
@@ -24,7 +27,7 @@ class AuthServices {
 
       // Access token 
       const accessToken = jwt.sign(
-        { userId: user.id, role: user.role },
+        { userId: user.id, role: user.role, name: user.name },
         process.env.JWT_SECRET,
         { expiresIn: '15m' } 
       );
@@ -68,10 +71,11 @@ class AuthServices {
         }
       });
 
-      return {
+      const result = {
         id: user.id,
         name: user.name,
         email: user.email,
+        nim : user.nim,
         role: user.role,
         isVerified: user.isVerified,
         accessToken,
@@ -81,8 +85,11 @@ class AuthServices {
           deviceType: deviceInfo.deviceType
         }
       };
+      log.info('Service login success', { userId: user.id });
+      return result;
     } catch (error) {
-      throw new Error(`Login failed: ${error.message}`);
+      log.warn('Service login failed', { email: data?.email, error: error.message });
+      throw new Error(`${error.message}`);
     }
   }
 
@@ -108,6 +115,7 @@ class AuthServices {
           where: { id: device.id }
         });
       }
+      log.info('Device limit enforced', { userId, removed: devicesToRemove.map(d => d.deviceId) });
     }
   }
 
@@ -156,6 +164,7 @@ class AuthServices {
       };
     }));
 
+    log.info('Service getUserDevices', { userId, count: devicesWithLocation.length });
     return devicesWithLocation;
   }
 
@@ -169,6 +178,7 @@ class AuthServices {
         deviceId: deviceId
       }
     });
+    log.info('Service logoutDevice', { userId, deviceId });
   }
 
   /**
@@ -181,6 +191,7 @@ class AuthServices {
         id: parseInt(id)
       }
     });
+    log.info('Service logoutDeviceById', { userId, id });
   }
 
   /**
@@ -193,6 +204,7 @@ class AuthServices {
         deviceId: { not: currentDeviceId }
       }
     });
+    log.info('Service logoutAllOtherDevices', { userId, currentDeviceId });
   }
 
   async logout(userId, refreshToken) {
@@ -203,28 +215,72 @@ class AuthServices {
         token: refreshToken
       }
     });
+    log.info('Service logout', { userId });
   }
 
-  async registerStudent(studentData) {
-    const hashedPassword = await bcrypt.hash(studentData.password, 10);
-    return prisma.user.create({
-      data: {
-        ...studentData,
-        password: hashedPassword,
-        role: 'MAHASISWA'
+  async registerStudent(studentData, ktmPath) {
+    try {
+      // Validasi data
+      const { name, email, password, nim } = studentData;
+      
+      if (!name || !email || !password || !nim) {
+        throw new Error('Missing required fields');
       }
-    });
+      
+      // Cek email sudah ada atau belum
+      const existingUserByEmail = await prisma.user.findUnique({
+        where: { email: email }
+      });
+      
+      if (existingUserByEmail) {
+        throw new Error('Email already exists');
+      }
+      
+      // Cek NIM sudah ada atau belum
+      const existingUserByNim = await prisma.user.findUnique({
+        where: { nim: nim }
+      });
+      
+      if (existingUserByNim) {
+        throw new Error('NIM already exists');
+      }
+      
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // Create user
+      const user = await prisma.user.create({
+        data: {
+          name: name,
+          email: email,
+          password: hashedPassword,
+          nim: nim,
+          role: 'MAHASISWA',
+          ktmPath: ktmPath,
+          isVerified: false // Default false, perlu verifikasi admin
+        }
+      });
+      
+      log.info('Service registerStudent success', { userId: user.id, email: user.email });
+      return user;
+    } catch (error) {
+      // Re-throw error untuk handling di controller
+      log.warn('Service registerStudent failed', { email: studentData?.email, error: error.message });
+      throw error;
+    }
   }
 
   async registerAdmin(adminData) {
     const hashedPassword = await bcrypt.hash(adminData.password, 10);
-    return prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         ...adminData,
         password: hashedPassword,
         role: 'ADMIN'
       }
     });
+    log.info('Service registerAdmin success', { userId: user.id, email: user.email });
+    return user;
   }
 
   /**

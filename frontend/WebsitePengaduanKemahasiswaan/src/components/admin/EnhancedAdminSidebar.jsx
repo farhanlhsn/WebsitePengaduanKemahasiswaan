@@ -1,550 +1,611 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
-  Box, Drawer, List, ListItem, ListItemIcon, ListItemText, Avatar, Typography, 
-  Divider, Badge, Button, Collapse, useTheme, alpha, Tooltip
+  Box, 
+  Drawer, 
+  List, 
+  ListItem, 
+  ListItemIcon, 
+  ListItemText, 
+  Avatar, 
+  Typography, 
+  Badge, 
+  IconButton,
+  Tooltip,
+  Divider,
+  useMediaQuery
 } from '@mui/material';
 import { 
-  Dashboard, People, Assignment, Category, Analytics, Security, Settings, 
-  HelpOutline, Logout, AdminPanelSettings, ExpandLess, ExpandMore,
-  TrendingUp, Notifications, DevicesOther, Person, Schedule, Chat
+  Dashboard, 
+  People, 
+  Assignment, 
+  Analytics, 
+  Category, 
+  Security, 
+  Chat, 
+  Settings, 
+  HelpOutline, 
+  Logout, 
+  AdminPanelSettings, 
+  ChevronLeft,
+  History,
+  PersonAdd
 } from '@mui/icons-material';
-import { styled } from '@mui/material/styles';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { alpha, styled, useTheme } from '@mui/material/styles';
+import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
-import DeviceManagement from '../DeviceManagement';
 import UBHLogo from '../ui/UBHLogo';
 
-const StyledListItem = styled(ListItem)(({ theme, active, level = 0 }) => ({
-  borderRadius: 12,
-  margin: '4px 16px',
-  padding: '12px 16px',
-  paddingLeft: 16 + (level * 24),
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  cursor: 'pointer',
+// Enhanced StyledListItem with better animations and states
+const StyledListItem = styled(ListItem)(({ theme, active, disabled, collapsed }) => ({
+  borderRadius: collapsed ? 12 : 16,
+  padding: collapsed ? '12px' : '14px 20px',
   position: 'relative',
   overflow: 'hidden',
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+  backgroundColor: active ? alpha(theme.palette.primary.main, 0.15) : 'transparent',
+  border: active ? `2px solid ${alpha(theme.palette.primary.main, 0.3)}` : '2px solid transparent',
+  opacity: disabled ? 0.5 : 1,
+  justifyContent: collapsed ? 'center' : 'flex-start',
+  minHeight: collapsed ? 48 : 'auto',
+  width: collapsed ? 48 : 'auto',
+  margin: collapsed ? '4px auto' : '6px 12px',
   
-  // Active state styling
-  backgroundColor: active 
-    ? alpha(theme.palette.primary.main, 0.12) 
-    : 'transparent',
-  border: active 
-    ? `2px solid ${alpha(theme.palette.primary.main, 0.3)}` 
-    : '2px solid transparent',
+  // Glassmorphism effect for active items
+  ...(active && {
+    backdropFilter: 'blur(10px)',
+    boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.2)}`,
+  }),
   
-  // Hover effects
-  '&:hover': {
-    backgroundColor: active 
-      ? alpha(theme.palette.primary.main, 0.16) 
-      : alpha(theme.palette.grey[500], 0.08),
-    transform: 'translateX(4px)',
-    boxShadow: active 
-      ? `0 8px 24px ${alpha(theme.palette.primary.main, 0.25)}` 
-      : '0 4px 12px rgba(0,0,0,0.1)',
-  },
-  
-  // Active state glow effect
   '&::before': {
     content: '""',
     position: 'absolute',
     top: 0,
     left: 0,
-    right: 0,
-    bottom: 0,
+    width: '100%',
+    height: '100%',
     background: active 
-      ? `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.1)}, transparent)`
+      ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.primary.main, 0.05)})`
       : 'transparent',
-    borderRadius: 'inherit',
     transition: 'all 0.3s ease',
+    zIndex: -1,
   },
   
-  // Icon styling
+  '&:hover': {
+    backgroundColor: active 
+      ? alpha(theme.palette.primary.main, 0.2) 
+      : alpha(theme.palette.grey[500], 0.08),
+    transform: disabled ? 'none' : (collapsed ? 'scale(1.05)' : 'translateX(8px) scale(1.02)'),
+    boxShadow: disabled 
+      ? 'none' 
+      : `0 12px 40px ${alpha(theme.palette.grey[500], 0.15)}`,
+    
+    '&::before': {
+      background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)}, ${alpha(theme.palette.primary.main, 0.03)})`,
+    },
+    
+    '& .MuiListItemIcon-root': {
+      transform: 'scale(1.1)',
+      color: theme.palette.primary.main,
+    },
+    
+    '& .sidebar-item-indicator': {
+      opacity: 1,
+      transform: 'scale(1)',
+    }
+  },
+  
   '& .MuiListItemIcon-root': {
-    minWidth: 40,
+    minWidth: collapsed ? 0 : 48,
+    justifyContent: 'center',
     color: active ? theme.palette.primary.main : theme.palette.text.secondary,
-    transition: 'all 0.3s ease',
-    zIndex: 1,
-    position: 'relative',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   
-  // Text styling
+  '& .MuiListItemText-root': {
+    opacity: collapsed ? 0 : 1,
+    transform: collapsed ? 'translateX(-20px)' : 'translateX(0)',
+    transition: 'all 0.3s ease',
+    margin: collapsed ? 0 : undefined,
+  },
+  
   '& .MuiListItemText-primary': {
     fontWeight: active ? 700 : 500,
     color: active ? theme.palette.primary.main : theme.palette.text.primary,
     fontSize: '0.95rem',
     transition: 'all 0.3s ease',
-    zIndex: 1,
-    position: 'relative',
+    whiteSpace: 'nowrap',
   },
   
-  // Animation for active state
-  ...(active && {
-    animation: 'slideIn 0.3s ease-out',
+  '& .sidebar-item-indicator': {
+    position: 'absolute',
+    right: collapsed ? 6 : 16,
+    width: collapsed ? 4 : 6,
+    height: collapsed ? 4 : 6,
+    borderRadius: '50%',
+    backgroundColor: theme.palette.primary.main,
+    opacity: active ? 1 : 0,
+    transform: active ? 'scale(1)' : 'scale(0)',
+    transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+  }
+}));
+
+// Enhanced toggle button with better positioning and animation
+const SidebarToggleButton = styled(IconButton)(({ theme, open }) => ({
+  position: 'absolute',
+  top: '32px',
+  right: -18,
+  zIndex: theme.zIndex.drawer + 2,
+  width: 36,
+  height: 36,
+  backgroundColor: alpha(theme.palette.background.paper, 0.95),
+  border: `2px solid ${theme.palette.divider}`,
+  backdropFilter: 'blur(12px)',
+  boxShadow: `0 4px 20px ${alpha(theme.palette.grey[500], 0.2)}`,
+  
+  '&:hover': { 
+    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+    borderColor: alpha(theme.palette.primary.main, 0.3),
+    transform: 'scale(1.1)',
+    boxShadow: `0 6px 25px ${alpha(theme.palette.primary.main, 0.25)}`,
+  },
+  
+  '& .MuiSvgIcon-root': {
+    fontSize: '1.2rem',
+    transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+    transform: open ? 'rotate(0deg)' : 'rotate(180deg)',
+    color: theme.palette.primary.main,
+  },
+}));
+
+// Enhanced drawer paper styling function
+const getDrawerPaperStyles = (theme, sidebarOpen, drawerWidth) => ({
+  width: sidebarOpen ? drawerWidth : 72, // Mini width when collapsed
+  overflowX: 'hidden',
+  background: `linear-gradient(180deg, 
+    ${alpha(theme.palette.background.paper, 0.98)} 0%, 
+    ${alpha(theme.palette.background.paper, 0.95)} 100%)`,
+  backdropFilter: 'blur(20px)',
+  borderRight: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+  transition: theme.transitions.create('width', {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.enteringScreen,
   }),
+});
+
+// Enhanced user profile section
+const UserProfileSection = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(2),
+  borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+  background: `linear-gradient(135deg, 
+    ${alpha(theme.palette.primary.main, 0.02)} 0%, 
+    ${alpha(theme.palette.secondary.main, 0.02)} 100%)`,
+  backdropFilter: 'blur(10px)',
+  position: 'relative',
+  flexShrink: 0,
   
-  '@keyframes slideIn': {
-    '0%': {
-      transform: 'translateX(-10px)',
-      opacity: 0.8,
-    },
-    '100%': {
-      transform: 'translateX(0)',
-      opacity: 1,
-    },
-  },
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: '80%',
+    height: '1px',
+    background: `linear-gradient(90deg, transparent, ${theme.palette.primary.main}, transparent)`,
+    opacity: 0.3,
+  }
 }));
 
-const StyledBadge = styled(Badge)(({ theme }) => ({
-  '& .MuiBadge-badge': {
-    backgroundColor: theme.palette.error.main,
-    color: 'white',
-    fontWeight: 600,
-    fontSize: '0.7rem',
-    minWidth: '18px',
-    height: '18px',
-    borderRadius: '9px',
-    animation: 'pulse 2s infinite',
-  },
-  
-  '@keyframes pulse': {
-    '0%': {
-      transform: 'scale(1)',
-      boxShadow: `0 0 0 0 ${alpha(theme.palette.error.main, 0.7)}`,
-    },
-    '70%': {
-      transform: 'scale(1.1)',
-      boxShadow: `0 0 0 10px ${alpha(theme.palette.error.main, 0)}`,
-    },
-    '100%': {
-      transform: 'scale(1)',
-      boxShadow: `0 0 0 0 ${alpha(theme.palette.error.main, 0)}`,
-    },
-  },
-}));
-
-const EnhancedAdminSidebar = ({ 
+const AdminSidebar = ({ 
   open, 
   onClose, 
-  drawerWidth = 280, 
+  drawerWidth = 300, 
   activeMenu, 
   onMenuChange,
-  stats = {} 
+  sidebarOpen,
+  onSidebarToggle
 }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { logout, user } = useAuthStore();
-  const [deviceModalOpen, setDeviceModalOpen] = useState(false);
-  const [expandedMenus, setExpandedMenus] = useState({});
-
-  // Persist active menu in localStorage
-  useEffect(() => {
-    const savedActiveMenu = localStorage.getItem('admin-active-menu');
-    if (savedActiveMenu && onMenuChange) {
-      onMenuChange(savedActiveMenu);
-    }
-  }, [onMenuChange]);
-
-  useEffect(() => {
-    if (activeMenu) {
-      localStorage.setItem('admin-active-menu', activeMenu);
-    }
-  }, [activeMenu]);
-
-  // Enhanced menu structure with nested items and badges
-  const menuItems = [
-    {
-      id: 'dashboard',
-      text: 'Dashboard Overview',
-      icon: <Dashboard />,
-      path: '/admin',
-      badge: null,
-      description: 'Ringkasan sistem dan statistik'
-    },
-    {
-      id: 'users',
-      text: 'Manajemen Pengguna',
-      icon: <People />,
-      path: '/admin/users',
-      badge: stats.pendingVerifications || 0,
-      description: 'Kelola pengguna dan verifikasi',
-      subItems: [
-        { id: 'users-list', text: 'Daftar Pengguna', path: '/admin/users' },
-        { id: 'users-verification', text: 'Verifikasi Pending', path: '/admin/users/verification', badge: stats.pendingVerifications },
-        { id: 'users-analytics', text: 'Analitik Pengguna', path: '/admin/users/analytics' }
-      ]
-    },
-    {
-      id: 'reports',
-      text: 'Manajemen Laporan',
-      icon: <Assignment />,
-      path: '/admin/reports',
-      badge: stats.pendingReports || 0,
-      description: 'Kelola dan tindak lanjuti laporan',
-      subItems: [
-        { id: 'reports-all', text: 'Semua Laporan', path: '/admin/reports' },
-        { id: 'reports-pending', text: 'Menunggu Review', path: '/admin/reports/pending', badge: stats.pendingReports },
-        { id: 'reports-in-progress', text: 'Sedang Diproses', path: '/admin/reports/in-progress' },
-        { id: 'reports-resolved', text: 'Selesai', path: '/admin/reports/resolved' }
-      ]
-    },
-    {
-      id: 'chat',
-      text: 'Chat & Komunikasi',
-      icon: <Chat />,
-      path: '/admin/chat',
-      badge: stats.unreadMessages || 0,
-      description: 'Komunikasi dengan pelapor'
-    },
-    {
-      id: 'analytics',
-      text: 'Analytics & Reports',
-      icon: <Analytics />,
-      path: '/admin/analytics',
-      badge: null,
-      description: 'Laporan dan analisis data'
-    },
-    {
-      id: 'categories',
-      text: 'Kategori Laporan',
-      icon: <Category />,
-      path: '/admin/categories',
-      badge: null,
-      description: 'Kelola kategori pengaduan'
-    },
-    {
-      id: 'system',
-      text: 'Sistem & Keamanan',
-      icon: <Security />,
-      path: '/admin/system',
-      badge: null,
-      description: 'Pengaturan sistem dan keamanan'
-    }
-  ];
-
-  const bottomMenuItems = [
-    {
-      id: 'profile',
-      text: 'Profil Admin',
-      icon: <Person />,
-      action: () => navigate('/admin/profile')
-    },
-    {
-      id: 'devices',
-      text: 'Perangkat',
-      icon: <DevicesOther />,
-      action: () => setDeviceModalOpen(true)
-    },
-    {
-      id: 'settings',
-      text: 'Pengaturan',
-      icon: <Settings />,
-      action: () => navigate('/admin/settings')
-    },
-    {
-      id: 'help',
-      text: 'Bantuan',
-      icon: <HelpOutline />,
-      action: () => navigate('/help')
-    },
-    {
-      id: 'logout',
-      text: 'Logout',
-      icon: <Logout />,
-      action: handleLogout,
-      color: 'error.main'
-    }
-  ];
+  const [hoveredItem, setHoveredItem] = useState(null);
 
   const isActive = (menuId) => activeMenu === menuId;
 
-  const handleMenuClick = (item) => {
-    if (item.subItems) {
-      setExpandedMenus(prev => ({
-        ...prev,
-        [item.id]: !prev[item.id]
-      }));
-    } else {
-      if (onMenuChange) {
-        onMenuChange(item.id);
-      }
-      if (onClose && window.innerWidth < 600) {
-        onClose();
-      }
-    }
-  };
+  const handleMenuItemClick = useCallback((item) => {
+    if (item.disabled) return;
 
-  const handleSubMenuClick = (subItem) => {
-    if (onMenuChange) {
-      onMenuChange(subItem.id);
+    if (item.syncWithState && item.id && onMenuChange) {
+      onMenuChange(item.id);
     }
-    if (onClose && window.innerWidth < 600) {
+
+    if (item.path) {
+      navigate(item.path);
+    } else if (item.action) {
+      item.action();
+    }
+
+    if (isMobile && onClose) {
       onClose();
     }
+  }, [navigate, onMenuChange, isMobile, onClose]);
+
+  // Enhanced admin menu with better organization
+  const adminMenu = [
+    { 
+      id: 'dashboard', 
+      text: 'Dashboard', 
+      icon: <Dashboard />, 
+      path: '/admin',
+      description: 'Ringkasan sistem dan aktivitas',
+      syncWithState: true
+    },
+    { 
+      id: 'users', 
+      text: 'Manajemen Pengguna', 
+      icon: <People />, 
+      path: '/admin/users',
+      description: 'Kelola pengguna dan akses',
+      syncWithState: true
+    },
+    { 
+      id: 'unverified-users', 
+      text: 'Unverified Users', 
+      icon: <PersonAdd />, 
+      path: '/admin/unverified-users',
+      description: 'Verifikasi pengguna baru'
+    },
+    { 
+      id: 'reports', 
+      text: 'Semua Laporan', 
+      icon: <Assignment />, 
+      path: '/admin/reports',
+      description: 'Monitor dan kelola laporan',
+      syncWithState: true
+    },
+    { 
+      id: 'chat', 
+      text: 'Chat & Komunikasi', 
+      icon: <Chat />, 
+      path: '/admin/chat',
+      description: 'Komunikasi dengan mahasiswa',
+      syncWithState: true
+    },
+    { 
+      id: 'analytics', 
+      text: 'Analytics', 
+      icon: <Analytics />, 
+      path: '/admin/analytics',
+      description: 'Analisis dan laporan statistik'
+    },
+    { 
+      id: 'categories', 
+      text: 'Kategori Laporan', 
+      icon: <Category />, 
+      path: '/admin/categories',
+      description: 'Kelola kategori pengaduan'
+    },
+    { 
+      id: 'audit-logs', 
+      text: 'Audit Logs', 
+      icon: <History />, 
+      path: '/admin/audit-logs',
+      description: 'Riwayat aktivitas admin'
+    },
+    { 
+      id: 'system', 
+      text: 'Sistem & Keamanan', 
+      icon: <Security />, 
+      path: '/admin/system',
+      description: 'Pengaturan sistem dan keamanan'
+    },
+  ];
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
   };
 
-  async function handleLogout() {
-    try {
-      await logout();
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  }
+  const bottomMenu = [
+    { 
+      text: 'Pengaturan', 
+      icon: <Settings />, 
+      path: '/admin/settings',
+      description: 'Konfigurasi sistem'
+    },
+    { 
+      text: 'Bantuan', 
+      icon: <HelpOutline />, 
+      path: '/help',
+      description: 'Panduan dan dukungan'
+    },
+    { 
+      text: 'Logout', 
+      icon: <Logout />, 
+      action: handleLogout, 
+      color: 'error.main',
+      description: 'Keluar dari sistem'
+    },
+  ];
+
+  const MenuSection = ({ title, items, spacing = 1 }) => (
+    <Box sx={{ mb: sidebarOpen ? 1.5 : 1 }}>
+      {title && !sidebarOpen && (
+        // Mini divider for collapsed state
+        <Box sx={{ 
+          mx: 2, 
+          my: 0.5, 
+          height: 1, 
+          bgcolor: alpha(theme.palette.divider, 0.3) 
+        }} />
+      )}
+      {title && sidebarOpen && (
+        <Typography 
+          variant="overline" 
+          sx={{ 
+            px: 3, 
+            py: 0.5, 
+            display: 'block',
+            fontWeight: 700,
+            fontSize: '0.75rem',
+            color: 'text.secondary',
+            letterSpacing: '0.5px'
+          }}
+        >
+          {title}
+        </Typography>
+      )}
+      <List sx={{ py: spacing }}>
+        {items.map((item) => (
+          <Tooltip 
+            key={item.id || item.text}
+            title={!sidebarOpen ? item.text : ""} 
+            placement="right"
+            arrow
+          >
+            <StyledListItem 
+              onClick={() => handleMenuItemClick(item)} 
+              active={isActive(item.id) ? 1 : 0}
+              collapsed={!sidebarOpen ? 1 : 0}
+              onMouseEnter={() => setHoveredItem(item.id || item.text)}
+              onMouseLeave={() => setHoveredItem(null)}
+            >
+              <ListItemIcon>
+                {item.badge ? (
+                  <Badge 
+                    badgeContent={item.badge} 
+                    color="error"
+                    sx={{
+                      '& .MuiBadge-badge': {
+                        animation: 'pulse 2s infinite',
+                        fontSize: sidebarOpen ? '0.75rem' : '0.6rem',
+                        minWidth: sidebarOpen ? 20 : 16,
+                        height: sidebarOpen ? 20 : 16,
+                        '@keyframes pulse': {
+                          '0%': { transform: 'scale(1)' },
+                          '50%': { transform: 'scale(1.1)' },
+                          '100%': { transform: 'scale(1)' }
+                        }
+                      }
+                    }}
+                  >
+                    {item.icon}
+                  </Badge>
+                ) : item.icon}
+              </ListItemIcon>
+              {sidebarOpen && (
+                <ListItemText 
+                  primary={item.text}
+                  primaryTypographyProps={{ 
+                    color: item.color
+                  }} 
+                />
+              )}
+              <Box className="sidebar-item-indicator" />
+            </StyledListItem>
+          </Tooltip>
+        ))}
+      </List>
+    </Box>
+  );
 
   const drawerContent = (
-    <Box sx={{ 
-      height: '100vh', 
+    <Box sx={{
+      height: '100%', 
       display: 'flex', 
-      flexDirection: 'column',
-      background: `linear-gradient(180deg, 
-        ${alpha(theme.palette.background.paper, 0.98)} 0%, 
-        ${alpha(theme.palette.background.default, 0.95)} 100%)`,
-      backdropFilter: 'blur(20px)',
-      overflowX: 'hidden',
+      flexDirection: 'column', 
+      overflow: 'hidden',
     }}>
-      {/* Enhanced Logo Section */}
+      {/* Enhanced Header */}
       <Box sx={{ 
-        p: 3, 
+        p: sidebarOpen ? 3 : 1.5, 
         borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
         background: `linear-gradient(135deg, 
           ${alpha(theme.palette.primary.main, 0.05)} 0%, 
-          ${alpha(theme.palette.secondary.main, 0.05)} 100%)`
+          ${alpha(theme.palette.secondary.main, 0.03)} 100%)`,
+        backdropFilter: 'blur(10px)',
+        position: 'relative',
+        minHeight: sidebarOpen ? 'auto' : 80,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center'
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-          <UBHLogo
-            size="medium"
-            style={{
-              filter: `drop-shadow(0 4px 12px ${alpha(theme.palette.primary.main, 0.3)})`
-            }}
-            loading="eager"
-          />
-          <Box>
-            <Typography variant="h6" fontWeight={800} sx={{ 
-              fontSize: '1.3rem',
-              background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              lineHeight: 1.2
-            }}>
-              Admin Portal
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
-              Sistem Pengaduan UBH
-            </Typography>
-          </Box>
-        </Box>
-      </Box>
-
-      {/* Main Menu */}
-      <Box sx={{ 
-        flex: 1,
-        py: 2, 
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        '&::-webkit-scrollbar': {
-          width: 6,
-        },
-        '&::-webkit-scrollbar-track': {
-          background: alpha(theme.palette.grey[300], 0.2),
-        },
-        '&::-webkit-scrollbar-thumb': {
-          background: alpha(theme.palette.grey[500], 0.3),
-          borderRadius: 3,
-        },
-      }}>
-        <List sx={{ px: 1 }}>
-          {menuItems.map((item) => (
-            <Box key={item.id}>
-              <Tooltip 
-                title={item.description} 
-                placement="right" 
-                arrow
-                enterDelay={500}
-              >
-                <StyledListItem 
-                  onClick={() => handleMenuClick(item)}
-                  active={isActive(item.id)}
-                >
-                  <ListItemIcon>
-                    {item.badge && item.badge > 0 ? (
-                      <StyledBadge badgeContent={item.badge}>
-                        {item.icon}
-                      </StyledBadge>
-                    ) : item.icon}
-                  </ListItemIcon>
-                  <ListItemText primary={item.text} />
-                  {item.subItems && (
-                    expandedMenus[item.id] ? <ExpandLess /> : <ExpandMore />
-                  )}
-                </StyledListItem>
-              </Tooltip>
-              
-              {/* Sub Menu Items */}
-              {item.subItems && (
-                <Collapse in={expandedMenus[item.id]} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
-                    {item.subItems.map((subItem) => (
-                      <Tooltip 
-                        key={subItem.id}
-                        title={subItem.text} 
-                        placement="right" 
-                        arrow
-                      >
-                        <StyledListItem 
-                          level={1}
-                          onClick={() => handleSubMenuClick(subItem)}
-                          active={isActive(subItem.id)}
-                        >
-                          <ListItemIcon>
-                            {subItem.badge && subItem.badge > 0 ? (
-                              <StyledBadge badgeContent={subItem.badge}>
-                                <TrendingUp fontSize="small" />
-                              </StyledBadge>
-                            ) : (
-                              <TrendingUp fontSize="small" />
-                            )}
-                          </ListItemIcon>
-                          <ListItemText 
-                            primary={subItem.text}
-                            primaryTypographyProps={{ fontSize: '0.875rem' }}
-                          />
-                        </StyledListItem>
-                      </Tooltip>
-                    ))}
-                  </List>
-                </Collapse>
-              )}
-            </Box>
-          ))}
-        </List>
-      </Box>
-
-      {/* Bottom Menu */}
-      <Box sx={{ 
-        borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`, 
-        py: 2,
-        background: `linear-gradient(135deg, 
-          ${alpha(theme.palette.background.default, 0.8)} 0%, 
-          ${alpha(theme.palette.background.paper, 0.9)} 100%)`
-      }}>
-        <List sx={{ px: 1 }}>
-          {bottomMenuItems.map((item) => (
-            <StyledListItem 
-              key={item.id}
-              onClick={item.action}
-            >
-              <ListItemIcon sx={{ 
-                color: item.color || 'inherit'
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: sidebarOpen ? 2 : 0, 
+          mb: sidebarOpen ? 1 : 0,
+          justifyContent: sidebarOpen ? 'flex-start' : 'center'
+        }}>
+          <UBHLogo size={sidebarOpen ? "large" : "small"} />
+          {sidebarOpen && (
+            <Box>
+              <Typography variant="h6" fontWeight={800} sx={{ 
+                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                lineHeight: 1.2
               }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText 
-                primary={item.text}
-                primaryTypographyProps={{ 
-                  color: item.color || 'inherit',
-                  fontSize: '0.9rem'
-                }}
-              />
-            </StyledListItem>
-          ))}
-        </List>
-      </Box>
-
-      {/* Enhanced User Info */}
-      <Box sx={{ 
-        p: 3, 
-        borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-        background: `linear-gradient(135deg, 
-          ${alpha(theme.palette.primary.main, 0.05)} 0%, 
-          ${alpha(theme.palette.secondary.main, 0.05)} 100%)`
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Avatar sx={{ 
-            width: 48, 
-            height: 48, 
-            bgcolor: 'primary.main',
-            boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
-            border: `2px solid ${alpha(theme.palette.primary.main, 0.2)}`
-          }}>
-            <AdminPanelSettings />
-          </Avatar>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="body2" fontWeight={700} noWrap>
-              {user?.name || 'Administrator'}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" noWrap>
-              {user?.email || 'admin@bunghatta.ac.id'}
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-              <Box sx={{ 
-                width: 8, 
-                height: 8, 
-                borderRadius: '50%', 
-                bgcolor: 'success.main',
-                animation: 'pulse 2s infinite'
-              }} />
-              <Typography variant="caption" color="success.main" fontWeight={600}>
-                Online
+                Portal Admin
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ opacity: 0.8 }}>
+                Sistem Pengaduan Mahasiswa
               </Typography>
             </Box>
-          </Box>
+          )}
         </Box>
+        
+        {/* Welcome message - only show when expanded */}
+        {sidebarOpen && (
+          <Box sx={{ 
+            mt: 1, 
+            p: 1.5, 
+            borderRadius: 2, 
+            bgcolor: alpha(theme.palette.primary.main, 0.05),
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
+          }}>
+            <Typography variant="body2" color="primary" fontWeight={600} sx={{ fontSize: '0.85rem' }}>
+              Selamat datang, {user?.name || 'Admin'}!
+            </Typography>
+          </Box>
+        )}
       </Box>
+
+      {/* Enhanced Menu Content */}
+      <Box sx={{ flex: 1, overflowY: 'auto', py: sidebarOpen ? 1 : 0.5, minHeight: 0 }}>
+        <MenuSection title="Menu Utama" items={adminMenu} spacing={0.5} />
+        
+        <Divider sx={{ mx: sidebarOpen ? 2 : 1, my: 1 }} />
+        
+        <MenuSection items={bottomMenu} spacing={0.5} />
+      </Box>
+
+      {/* Enhanced User Profile */}
+      {sidebarOpen && (
+        <UserProfileSection>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Avatar 
+              sx={{ 
+                bgcolor: 'success.main',
+                width: 48,
+                height: 48,
+                boxShadow: `0 4px 20px ${alpha(theme.palette.success.main, 0.3)}`,
+                border: `3px solid ${alpha(theme.palette.success.main, 0.1)}`
+              }}
+            >
+              <AdminPanelSettings sx={{ fontSize: '1.5rem' }} />
+            </Avatar>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" fontWeight={700} noWrap sx={{ 
+                color: 'text.primary',
+                mb: 0.5 
+              }}>
+                {user?.name || 'Administrator'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ 
+                opacity: 0.8,
+                fontSize: '0.75rem'
+              }}>
+                {user?.email}
+              </Typography>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1, 
+                mt: 0.5 
+              }}>
+                <Box sx={{ 
+                  width: 6, 
+                  height: 6, 
+                  borderRadius: '50%', 
+                  bgcolor: 'success.main',
+                }} />
+                <Typography variant="caption" color="success.main" sx={{ 
+                  fontSize: '0.7rem',
+                  fontWeight: 500
+                }}>
+                  Online
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        </UserProfileSection>
+      )}
+
+      {/* Mini user indicator when collapsed */}
+      {!sidebarOpen && (
+        <Box sx={{ 
+          p: 1.5, 
+          borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          display: 'flex',
+          justifyContent: 'center'
+        }}>
+          <Tooltip title={`${user?.name || 'Administrator'} - Admin Active`} placement="right" arrow>
+            <Avatar 
+              sx={{ 
+                bgcolor: 'success.main',
+                width: 36,
+                height: 36,
+                boxShadow: `0 2px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+                border: `2px solid ${alpha(theme.palette.success.main, 0.3)}`
+              }}
+            >
+              <AdminPanelSettings sx={{ fontSize: '1.2rem' }} />
+            </Avatar>
+          </Tooltip>
+        </Box>
+      )}
     </Box>
   );
 
   return (
     <>
-      {/* Device Management Modal */}
-      <DeviceManagement 
-        open={deviceModalOpen} 
-        onClose={() => setDeviceModalOpen(false)} 
-      />
-      
       {/* Mobile Drawer */}
-      <Drawer
-        variant="temporary"
-        open={open}
-        onClose={onClose}
-        ModalProps={{
-          keepMounted: true,
-        }}
-        sx={{
+      <Drawer 
+        variant="temporary" 
+        open={open} 
+        onClose={onClose} 
+        ModalProps={{ keepMounted: true }}
+        sx={{ 
           display: { xs: 'block', sm: 'none' },
           '& .MuiDrawer-paper': { 
-            boxSizing: 'border-box', 
             width: drawerWidth,
-            border: 'none',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-            overflowX: 'hidden',
-          },
+            background: `linear-gradient(180deg, 
+              ${alpha(theme.palette.background.paper, 0.98)} 0%, 
+              ${alpha(theme.palette.background.paper, 0.95)} 100%)`,
+            backdropFilter: 'blur(20px)',
+          }
         }}
       >
         {drawerContent}
       </Drawer>
       
       {/* Desktop Drawer */}
-      <Drawer
-        variant="permanent"
-        sx={{
-          display: { xs: 'none', sm: 'block' },
-          '& .MuiDrawer-paper': { 
-            boxSizing: 'border-box', 
-            width: drawerWidth,
-            border: 'none',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-            position: 'relative',
-            overflowX: 'hidden',
-          },
-        }}
-        open
-      >
-        {drawerContent}
-      </Drawer>
+      <Box sx={{ position: 'relative', display: { xs: 'none', sm: 'block' } }}>
+        <Drawer 
+          variant="permanent"
+          sx={{
+            '& .MuiDrawer-paper': {
+              position: 'relative',
+              ...getDrawerPaperStyles(theme, sidebarOpen, drawerWidth)
+            }
+          }}
+        >
+          {drawerContent}
+        </Drawer>
+        
+        <SidebarToggleButton 
+          onClick={onSidebarToggle} 
+          open={sidebarOpen}
+        >
+          <ChevronLeft />
+        </SidebarToggleButton>
+      </Box>
     </>
   );
 };
 
-export default EnhancedAdminSidebar;
+export default AdminSidebar;

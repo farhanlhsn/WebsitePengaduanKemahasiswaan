@@ -76,10 +76,10 @@ const useAuthStore = create(
       },
 
       // Register Student
-      registerStudent: async (userData) => {
+      registerStudent: async (userData, ktm) => {
         try {
           set({ loading: true, error: null });
-          const response = await apiRegisterStudent(userData);
+          const response = await apiRegisterStudent(userData, ktm);
           set({ loading: false });
           return response;
         } catch (error) {
