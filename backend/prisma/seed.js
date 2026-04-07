@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
@@ -20,6 +21,29 @@ function generateSlug(text) {
 
 async function main() {
   console.log('Start seeding ...');
+
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@kampus.ac.id';
+  const adminName = process.env.ADMIN_NAME || 'Admin';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin12345';
+
+  const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
+
+  await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {
+      name: adminName,
+      password: adminPasswordHash,
+      role: 'ADMIN',
+      isVerified: true,
+    },
+    create: {
+      name: adminName,
+      email: adminEmail,
+      password: adminPasswordHash,
+      role: 'ADMIN',
+      isVerified: true,
+    },
+  });
 
   const categories = [
     'Kekerasan Seksual',

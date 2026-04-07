@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -57,7 +57,7 @@ model Report {
   user               User?        @relation(fields: [userId], references: [id])
 
   @@index([userId, status, categoryId])
-  @@index([categoryId], map: "reports_categoryId_fkey")
+  @@index([categoryId], map: "reports_categoryId_idx")
   @@index([status])
   @@index([status, categoryId])
   @@map("reports")
@@ -92,7 +92,7 @@ model Message {
   attachments Attachment[]
 
   @@index([reportId, createdAt])
-  @@index([senderId], map: "messages_senderId_fkey")
+  @@index([senderId], map: "messages_senderId_idx")
   @@map("messages")
 }
 
