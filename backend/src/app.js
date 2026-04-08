@@ -9,6 +9,9 @@ const prisma = require('./utils/prisma');
 const errorHandler = require('./middlewares/errorHandler');
 const { Server } = require('socket.io');
 const path = require('path');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const uploadAuthMiddleware = require('./middlewares/uploadAuthMiddleware');
 
 const app = express();
 const server = app.listen(3000, () => {
@@ -103,6 +106,24 @@ io.on('connection', (socket) => {
   });
 });
 
+// Security: Helmet
+app.use(helmet({
+  crossOriginResourcePolicy: false, // Memastikan gambar/resource bisa dirender lintas origin
+}));
+
+// Security: Global Rate Limiter (500 request per 15 menit agar tidak terlalu ketat)
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 500,
+  message: {
+    status: 'error',
+    message: 'Terlalu banyak request dari IP ini, coba lagi nanti.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(globalLimiter);
+
 // Enable compression for all responses
 app.use(compression({
   level: 6, // Compression level (1-9, where 9 is best compression but slowest)
@@ -147,8 +168,8 @@ app.use(cookieParser()); // For parsing cookies
 app.use(morgan('dev')); // Logger untuk development
 app.use(deviceTrackingMiddleware); // Track device information
 
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Serve uploaded files statically with Authentication
+app.use('/uploads', uploadAuthMiddleware, express.static(path.join(__dirname, '../uploads')));
 
 // Make io instance available to routes
 app.set('io', io);

@@ -7,6 +7,19 @@ const path = require('path');
 const compressImagesMiddleware = require('../middlewares/compressImagesMiddleware');
 const { body, param } = require('express-validator');
 const validate = require('../middlewares/validationMiddleware');
+const rateLimit = require('express-rate-limit');
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 menit
+  max: 10, // batasan 10 request (sesuai permintaan, batas aman)
+  message: {
+    status: 'error',
+    message: 'Terlalu banyak percobaan login/registrasi dari IP ini, silakan coba lagi setelah 15 menit.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 
 const ktmStorage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, path.join(__dirname, '../../uploads/ktm')),
@@ -31,6 +44,7 @@ const ktmStorage = multer.diskStorage({
 // Public routes
 router.post(
   '/login',
+  authLimiter,
   [
     body('email').isEmail().withMessage('Email is invalid'),
     body('password').isString().isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
@@ -39,6 +53,7 @@ router.post(
   authControllers.login
 );
 router.post('/registerStudent', 
+  authLimiter,
   (req, res, next) => {
     ktmUpload.single('ktm')(req, res, (err) => {
       if (err instanceof multer.MulterError) {
@@ -73,6 +88,7 @@ router.post('/registerStudent',
 );
 router.post(
   '/registerAdmin',
+  authLimiter,
   [
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Email is invalid'),
