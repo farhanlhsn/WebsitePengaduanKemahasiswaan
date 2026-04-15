@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getOrCreateDeviceFingerprint } from '../main';
 
-const API_BASE_URL = 'http://localhost:6060/v1/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:6060/v1/api';
 
 // Create axios instance with default config
 const apiClient = axios.create({

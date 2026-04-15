@@ -1,6 +1,8 @@
 import { io } from 'socket.io-client';
-import dotenv from 'dotenv';
-dotenv.config();
+
+const apiBaseUrl = import.meta.env.VITE_API_URL;
+const socketBaseUrl = import.meta.env.VITE_SOCKET_URL
+  || (apiBaseUrl ? apiBaseUrl.replace(/\/v1\/api\/?$/, '') : 'http://localhost:6060');
 
 class SocketService {
   constructor() {
@@ -16,8 +18,7 @@ class SocketService {
       return this.socket;
     }
 
-    this.socket = io(`http://localhost:${process.env.PORT}`, {
-      port: process.env.PORT,
+    this.socket = io(socketBaseUrl, {
       withCredentials: true,
       autoConnect: true,
       transports: ['websocket', 'polling'],
