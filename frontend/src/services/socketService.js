@@ -1,4 +1,6 @@
 import { io } from 'socket.io-client';
+import dotenv from 'dotenv';
+dotenv.config();
 
 class SocketService {
   constructor() {
@@ -14,7 +16,8 @@ class SocketService {
       return this.socket;
     }
 
-    this.socket = io('http://localhost:3000', {
+    this.socket = io(`http://localhost:${process.env.PORT}`, {
+      port: process.env.PORT,
       withCredentials: true,
       autoConnect: true,
       transports: ['websocket', 'polling'],
