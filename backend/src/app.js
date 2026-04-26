@@ -1,4 +1,5 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env'), override: true });
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -8,103 +9,102 @@ const deviceTrackingMiddleware = require('./middlewares/deviceTrackingMiddleware
 const prisma = require('./utils/prisma'); 
 const errorHandler = require('./middlewares/errorHandler');
 const { Server } = require('socket.io');
-const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const uploadAuthMiddleware = require('./middlewares/uploadAuthMiddleware');
 
 const app = express();
-const server = app.listen(3000, () => {
-  console.log('Server is running on port 3000');
-  console.log('Socket.io is running on the same port (3000)');
-});
-const io = new Server(server, {
-  cors: {
-    origin: 'http://localhost:5173',
-    methods: ['GET', 'POST'],
-    credentials: true
-  }
-});
-
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-  
-  // Join a specific report room
-  socket.on('joinRoom', (data) => {
-    const { reportId, userId } = data;
-    const roomId = `report_${reportId}`;
-    
-    socket.join(roomId);
-    socket.userId = userId;
-    socket.currentRoom = roomId;
-    
-    console.log(`User ${userId} joined room ${roomId}`);
-    
-    // Notify others in the room
-    socket.to(roomId).emit('userJoined', {
-      userId,
-      timestamp: new Date().toISOString()
-    });
-  });
-  
-  // Leave a room
-  socket.on('leaveRoom', (data) => {
-    const { reportId, userId } = data;
-    const roomId = `report_${reportId}`;
-    
-    socket.leave(roomId);
-    
-    console.log(`User ${userId} left room ${roomId}`);
-    
-    // Notify others in the room
-    socket.to(roomId).emit('userLeft', {
-      userId,
-      timestamp: new Date().toISOString()
-    });
-  });
-  
-  // Handle typing indicators
-  socket.on('typing', (data) => {
-    const { reportId, userId, isTyping } = data;
-    const roomId = `report_${reportId}`;
-    
-    socket.to(roomId).emit('userTyping', {
-      userId,
-      isTyping,
-      timestamp: new Date().toISOString()
-    });
-  });
-  
-  // Handle message read receipts
-  socket.on('messageRead', (data) => {
-    const { reportId, messageId, userId } = data;
-    const roomId = `report_${reportId}`;
-    
-    socket.to(roomId).emit('messageReadReceipt', {
-      messageId,
-      userId,
-      timestamp: new Date().toISOString()
-    });
-  });
-  
-  // Handle disconnect
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-    
-    // Notify current room about user leaving
-    if (socket.currentRoom && socket.userId) {
-      socket.to(socket.currentRoom).emit('userLeft', {
-        userId: socket.userId,
-        timestamp: new Date().toISOString()
-      });
+function attachSocket(server) {
+  const io = new Server(server, {
+    cors: {
+      origin: 'http://localhost:5173',
+      methods: ['GET', 'POST'],
+      credentials: true
     }
   });
-  
-  // Handle connection errors
-  socket.on('error', (error) => {
-    console.error('Socket error:', error);
+
+  io.on('connection', (socket) => {
+    console.log('User connected:', socket.id);
+    
+    // Join a specific report room
+    socket.on('joinRoom', (data) => {
+      const { reportId, userId } = data;
+      const roomId = `report_${reportId}`;
+      
+      socket.join(roomId);
+      socket.userId = userId;
+      socket.currentRoom = roomId;
+      
+      console.log(`User ${userId} joined room ${roomId}`);
+      
+      // Notify others in the room
+      socket.to(roomId).emit('userJoined', {
+        userId,
+        timestamp: new Date().toISOString()
+      });
+    });
+    
+    // Leave a room
+    socket.on('leaveRoom', (data) => {
+      const { reportId, userId } = data;
+      const roomId = `report_${reportId}`;
+      
+      socket.leave(roomId);
+      
+      console.log(`User ${userId} left room ${roomId}`);
+      
+      // Notify others in the room
+      socket.to(roomId).emit('userLeft', {
+        userId,
+        timestamp: new Date().toISOString()
+      });
+    });
+    
+    // Handle typing indicators
+    socket.on('typing', (data) => {
+      const { reportId, userId, isTyping } = data;
+      const roomId = `report_${reportId}`;
+      
+      socket.to(roomId).emit('userTyping', {
+        userId,
+        isTyping,
+        timestamp: new Date().toISOString()
+      });
+    });
+    
+    // Handle message read receipts
+    socket.on('messageRead', (data) => {
+      const { reportId, messageId, userId } = data;
+      const roomId = `report_${reportId}`;
+      
+      socket.to(roomId).emit('messageReadReceipt', {
+        messageId,
+        userId,
+        timestamp: new Date().toISOString()
+      });
+    });
+    
+    // Handle disconnect
+    socket.on('disconnect', () => {
+      console.log('User disconnected:', socket.id);
+      
+      // Notify current room about user leaving
+      if (socket.currentRoom && socket.userId) {
+        socket.to(socket.currentRoom).emit('userLeft', {
+          userId: socket.userId,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+    
+    // Handle connection errors
+    socket.on('error', (error) => {
+      console.error('Socket error:', error);
+    });
   });
-});
+
+  app.set('io', io);
+}
 
 // Security: Helmet
 app.use(helmet({
@@ -171,9 +171,6 @@ app.use(deviceTrackingMiddleware); // Track device information
 // Serve uploaded files statically with Authentication
 app.use('/uploads', uploadAuthMiddleware, express.static(path.join(__dirname, '../uploads')));
 
-// Make io instance available to routes
-app.set('io', io);
-
 app.use('/v1/api/auth', require('./routes/authRoutes'));
 app.use('/v1/api/users', require('./routes/userRoutes'));
 app.use('/v1/api/categories', require('./routes/categoryRoutes'));
@@ -212,4 +209,4 @@ app.get('/', (req, res) => {
 // Error handling middleware (after all routes)
 app.use(errorHandler);
 
-module.exports = app;
+module.exports = { app, attachSocket };

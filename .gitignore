@@ -88,3 +88,6 @@ coverage/
 *.pid.lock
 lighthouse-report.html
 stats.html
+backend/package-lock.json
+frontend/package-lock.json
+package-lock.json

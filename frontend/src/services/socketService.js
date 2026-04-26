@@ -1,5 +1,9 @@
 import { io } from 'socket.io-client';
 
+const apiBaseUrl = import.meta.env.VITE_API_URL;
+const socketBaseUrl = import.meta.env.VITE_SOCKET_URL
+  || (apiBaseUrl ? apiBaseUrl.replace(/\/v1\/api\/?$/, '') : 'http://localhost:6060');
+
 class SocketService {
   constructor() {
     this.socket = null;
@@ -14,7 +18,7 @@ class SocketService {
       return this.socket;
     }
 
-    this.socket = io('http://localhost:3000', {
+    this.socket = io(socketBaseUrl, {
       withCredentials: true,
       autoConnect: true,
       transports: ['websocket', 'polling'],
