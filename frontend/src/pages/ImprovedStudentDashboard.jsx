@@ -114,10 +114,11 @@ export default React.memo(function ImprovedStudentDashboard() {
 
   const handleCreateReport = useCallback(async (formData) => {
     try {
-      await createReport(formData);
+      const createdReport = await createReport(formData);
       setModalOpen(false);
       getUserReports();
       getUserStatsById(user.id);
+      return createdReport;
     } catch (error) {
       console.error('Failed to create report:', error);
       throw error;

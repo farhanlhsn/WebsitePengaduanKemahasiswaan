@@ -23,6 +23,18 @@ import AdminLayout from '../components/admin/AdminLayout';
 import RichTextDisplay from '../components/ui/RichTextDisplay';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
+// --- THEME COLORS ---
+const THEME_COLORS = {
+  primary: '#43A047',
+  pending: '#FFA726',
+  resolved: '#43A047',
+  rejected: '#F44336',
+  canceled: '#BDBDBD',
+  background: '#F8F9FA',
+  paper: '#FFFFFF',
+  textSecondary: '#757575'
+};
+
 const STATUS_CONFIG = {
   PENDING: { label: 'Menunggu Verifikasi Admin', color: THEME_COLORS.pending, icon: <Pending /> },
   IN_REVIEW: { label: 'Ditinjau', color: THEME_COLORS.pending, icon: <HourglassEmpty /> },
