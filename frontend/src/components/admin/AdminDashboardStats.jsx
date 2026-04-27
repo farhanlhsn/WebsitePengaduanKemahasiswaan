@@ -60,8 +60,6 @@ const AdminDashboardStats = ({
       value: safeReportStats.total || 0,
       icon: <Assignment />,
       color: '#1976D2',
-      showProgress: true,
-      progressValue: resolutionRate,
       subtitle: `${resolutionRate}% resolved`,
     },
     {
@@ -70,13 +68,6 @@ const AdminDashboardStats = ({
       icon: <CheckCircle />,
       color: '#388E3C',
       subtitle: 'Tingkat penyelesaian',
-    },
-    {
-      title: 'Pending',
-      value: safeReportStats.pending || 0,
-      icon: <PendingActions />,
-      color: '#ED6C02',
-      subtitle: 'Menunggu review',
     },
     {
       title: 'In Review',
@@ -98,6 +89,13 @@ const AdminDashboardStats = ({
       icon: <Category />,
       color: '#7B1FA2',
       subtitle: `${safeCategoryStats.active || 0} aktif`,
+    },
+    {
+      title: 'Pending',
+      value: safeReportStats.pending || 0,
+      icon: <PendingActions />,
+      color: '#ED6C02',
+      subtitle: 'Menunggu review',
     }
   ];
 
@@ -125,24 +123,20 @@ const AdminDashboardStats = ({
   return (
     <Box>
       {/* High Priority Stats - Larger cards for important metrics */}
-      <Grid container spacing={3} sx={{
+      <Box sx={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', // Membuat kolom yang fleksibel
-        gridGap: '20px',
-        mb: 3
+        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+        gap: 3,
+        mb: 4
       }}>
         {statsData.map((stat, index) => (
-          <Grid 
+          <Box 
             key={index} 
-            item 
-            xs={12} 
-            sm={6} 
-            lg={3}
             sx={{
-              // On very wide screens, make cards slightly larger
-              '@media (min-width: 1920px)': {
-                minHeight: 220
-              }
+              height: 200,
+              width: '100%',
+              display: 'flex',
+              '& > div': { width: '100%', height: '100%' }
             }}
           >
             <EnhancedStatCard
@@ -151,11 +145,11 @@ const AdminDashboardStats = ({
               icon={stat.icon}
               color={stat.color}
               subtitle={stat.subtitle}
-              animateValue
+              animateValue={true}
             />
-          </Grid>
+          </Box>
         ))}
-      </Grid>
+      </Box>
 
     </Box>
   );
