@@ -264,4 +264,12 @@ export const router = createBrowserRouter([
             </OptimizedAuthWrapper>
         ),
     },
+    {
+        path: "/admin/help",
+        element: (
+            <OptimizedAuthWrapper>
+                <EnhancedAdminDashboard />
+            </OptimizedAuthWrapper>
+        ),
+    },
 ]);

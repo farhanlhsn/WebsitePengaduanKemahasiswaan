@@ -28,6 +28,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import UserDetailModal from '../components/admin/UserDetailModal';
 import UserStatistics from '../components/admin/UserStatistics';
 import AdminNotifications from '../components/admin/AdminNotifications';
+import HelpPage from './HelpPage';
 
 // Utils imports
 import { exportUsersToExcel, generateUserReport } from '../utils/exportUtils';
@@ -59,7 +60,7 @@ const EnhancedAdminDashboard = () => {
 
   // Check if user is admin
   useEffect(() => {
-    if (user && user.role !== 'ADMIN') {
+    if (user && user.role === 'MAHASISWA') {
       navigate('/dashboard');
     }
   }, [user, navigate]);
@@ -90,6 +91,8 @@ const EnhancedAdminDashboard = () => {
       setActiveMenu('reports');
     } else if (location.pathname.startsWith('/admin/users')) {
       setActiveMenu('users');
+    } else if (location.pathname.startsWith('/admin/help')) {
+      setActiveMenu('help');
     } else if (location.pathname.startsWith('/admin')) {
       setActiveMenu('dashboard');
     }
@@ -424,6 +427,15 @@ const EnhancedAdminDashboard = () => {
             </Box>
           </Fade>
         );
+      case 'help':
+        return (
+          <Fade in timeout={300}>
+            <Box>
+              {commonHeader('Pusat Bantuan', 'Temukan jawaban untuk pertanyaan Anda dengan cepat')}
+              <HelpPage isEmbedded={true} />
+            </Box>
+          </Fade>
+        );
       default:
         return (
           <Box sx={{ textAlign: 'center', py: 8 }}>
@@ -433,7 +445,7 @@ const EnhancedAdminDashboard = () => {
     }
   };
 
-  if (user?.role !== 'ADMIN') {
+  if (user?.role === 'MAHASISWA') {
     return <LoadingSpinner fullScreen message="Mengalihkan..." />;
   }
 

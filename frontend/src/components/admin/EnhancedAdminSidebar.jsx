@@ -12,7 +12,8 @@ import {
   IconButton,
   Tooltip,
   Divider,
-  useMediaQuery
+  useMediaQuery,
+  Dialog
 } from '@mui/material';
 import { 
   Dashboard, 
@@ -318,10 +319,12 @@ const AdminSidebar = ({
       syncWithState: true
     },
     { 
+      id: 'help',
       text: 'Bantuan', 
       icon: <HelpOutline />, 
-      path: '/help',
-      description: 'Panduan dan dukungan'
+      path: '/admin/help',
+      description: 'Panduan dan dukungan',
+      syncWithState: true
     },
     { 
       text: 'Logout', 
