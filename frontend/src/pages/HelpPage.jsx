@@ -4,7 +4,7 @@ import {
   Accordion, AccordionSummary, AccordionDetails, Card, CardContent,
   Chip, Divider, List, ListItem, ListItemIcon, ListItemText,
   TextField, Dialog, DialogTitle, DialogContent, DialogActions,
-  IconButton, Tooltip, Avatar, Alert
+  IconButton, Tooltip, Avatar, Alert, InputAdornment, Zoom, Fade
 } from '@mui/material';
 import {
   ArrowBack, ExpandMore, HelpOutline, QuestionAnswer, Book,
@@ -13,11 +13,40 @@ import {
   School, Assignment, Security, AccountCircle, Notifications,
   Settings, BugReport, Feedback, Send, AttachFile
 } from '@mui/icons-material';
-import { alpha, useTheme } from '@mui/material/styles';
+import { alpha, useTheme, styled } from '@mui/material/styles';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
 
-const HelpPage = () => {
+// Styled Components
+const GlassCard = styled(Paper)(({ theme }) => ({
+  background: 'rgba(255, 255, 255, 0.7)',
+  backdropFilter: 'blur(20px)',
+  WebkitBackdropFilter: 'blur(20px)',
+  border: '1px solid rgba(255, 255, 255, 0.5)',
+  boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.05)',
+  borderRadius: theme.spacing(3),
+  overflow: 'hidden',
+  transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+  '&:hover': {
+    boxShadow: '0 12px 40px 0 rgba(0, 0, 0, 0.08)',
+  }
+}));
+
+const StyledAccordion = styled(Accordion)(({ theme }) => ({
+  background: 'transparent',
+  boxShadow: 'none',
+  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+  borderRadius: `${theme.spacing(2)} !important`,
+  marginBottom: theme.spacing(1.5),
+  '&:before': { display: 'none' },
+  '&.Mui-expanded': {
+    margin: `0 0 ${theme.spacing(1.5)} 0`,
+    background: 'white',
+    boxShadow: '0 4px 20px 0 rgba(0,0,0,0.05)',
+  }
+}));
+
+const HelpPage = ({ isEmbedded = false }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { isLoggedIn } = useAuthStore();
@@ -25,11 +54,7 @@ const HelpPage = () => {
   const [contactDialog, setContactDialog] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [contactForm, setContactForm] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: '',
-    category: 'umum'
+    name: '', email: '', subject: '', message: '', category: 'umum'
   });
 
   // FAQ Data
@@ -71,520 +96,305 @@ const HelpPage = () => {
       tags: ['respon', 'waktu', 'status']
     },
     {
-      category: 'laporan',
-      question: 'Apa saja kategori laporan yang tersedia?',
-      answer: 'Kategori laporan meliputi: Akademik (nilai, jadwal kuliah), Fasilitas (ruang kelas, laboratorium), Administrasi (pembayaran, surat-menyurat), Teknologi Informasi (sistem, website), dan Lainnya.',
-      tags: ['kategori', 'jenis', 'laporan']
-    },
-    {
       category: 'teknis',
       question: 'Website tidak bisa diakses atau loading lambat',
       answer: 'Coba refresh halaman atau bersihkan cache browser. Pastikan koneksi internet stabil. Jika masih bermasalah, coba akses menggunakan browser lain atau hubungi tim IT.',
       tags: ['website', 'loading', 'akses']
     },
     {
-      category: 'teknis',
-      question: 'File yang saya upload tidak muncul atau gagal',
-      answer: 'Pastikan file berformat yang didukung (PDF, JPG, PNG, DOC) dan ukuran maksimal 5MB. Periksa koneksi internet saat upload. Jika masih gagal, coba kompres file atau hubungi support.',
-      tags: ['upload', 'file', 'gagal']
-    },
-    {
       category: 'privasi',
       question: 'Apakah laporan saya bersifat rahasia?',
       answer: 'Ya, semua laporan dijaga kerahasiaannya. Hanya admin yang berwenang dan pihak terkait yang dapat mengakses detail laporan. Data pribadi Anda dilindungi sesuai kebijakan privasi universitas.',
       tags: ['privasi', 'rahasia', 'keamanan']
-    },
-    {
-      category: 'privasi',
-      question: 'Bisakah saya menghapus laporan yang sudah dibuat?',
-      answer: 'Laporan yang sudah disubmit tidak dapat dihapus secara otomatis. Namun, Anda dapat menghubungi admin melalui fitur kontak atau membuat laporan follow-up untuk memberikan clarifikasi.',
-      tags: ['hapus', 'laporan', 'edit']
-    },
-    {
-      category: 'notifikasi',
-      question: 'Bagaimana cara mengatur notifikasi?',
-      answer: 'Masuk ke menu Pengaturan > Notifikasi. Anda dapat mengatur preferensi untuk email notifikasi, push notification, dan jenis update yang ingin Anda terima.',
-      tags: ['notifikasi', 'pengaturan', 'email']
     }
   ];
 
   // Quick Guide Steps
   const quickGuide = [
-    {
-      step: 1,
-      title: 'Daftar & Verifikasi',
-      description: 'Buat akun dengan data valid dan verifikasi email',
-      icon: <AccountCircle color="primary" />
-    },
-    {
-      step: 2,
-      title: 'Login ke Dashboard',
-      description: 'Masuk ke akun dan akses dashboard mahasiswa',
-      icon: <School color="primary" />
-    },
-    {
-      step: 3,
-      title: 'Buat Laporan',
-      description: 'Klik "Buat Laporan" dan isi formulir dengan lengkap',
-      icon: <Assignment color="primary" />
-    },
-    {
-      step: 4,
-      title: 'Pantau Status',
-      description: 'Cek status laporan dan respon dari admin secara berkala',
-      icon: <Notifications color="primary" />
-    }
+    { step: 1, title: 'Daftar', description: 'Buat & verifikasi akun Anda', icon: <AccountCircle /> },
+    { step: 2, title: 'Login', description: 'Akses dashboard mahasiswa', icon: <School /> },
+    { step: 3, title: 'Lapor', description: 'Isi form dengan detail', icon: <Assignment /> },
+    { step: 4, title: 'Pantau', description: 'Cek status laporan Anda', icon: <Notifications /> }
   ];
 
   // Contact Methods
   const contactMethods = [
     {
-      type: 'phone',
-      title: 'Telepon',
-      value: '(0751) 461208',
-      description: 'Senin - Jumat, 08:00 - 17:00 WIB',
-      icon: <Phone />,
-      action: () => window.open('tel:+6275146120')
-    },
-    {
-      type: 'email',
-      title: 'Email',
-      value: 'pengaduan@bunghatta.ac.id',
-      description: 'Respon dalam 24 jam',
-      icon: <Email />,
-      action: () => window.open('mailto:pengaduan@bunghatta.ac.id')
-    },
-    {
-      type: 'whatsapp',
-      title: 'WhatsApp',
-      value: '+62 751 461208',
-      description: 'Chat langsung dengan admin',
-      icon: <WhatsApp />,
+      type: 'whatsapp', title: 'WhatsApp', value: '+62 751 461208',
+      description: 'Chat langsung dengan admin', icon: <WhatsApp />,
       action: () => window.open('https://wa.me/6275146120')
     },
     {
-      type: 'location',
-      title: 'Kunjungi Langsung',
-      value: 'Gedung Rektorat Lt. 2',
-      description: 'Jl. Bagindo Aziz Chan No. 8, Padang',
-      icon: <LocationOn />,
+      type: 'email', title: 'Email', value: 'pengaduan@bunghatta.ac.id',
+      description: 'Respon dalam 24 jam', icon: <Email />,
+      action: () => window.open('mailto:pengaduan@bunghatta.ac.id')
+    },
+    {
+      type: 'location', title: 'Lokasi', value: 'Gedung Rektorat Lt. 2',
+      description: 'Jl. Bagindo Aziz Chan No. 8, Padang', icon: <LocationOn />,
       action: () => window.open('https://maps.google.com/?q=Universitas+Bung+Hatta+Padang')
     }
   ];
 
-  // Categories for filtering
   const categories = [
     { id: 'all', label: 'Semua', count: faqData.length },
-    { id: 'umum', label: 'Umum', count: faqData.filter(item => item.category === 'umum').length },
-    { id: 'akun', label: 'Akun & Login', count: faqData.filter(item => item.category === 'akun').length },
-    { id: 'laporan', label: 'Laporan', count: faqData.filter(item => item.category === 'laporan').length },
-    { id: 'teknis', label: 'Teknis', count: faqData.filter(item => item.category === 'teknis').length },
-    { id: 'privasi', label: 'Privasi', count: faqData.filter(item => item.category === 'privasi').length },
-    { id: 'notifikasi', label: 'Notifikasi', count: faqData.filter(item => item.category === 'notifikasi').length }
+    { id: 'umum', label: 'Umum', count: faqData.filter(i => i.category === 'umum').length },
+    { id: 'akun', label: 'Akun & Login', count: faqData.filter(i => i.category === 'akun').length },
+    { id: 'laporan', label: 'Laporan', count: faqData.filter(i => i.category === 'laporan').length },
+    { id: 'teknis', label: 'Teknis', count: faqData.filter(i => i.category === 'teknis').length },
+    { id: 'privasi', label: 'Privasi', count: faqData.filter(i => i.category === 'privasi').length }
   ];
 
-  // Filter FAQ based on search and category
   const filteredFAQ = faqData.filter(item => {
     const matchesSearch = searchQuery === '' || 
       item.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.answer.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    
     const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
-    
     return matchesSearch && matchesCategory;
   });
 
   const handleContactSubmit = () => {
-    // Handle contact form submission
-    console.log('Contact form submitted:', contactForm);
     setContactDialog(false);
-    setContactForm({
-      name: '',
-      email: '',
-      subject: '',
-      message: '',
-      category: 'umum'
-    });
+    setContactForm({ name: '', email: '', subject: '', message: '', category: 'umum' });
     alert('Pesan Anda telah dikirim. Tim kami akan merespon segera.');
   };
 
-  const handleInputChange = (field) => (event) => {
-    setContactForm(prev => ({
-      ...prev,
-      [field]: event.target.value
-    }));
-  };
+  const handleInputChange = (field) => (e) => setContactForm(prev => ({ ...prev, [field]: e.target.value }));
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f8f9fa', py: 4 }}>
-      {/* Back Button */}
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3, px: 10 }}>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={() => navigate(isLoggedIn ? '/dashboard' : '/')}
-          variant="outlined"
-          sx={{ 
-            color: 'black',
-            borderColor: 'rgba(0,0,0,0.3)',
-            '&:hover': {
-              borderColor: 'black',
-              bgcolor: 'rgba(0,0,0,0.1)'
-            }
-          }}
-        >
-          Kembali
-        </Button>
-      </Stack>
+    <Box sx={{ 
+      minHeight: isEmbedded ? 'auto' : '100vh', 
+      bgcolor: isEmbedded ? 'transparent' : '#f8f9fa', 
+      py: isEmbedded ? 0 : 4 
+    }}>
+      {!isEmbedded && (
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3, px: 10 }}>
+          <Button
+            startIcon={<ArrowBack />}
+            onClick={() => navigate(isLoggedIn ? '/dashboard' : '/')}
+            sx={{ color: 'text.secondary', '&:hover': { bgcolor: 'rgba(0,0,0,0.05)' } }}
+          >
+            Kembali
+          </Button>
+        </Stack>
+      )}
 
-      <Container maxWidth="lg">
-        {/* Header */}
-        <Box sx={{ mb: 6, textAlign: 'center' }}>
-          <Typography variant="h3" fontWeight={800} gutterBottom sx={{ 
-            background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
-          }}>
-            Pusat Bantuan
-          </Typography>
-                     <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
-             Temukan jawaban untuk pertanyaan Anda atau hubungi tim support kami
-           </Typography>
+      <Container maxWidth="lg" disableGutters={isEmbedded}>
+        {/* Modern Search Header */}
+        <Box sx={{ mb: 5, textAlign: 'center' }}>
+          {!isEmbedded && (
+            <>
+              <Typography variant="h3" fontWeight={800} gutterBottom sx={{ 
+                color: theme.palette.primary.main
+              }}>
+                Pusat Bantuan
+              </Typography>
+              <Typography variant="h6" color="text.secondary" sx={{ mb: 4, fontWeight: 400 }}>
+                Temukan jawaban untuk pertanyaan Anda dengan cepat
+              </Typography>
+            </>
+          )}
 
-           {/* Login prompt for non-logged in users */}
-           {!isLoggedIn && (
-             <Alert severity="info" sx={{ maxWidth: 600, mx: 'auto', mb: 4, borderRadius: 3 }}>
-               <Typography variant="body2">
-                 Untuk mengakses fitur lengkap dan membuat laporan pengaduan, silakan{' '}
-                 <Button 
-                   component={Link} 
-                   to="/login" 
-                   size="small" 
-                   sx={{ textTransform: 'none', p: 0, minWidth: 'auto' }}
-                 >
-                   login
-                 </Button>
-                 {' '}atau{' '}
-                 <Button 
-                   component={Link} 
-                   to="/register" 
-                   size="small" 
-                   sx={{ textTransform: 'none', p: 0, minWidth: 'auto' }}
-                 >
-                   daftar akun baru
-                 </Button>
-               </Typography>
-             </Alert>
-           )}
-
-          {/* Search Box */}
-          <Paper sx={{ 
-            maxWidth: 600, 
-            mx: 'auto', 
-            p: 1, 
-            borderRadius: 4,
-            border: '1px solid rgba(0,0,0,0.1)'
-          }}>
-            <Stack direction="row" alignItems="center" spacing={2}>
-              <Search color="action" sx={{ ml: 2 }} />
-              <TextField
-                fullWidth
-                placeholder="Cari pertanyaan atau kata kunci..."
-                variant="standard"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{ disableUnderline: true }}
-                sx={{ fontSize: '1.1rem' }}
-              />
-            </Stack>
-          </Paper>
+          <TextField
+            fullWidth
+            placeholder="Cari solusi atau kata kunci..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: <InputAdornment position="start"><Search color="primary" /></InputAdornment>,
+              sx: { 
+                bgcolor: 'white', 
+                borderRadius: 4, 
+                fontSize: '1.1rem',
+                boxShadow: '0 4px 20px 0 rgba(0,0,0,0.05)',
+                '& fieldset': { border: 'none' },
+                maxWidth: 600,
+                mx: 'auto'
+              }
+            }}
+          />
         </Box>
 
-        <Grid container spacing={4}>
+        <Stack spacing={4}>
           {/* Quick Guide */}
-          <Grid item xs={12}>
-            <Paper sx={{ p: 4, borderRadius: 4, mb: 4 }}>
-              <Typography variant="h5" fontWeight={700} gutterBottom sx={{ mb: 3 }}>
-                <Book sx={{ mr: 2, verticalAlign: 'bottom' }} />
-                Panduan Cepat
-              </Typography>
-              
-              <Grid container spacing={3}>
-                {quickGuide.map((guide) => (
-                  <Grid item xs={12} sm={6} md={3} key={guide.step}>
-                    <Card sx={{ 
-                      height: '100%', 
-                      textAlign: 'center', 
-                      borderRadius: 3,
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-4px)',
-                        boxShadow: theme.shadows[8]
-                      }
-                    }}>
-                      <CardContent sx={{ p: 3 }}>
-                        <Avatar sx={{ 
-                          width: 60, 
-                          height: 60, 
-                          mx: 'auto', 
-                          mb: 2,
-                          bgcolor: alpha(theme.palette.primary.main, 0.1),
-                          color: 'primary.main'
-                        }}>
+              <GlassCard sx={{ p: 3 }}>
+                <Typography variant="h6" fontWeight={700} gutterBottom sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <Book color="primary" sx={{ mr: 1.5 }} /> Panduan Cepat
+                </Typography>
+                <Grid container spacing={2}>
+                  {quickGuide.map((guide, idx) => (
+                    <Grid item xs={6} sm={3} key={guide.step}>
+                      <Box sx={{ 
+                        textAlign: 'center', p: 2, borderRadius: 3, 
+                        bgcolor: alpha(theme.palette.primary.main, 0.03),
+                        height: '100%', transition: 'all 0.2s',
+                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.08), transform: 'translateY(-2px)' }
+                      }}>
+                        <Avatar sx={{ mx: 'auto', mb: 1.5, bgcolor: 'white', color: 'primary.main', boxShadow: theme.shadows[2] }}>
                           {guide.icon}
                         </Avatar>
-                        <Typography variant="h6" fontWeight={600} gutterBottom>
-                          {guide.step}. {guide.title}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="subtitle2" fontWeight={700}>{guide.title}</Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, lineHeight: 1.2 }}>
                           {guide.description}
                         </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            </Paper>
-          </Grid>
-
-          {/* FAQ Section */}
-          <Grid item xs={12} lg={8}>
-            <Paper sx={{ p: 4, borderRadius: 4 }}>
-              <Typography variant="h5" fontWeight={700} gutterBottom sx={{ mb: 3 }}>
-                <QuestionAnswer sx={{ mr: 2, verticalAlign: 'bottom' }} />
-                Pertanyaan yang Sering Diajukan (FAQ)
-              </Typography>
-
-              {/* Category Filter */}
-              <Box sx={{ mb: 3 }}>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {categories.map((category) => (
-                    <Chip
-                      key={category.id}
-                      label={`${category.label} (${category.count})`}
-                      onClick={() => setSelectedCategory(category.id)}
-                      color={selectedCategory === category.id ? 'primary' : 'default'}
-                      variant={selectedCategory === category.id ? 'filled' : 'outlined'}
-                      sx={{ mb: 1 }}
-                    />
+                      </Box>
+                    </Grid>
                   ))}
-                </Stack>
-              </Box>
+                </Grid>
+              </GlassCard>
 
-              {/* FAQ List */}
-              {filteredFAQ.length > 0 ? (
-                <Box>
-                  {filteredFAQ.map((faq, index) => (
-                    <Accordion key={index} sx={{ mb: 1, borderRadius: 2, '&:before': { display: 'none' } }}>
-                      <AccordionSummary expandIcon={<ExpandMore />}>
-                        <Typography variant="body1" fontWeight={500}>
-                          {faq.question}
-                        </Typography>
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          {faq.answer}
-                        </Typography>
-                        <Box>
-                          {faq.tags.map((tag, tagIndex) => (
-                            <Chip
-                              key={tagIndex}
-                              label={tag}
-                              size="small"
-                              variant="outlined"
-                              sx={{ mr: 1, mb: 1, fontSize: '0.75rem' }}
-                            />
-                          ))}
-                        </Box>
-                      </AccordionDetails>
-                    </Accordion>
-                  ))}
+              {/* FAQ Section */}
+              <GlassCard sx={{ p: 3 }}>
+                <Typography variant="h6" fontWeight={700} gutterBottom sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <QuestionAnswer color="primary" sx={{ mr: 1.5 }} /> Pertanyaan Umum (FAQ)
+                </Typography>
+
+                <Box sx={{ mb: 3, overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { height: 4 } }}>
+                  <Stack direction="row" spacing={1}>
+                    {categories.map((cat) => (
+                      <Chip
+                        key={cat.id}
+                        label={`${cat.label} (${cat.count})`}
+                        onClick={() => setSelectedCategory(cat.id)}
+                        color={selectedCategory === cat.id ? 'primary' : 'default'}
+                        variant={selectedCategory === cat.id ? 'filled' : 'outlined'}
+                        sx={{ fontWeight: 500, borderRadius: 2 }}
+                      />
+                    ))}
+                  </Stack>
                 </Box>
-              ) : (
-                <Alert severity="info" sx={{ borderRadius: 2 }}>
-                  Tidak ada FAQ yang sesuai dengan pencarian "{searchQuery}". Coba kata kunci lain atau hubungi support.
-                </Alert>
-              )}
-            </Paper>
-          </Grid>
 
-          {/* Contact & Resources */}
-          <Grid item xs={12} lg={4}>
-            <Stack spacing={3}>
-              {/* Contact Support */}
-              <Paper sx={{ p: 3, borderRadius: 4 }}>
-                <Typography variant="h6" fontWeight={600} gutterBottom>
-                  <ContactSupport sx={{ mr: 1, verticalAlign: 'bottom' }} />
-                  Hubungi Support
+                {filteredFAQ.length > 0 ? (
+                  <Box>
+                    {filteredFAQ.map((faq, index) => (
+                      <StyledAccordion key={index}>
+                        <AccordionSummary expandIcon={<ExpandMore color="primary" />}>
+                          <Typography variant="subtitle1" fontWeight={600} color="text.primary">
+                            {faq.question}
+                          </Typography>
+                        </AccordionSummary>
+                        <AccordionDetails sx={{ pt: 0, pb: 2 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.6 }}>
+                            {faq.answer}
+                          </Typography>
+                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                            {faq.tags.map((tag, i) => (
+                              <Chip key={i} label={`#${tag}`} size="small" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05), color: 'primary.main', fontSize: '0.7rem' }} />
+                            ))}
+                          </Stack>
+                        </AccordionDetails>
+                      </StyledAccordion>
+                    ))}
+                  </Box>
+                ) : (
+                  <Alert severity="warning" sx={{ borderRadius: 3 }}>
+                    Tidak ada hasil yang ditemukan untuk pencarian Anda.
+                  </Alert>
+                )}
+              </GlassCard>
+
+          {/* Bottom Row: Contact & Resources */}
+          <Grid container spacing={4} alignItems="flex-start">
+            
+            {/* Contact Card */}
+            <Grid item xs={12} lg={7}>
+              <GlassCard sx={{ p: 4, bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
+                <Typography variant="h6" fontWeight={700} gutterBottom sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <ContactSupport color="primary" sx={{ mr: 1.5 }} /> Butuh Bantuan Lanjut?
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Masih butuh bantuan? Tim support kami siap membantu Anda.
+                  Tim dukungan kami selalu siap membantu Anda menyelesaikan masalah.
                 </Typography>
-                
-                <List dense>
-                  {contactMethods.map((method, index) => (
-                    <ListItem 
-                      key={index} 
-                      button 
+
+                <Stack spacing={1.5}>
+                  {contactMethods.map((method, idx) => (
+                    <Box 
+                      key={idx}
                       onClick={method.action}
                       sx={{ 
-                        borderRadius: 2, 
-                        mb: 1,
-                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05) }
+                        display: 'flex', alignItems: 'center', p: 1.5, borderRadius: 3,
+                        bgcolor: 'white', cursor: 'pointer', transition: 'all 0.2s',
+                        border: '1px solid rgba(0,0,0,0.03)',
+                        '&:hover': { borderColor: theme.palette.primary.main, transform: 'translateX(4px)' }
                       }}
                     >
-                      <ListItemIcon sx={{ minWidth: 40 }}>
-                        <Avatar sx={{ width: 32, height: 32, bgcolor: alpha(theme.palette.primary.main, 0.1) }}>
-                          {React.cloneElement(method.icon, { 
-                            fontSize: 'small', 
-                            color: 'primary' 
-                          })}
-                        </Avatar>
-                      </ListItemIcon>
-                      <ListItemText 
-                        primary={method.title}
-                        secondary={`${method.value} • ${method.description}`}
-                        primaryTypographyProps={{ fontWeight: 500, fontSize: '0.9rem' }}
-                        secondaryTypographyProps={{ fontSize: '0.75rem' }}
-                      />
-                    </ListItem>
+                      <Avatar sx={{ width: 40, height: 40, bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', mr: 2 }}>
+                        {method.icon}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={600}>{method.title}</Typography>
+                        <Typography variant="caption" color="text.secondary">{method.value}</Typography>
+                      </Box>
+                    </Box>
                   ))}
-                </List>
+                </Stack>
 
                 <Button
                   fullWidth
                   variant="contained"
                   startIcon={<Send />}
                   onClick={() => setContactDialog(true)}
-                  sx={{ mt: 2, borderRadius: 2 }}
+                  sx={{ mt: 3, borderRadius: 2.5, py: 1.2, fontWeight: 600, boxShadow: theme.shadows[4] }}
                 >
-                  Kirim Pesan
+                  Kirim Tiket Bantuan
                 </Button>
-              </Paper>
+              </GlassCard>
+            </Grid>
 
-              {/* Quick Links */}
-              <Paper sx={{ p: 3, borderRadius: 4 }}>
-                <Typography variant="h6" fontWeight={600} gutterBottom>
-                  Tautan Berguna
+            {/* Resource Links */}
+            <Grid item xs={12} lg={5}>
+              <GlassCard sx={{ p: 4 }}>
+                <Typography variant="subtitle1" fontWeight={700} gutterBottom sx={{ mb: 2 }}>
+                  Tautan Penting
                 </Typography>
-                
-                <List dense>
-                  <ListItem button sx={{ borderRadius: 2, mb: 0.5 }}>
-                    <ListItemIcon><Download fontSize="small" /></ListItemIcon>
-                    <ListItemText primary="Panduan PDF" />
-                  </ListItem>
-                  <ListItem button sx={{ borderRadius: 2, mb: 0.5 }}>
-                    <ListItemIcon><PlayArrow fontSize="small" /></ListItemIcon>
-                    <ListItemText primary="Video Tutorial" />
-                  </ListItem>
-                  <ListItem button sx={{ borderRadius: 2, mb: 0.5 }}>
-                    <ListItemIcon><Security fontSize="small" /></ListItemIcon>
-                    <ListItemText primary="Kebijakan Privasi" />
-                  </ListItem>
-                  <ListItem button sx={{ borderRadius: 2, mb: 0.5 }}>
-                    <ListItemIcon><BugReport fontSize="small" /></ListItemIcon>
-                    <ListItemText primary="Laporkan Bug" />
-                  </ListItem>
+                <List dense disablePadding>
+                  {[
+                    { text: 'Buku Panduan Mahasiswa', icon: <Download /> },
+                    { text: 'Kebijakan Privasi', icon: <Security /> },
+                    { text: 'Laporkan Bug Sistem', icon: <BugReport /> }
+                  ].map((item, i) => (
+                    <ListItem key={i} button sx={{ borderRadius: 2, mb: 0.5 }}>
+                      <ListItemIcon sx={{ minWidth: 36, color: 'text.secondary' }}>{item.icon}</ListItemIcon>
+                      <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: 500 }} />
+                    </ListItem>
+                  ))}
                 </List>
-              </Paper>
-
-              {/* Office Hours */}
-              <Paper sx={{ p: 3, borderRadius: 4, bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
-                <Typography variant="h6" fontWeight={600} gutterBottom>
-                  <Schedule sx={{ mr: 1, verticalAlign: 'bottom' }} />
-                  Jam Operasional
-                </Typography>
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="body2" fontWeight={500}>
-                    Senin - Jumat: 08:00 - 17:00 WIB
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Sabtu: 08:00 - 12:00 WIB
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Minggu: Tutup
-                  </Typography>
-                  <Divider sx={{ my: 2 }} />
-                  <Typography variant="caption" color="text.secondary">
-                    Support online 24/7 melalui website
-                  </Typography>
-                </Box>
-              </Paper>
-            </Stack>
+              </GlassCard>
+            </Grid>
           </Grid>
-        </Grid>
+        </Stack>
 
-        {/* Contact Form Dialog */}
-        <Dialog open={contactDialog} onClose={() => setContactDialog(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>
-            <Typography variant="h6" fontWeight={600}>
-              Kirim Pesan ke Support
-            </Typography>
+        {/* Dialog Form */}
+        <Dialog 
+          open={contactDialog} 
+          onClose={() => setContactDialog(false)} 
+          maxWidth="sm" 
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 4, p: 1 } }}
+        >
+          <DialogTitle sx={{ pb: 1 }}>
+            <Typography variant="h5" fontWeight={700}>Kirim Pesan Bantuan</Typography>
+            <Typography variant="body2" color="text.secondary">Jelaskan kendala Anda agar kami dapat membantu.</Typography>
           </DialogTitle>
           <DialogContent>
-            <Stack spacing={3} sx={{ mt: 1 }}>
+            <Stack spacing={2.5} sx={{ mt: 1 }}>
+              <TextField fullWidth label="Nama Lengkap" value={contactForm.name} onChange={handleInputChange('name')} />
+              <TextField fullWidth label="Email" type="email" value={contactForm.email} onChange={handleInputChange('email')} />
               <TextField
-                fullWidth
-                label="Nama Lengkap"
-                value={contactForm.name}
-                onChange={handleInputChange('name')}
-                variant="outlined"
-              />
-              <TextField
-                fullWidth
-                label="Email"
-                type="email"
-                value={contactForm.email}
-                onChange={handleInputChange('email')}
-                variant="outlined"
-              />
-              <TextField
-                fullWidth
-                label="Kategori"
-                select
-                SelectProps={{ native: true }}
-                value={contactForm.category}
-                onChange={handleInputChange('category')}
-                variant="outlined"
+                fullWidth label="Kategori Kendala" select SelectProps={{ native: true }}
+                value={contactForm.category} onChange={handleInputChange('category')}
               >
                 <option value="umum">Pertanyaan Umum</option>
-                <option value="teknis">Masalah Teknis</option>
-                <option value="akun">Masalah Akun</option>
-                <option value="laporan">Bantuan Laporan</option>
-                <option value="bug">Laporkan Bug</option>
-                <option value="saran">Saran & Feedback</option>
+                <option value="teknis">Masalah Teknis Website</option>
+                <option value="laporan">Masalah Terkait Laporan</option>
               </TextField>
-              <TextField
-                fullWidth
-                label="Subjek"
-                value={contactForm.subject}
-                onChange={handleInputChange('subject')}
-                variant="outlined"
-              />
-              <TextField
-                fullWidth
-                label="Pesan"
-                multiline
-                rows={4}
-                value={contactForm.message}
-                onChange={handleInputChange('message')}
-                variant="outlined"
-                placeholder="Jelaskan masalah atau pertanyaan Anda secara detail..."
-              />
+              <TextField fullWidth label="Pesan Detail" multiline rows={4} value={contactForm.message} onChange={handleInputChange('message')} />
             </Stack>
           </DialogContent>
-          <DialogActions sx={{ p: 3 }}>
-            <Button onClick={() => setContactDialog(false)}>
-              Batal
-            </Button>
-            <Button 
-              variant="contained" 
-              onClick={handleContactSubmit}
-              startIcon={<Send />}
-            >
-              Kirim Pesan
-            </Button>
+          <DialogActions sx={{ p: 3, pt: 1 }}>
+            <Button onClick={() => setContactDialog(false)} sx={{ borderRadius: 2, px: 3 }}>Batal</Button>
+            <Button variant="contained" onClick={handleContactSubmit} sx={{ borderRadius: 2, px: 3 }}>Kirim Pesan</Button>
           </DialogActions>
         </Dialog>
       </Container>
@@ -592,4 +402,4 @@ const HelpPage = () => {
   );
 };
 
-export default HelpPage; 
+export default HelpPage;

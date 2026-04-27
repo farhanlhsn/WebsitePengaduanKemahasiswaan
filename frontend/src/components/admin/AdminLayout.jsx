@@ -47,6 +47,8 @@ const AdminLayout = ({ children }) => {
       setActiveMenu('reports');
     } else if (path.includes('/users')) {
       setActiveMenu('users');
+    } else if (path.includes('/settings')) {
+      setActiveMenu('settings');
     } else if (path.includes('/admin')) {
       setActiveMenu('dashboard');
     }

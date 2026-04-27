@@ -310,10 +310,12 @@ const AdminSidebar = ({
 
   const bottomMenu = [
     { 
+      id: 'settings',
       text: 'Pengaturan', 
       icon: <Settings />, 
       path: '/admin/settings',
-      description: 'Konfigurasi sistem'
+      description: 'Konfigurasi sistem',
+      syncWithState: true
     },
     { 
       text: 'Bantuan', 

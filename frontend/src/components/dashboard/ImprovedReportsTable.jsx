@@ -105,9 +105,9 @@ const ImprovedReportsTable = React.memo(({
       gap: { xs: 2, sm: 3 }, 
       p: { xs: 1, sm: 2 } 
     }}>
-      {reports.map((report, index) => (
-        <Fade in timeout={300 + index * 100} key={report.id}>
+      {reports.map((report) => (
           <GlassCard 
+            key={report.id}
             variant="glass" 
             hover
             sx={{
@@ -205,7 +205,6 @@ const ImprovedReportsTable = React.memo(({
               </EnhancedButton>
             </CardActions>
           </GlassCard>
-        </Fade>
       ))}
     </Box>
   );
@@ -259,12 +258,14 @@ const ImprovedReportsTable = React.memo(({
           </TableRow>
         </TableHead>
         <TableBody>
-          {reports.map((report, index) => (
-            <Fade in timeout={200 + index * 50} key={report.id}>
+          {reports.map((report) => (
               <TableRow 
+                key={report.id}
+                onClick={() => navigate(`/report/${report.id}`)}
                 sx={{ 
                   '&:hover': { 
                     bgcolor: alpha(theme.palette.primary.main, 0.02),
+                    cursor: 'pointer'
                   },
                   '&:last-child td': { border: 0 }
                 }}
@@ -352,7 +353,6 @@ const ImprovedReportsTable = React.memo(({
                   </Tooltip>
                 </TableCell>
               </TableRow>
-            </Fade>
           ))}
         </TableBody>
       </Table>
@@ -373,9 +373,10 @@ const ImprovedReportsTable = React.memo(({
           </TableRow>
         </TableHead>
         <TableBody>
-          {reports.map((report, index) => (
-            <Fade in timeout={200 + index * 50} key={report.id}>
+          {reports.map((report) => (
               <TableRow 
+                key={report.id}
+                onClick={() => navigate(`/report/${report.id}`)}
                 sx={{ 
                   '&:hover': { 
                     bgcolor: alpha(theme.palette.primary.main, 0.02),
@@ -442,7 +443,6 @@ const ImprovedReportsTable = React.memo(({
                   </Tooltip>
                 </TableCell>
               </TableRow>
-            </Fade>
           ))}
         </TableBody>
       </Table>

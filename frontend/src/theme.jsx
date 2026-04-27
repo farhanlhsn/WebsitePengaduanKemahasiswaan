@@ -1,42 +1,38 @@
 import { createTheme } from '@mui/material/styles';
 
-const theme = createTheme({
+export const getTheme = (mode) => createTheme({
   palette: {
+    mode,
     primary: {
-      main: '#2E7D32', // Deep green from logo
-      light: '#4CAF50', // Bright green for accents
-      dark: '#1B5E20',
-      contrastText: '#ffffff',
+      main: mode === 'dark' ? '#81C784' : '#2E7D32',
+      light: mode === 'dark' ? '#A5D6A7' : '#4CAF50',
+      dark: mode === 'dark' ? '#388E3C' : '#1B5E20',
+      contrastText: mode === 'dark' ? '#000000' : '#ffffff',
     },
     secondary: {
-      main: '#FFC107', // Gold/Yellow from logo
-      light: '#FFEB3B',
-      dark: '#FF8F00',
+      main: mode === 'dark' ? '#FFD54F' : '#FFC107',
+      light: mode === 'dark' ? '#FFE082' : '#FFEB3B',
+      dark: mode === 'dark' ? '#FFB300' : '#FF8F00',
       contrastText: '#000000',
     },
     success: {
-      main: '#4CAF50',
-      light: '#81C784',
-      dark: '#388E3C',
+      main: mode === 'dark' ? '#81C784' : '#4CAF50',
     },
     warning: {
-      main: '#FF9800',
-      light: '#FFB74D',
-      dark: '#F57C00',
+      main: mode === 'dark' ? '#FFB74D' : '#FF9800',
     },
     error: {
-      main: '#F44336',
-      light: '#EF5350',
-      dark: '#D32F2F',
+      main: mode === 'dark' ? '#E57373' : '#F44336',
     },
     background: {
-      default: '#f8f9fa',
-      paper: '#ffffff',
+      default: mode === 'dark' ? '#121212' : '#f8f9fa',
+      paper: mode === 'dark' ? '#1e1e1e' : '#ffffff',
     },
     text: {
-      primary: '#212121',
-      secondary: '#757575',
+      primary: mode === 'dark' ? '#ffffff' : '#212121',
+      secondary: mode === 'dark' ? '#b3b3b3' : '#757575',
     },
+    divider: mode === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
   },
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
@@ -167,11 +163,13 @@ const theme = createTheme({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+          boxShadow: mode === 'dark' ? '0 2px 12px rgba(0,0,0,0.5)' : '0 2px 12px rgba(0,0,0,0.08)',
         },
       },
     },
   },
 });
 
-export default theme;
+// For backward compatibility where theme was imported statically
+const defaultTheme = getTheme('light');
+export default defaultTheme;

@@ -12,10 +12,7 @@ if (typeof window !== 'undefined') {
 import { Suspense } from 'react';
 import { RouterProvider } from 'react-router-dom';
 
-// Import MUI and Emotion AFTER React is established
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import theme from './theme';
+import AppThemeProvider from './AppThemeProvider';
 
 // Import other dependencies
 import { router } from './pages/routes';
@@ -195,8 +192,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 
 // CRITICAL: Ensure proper initialization order with React.createElement
 const AppContent = () => React.createElement(ErrorBoundary, null,
-  React.createElement(ThemeProvider, { theme },
-    React.createElement(CssBaseline),
+  React.createElement(AppThemeProvider, null,
     process.env.NODE_ENV === 'production' && React.createElement(Suspense, {
       fallback: React.createElement(LoadingSpinner, {
         fullScreen: true,

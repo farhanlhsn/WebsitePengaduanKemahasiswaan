@@ -30,6 +30,17 @@ class ChatServices {
               fileType: true,
               createdAt: true
             }
+          },
+          replyTo: {
+            select: {
+              id: true,
+              content: true,
+              sender: {
+                select: {
+                  name: true
+                }
+              }
+            }
           }
         },
         orderBy: {
@@ -63,7 +74,7 @@ class ChatServices {
   // Send a new message
   async sendMessage(data) {
     try {
-      const { content, senderId, reportId, attachments = [] } = data;
+      const { content, senderId, reportId, attachments = [], replyToId } = data;
 
       // Verify report exists and user has access
       const report = await prisma.report.findUnique({
@@ -101,7 +112,8 @@ class ChatServices {
           data: {
             content,
             senderId: parseInt(senderId),
-            reportId: parseInt(reportId)
+            reportId: parseInt(reportId),
+            ...(replyToId && { replyToId: parseInt(replyToId) })
           },
           include: {
             sender: {
@@ -109,6 +121,15 @@ class ChatServices {
                 id: true,
                 name: true,
                 role: true
+              }
+            },
+            replyTo: {
+              select: {
+                id: true,
+                content: true,
+                sender: {
+                  select: { name: true }
+                }
               }
             }
           }

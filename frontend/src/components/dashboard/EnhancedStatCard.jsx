@@ -72,7 +72,7 @@ const EnhancedStatCard = React.memo(({
   
   return (
     <StyledStatCard variant="glass" cardcolor={color}>
-      <Box sx={{ position: 'relative', zIndex: 1 }}>
+      <Box sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, mb: 2 }}>
           <Box sx={{ flex: 1, pr: 1 }}>
             <Typography 
@@ -122,61 +122,63 @@ const EnhancedStatCard = React.memo(({
           </IconContainer>
         </Box>
 
-        {showProgress && (
-          <Box sx={{ mb: 2 }}>
-            <LinearProgress 
-              variant="determinate" 
-              value={progressValue}
-              sx={{ 
-                height: 8, 
-                borderRadius: 4,
-                bgcolor: alpha(color, 0.1),
-                '& .MuiLinearProgress-bar': {
-                  bgcolor: color,
-                  borderRadius: 4,
-                  background: `linear-gradient(90deg, ${color}, ${alpha(color, 0.8)})`,
-                }
-              }}
-            />
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-              {Math.round(progressValue)}% completion
-            </Typography>
-          </Box>
-        )}
-
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {trendValue && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              {isPositiveTrend ? (
-                <TrendingUp fontSize="small" sx={{ color: '#4CAF50' }} />
-              ) : (
-                <TrendingDown fontSize="small" sx={{ color: '#F44336' }} />
-              )}
-              <Typography 
-                variant="body2" 
+        <Box sx={{ mt: 'auto' }}>
+          {showProgress && (
+            <Box sx={{ mb: 2 }}>
+              <LinearProgress 
+                variant="determinate" 
+                value={progressValue}
                 sx={{ 
-                  color: isPositiveTrend ? '#4CAF50' : '#F44336',
-                  fontWeight: 600,
-                  fontSize: '0.875rem'
+                  height: 8, 
+                  borderRadius: 4,
+                  bgcolor: alpha(color, 0.1),
+                  '& .MuiLinearProgress-bar': {
+                    bgcolor: color,
+                    borderRadius: 4,
+                    background: `linear-gradient(90deg, ${color}, ${alpha(color, 0.8)})`,
+                  }
                 }}
-              >
-                {trendValue}
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                {Math.round(progressValue)}% completion
               </Typography>
             </Box>
           )}
-          
-          {subtitle && (
-            <Typography 
-              variant="caption" 
-              color="text.secondary" 
-              sx={{ 
-                fontWeight: 500,
-                fontSize: '0.75rem'
-              }}
-            >
-              {subtitle}
-            </Typography>
-          )}
+
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {trendValue && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                {isPositiveTrend ? (
+                  <TrendingUp fontSize="small" sx={{ color: '#4CAF50' }} />
+                ) : (
+                  <TrendingDown fontSize="small" sx={{ color: '#F44336' }} />
+                )}
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    color: isPositiveTrend ? '#4CAF50' : '#F44336',
+                    fontWeight: 600,
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  {trendValue}
+                </Typography>
+              </Box>
+            )}
+            
+            {subtitle && (
+              <Typography 
+                variant="caption" 
+                color="text.secondary" 
+                sx={{ 
+                  fontWeight: 500,
+                  fontSize: '0.75rem'
+                }}
+              >
+                {subtitle}
+              </Typography>
+            )}
+          </Box>
         </Box>
       </Box>
     </StyledStatCard>

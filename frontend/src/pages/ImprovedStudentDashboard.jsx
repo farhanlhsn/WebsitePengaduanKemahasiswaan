@@ -13,13 +13,17 @@ import useCategoryStore from '../stores/categoryStore';
 import useUserStore from '../stores/userStore';
 import useAuthStore from '../stores/authStore';
 import useChatStore from '../stores/chatStore';
+import { useTranslation } from '../stores/settingsStore';
 
-const StudentSidebar = React.lazy(() => import('../components/dashboard/StudentSidebar'));
-const EnhancedStatCard = React.lazy(() => import('../components/dashboard/EnhancedStatCard'));
-const ImprovedReportsTable = React.lazy(() => import('../components/dashboard/ImprovedReportsTable'));
-const CreateReportModal = React.lazy(() => import('../components/dashboard/CreateReportModal'));
-const ChatList = React.lazy(() => import('../components/chat/ChatList'));
-const ChatInterface = React.lazy(() => import('../components/chat/ChatInterface'));
+import StudentSidebar from '../components/dashboard/StudentSidebar';
+import EnhancedStatCard from '../components/dashboard/EnhancedStatCard';
+import ImprovedReportsTable from '../components/dashboard/ImprovedReportsTable';
+import CreateReportModal from '../components/dashboard/CreateReportModal';
+import ChatList from '../components/chat/ChatList';
+import ChatInterface from '../components/chat/ChatInterface';
+import ProfilePage from './ProfilePage';
+import SettingsPage from './SettingsPage';
+import HelpPage from './HelpPage';
 
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
@@ -33,6 +37,7 @@ export default React.memo(function ImprovedStudentDashboard() {
   const { userStats, getUserStatsById } = useUserStore();
   const { user } = useAuthStore();
   const { selectReport } = useChatStore();
+  const { t } = useTranslation();
 
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -133,7 +138,7 @@ export default React.memo(function ImprovedStudentDashboard() {
   const renderContent = () => {
     // ... (commonHeader tetap sama) ...
     const commonHeader = (title, subtitle) => (
-      <Box sx={{ mb: 4, px: { xs: 2, sm: 0 } }}>
+      <Box sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Box>
             <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ display: { sm: 'none' }, mr: 2 }}>
@@ -150,32 +155,26 @@ export default React.memo(function ImprovedStudentDashboard() {
       case 'dashboard':
         return (
           <>
-            {commonHeader('Dashboard', 'Selamat datang kembali! Berikut ringkasan laporan Anda.')}
-            <Box sx={{ px: { xs: 2, sm: 0 }, mb: 4 }}>
+            {commonHeader(t('dashboard.title'), t('dashboard.subtitle'))}
+            <Box sx={{ mb: 4 }}>
               {/* --- GRID YANG SUDAH DIPERBAIKI --- */}
-              <Grid container spacing={3} sx={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', // Membuat kolom yang fleksibel
-                gridGap: '20px'
-              }}>
+              <Grid container spacing={3}>
                 <Grid item xs={12} sm={6} lg={3}>
-                  <EnhancedStatCard title="Total Laporan" value={memoizedStats.totalReports} icon={<Assignment />} color="#2E7D32" animateValue />
+                  <EnhancedStatCard title={t('dashboard.total_reports')} value={memoizedStats.totalReports} icon={<Assignment />} color="#2E7D32" animateValue />
                 </Grid>
                 <Grid item xs={12} sm={6} lg={3}>
-                  <EnhancedStatCard title="Menunggu" value={memoizedStats.pendingReports} icon={<PendingActions />} color="#FF9800" animateValue />
+                  <EnhancedStatCard title={t('dashboard.pending')} value={memoizedStats.pendingReports} icon={<PendingActions />} color="#FF9800" animateValue />
                 </Grid>
                 <Grid item xs={12} sm={6} lg={3}>
-                  <EnhancedStatCard title="Diproses" value={memoizedStats.inProgressReports} icon={<HourglassEmpty />} color="#2196F3" animateValue />
+                  <EnhancedStatCard title={t('dashboard.in_progress')} value={memoizedStats.inProgressReports} icon={<HourglassEmpty />} color="#2196F3" animateValue />
                 </Grid>
                 <Grid item xs={12} sm={6} lg={3}>
-                  <EnhancedStatCard title="Selesai" value={memoizedStats.completedReports} icon={<CheckCircle />} color="#4CAF50" animateValue showProgress progressValue={memoizedStats.completionRate} />
+                  <EnhancedStatCard title={t('dashboard.resolved')} value={memoizedStats.completedReports} icon={<CheckCircle />} color="#4CAF50" animateValue showProgress progressValue={memoizedStats.completionRate} />
                 </Grid>
               </Grid>
             </Box>
             <Box sx={{ width: '100%', mx: 0, px: { xs: 0, sm: 0 } }}>
-              <Suspense fallback={<LoadingSpinner />}>
-                <ImprovedReportsTable reports={reports} loading={loading} categories={categories} statusFilter={statusFilter} categoryFilter={categoryFilter} searchQuery={searchQuery} onStatusChange={handleStatusChange} onCategoryChange={handleCategoryChange} onSearchChange={handleSearchChange} onLoadMore={handleLoadMore} hasNextPage={pagination.hasNextPage} onCreateReport={() => setModalOpen(true)} />
-              </Suspense>
+              <ImprovedReportsTable reports={reports} loading={loading} categories={categories} statusFilter={statusFilter} categoryFilter={categoryFilter} searchQuery={searchQuery} onStatusChange={handleStatusChange} onCategoryChange={handleCategoryChange} onSearchChange={handleSearchChange} onLoadMore={handleLoadMore} hasNextPage={pagination.hasNextPage} onCreateReport={() => setModalOpen(true)} />
             </Box>
           </>
         );
@@ -183,27 +182,49 @@ export default React.memo(function ImprovedStudentDashboard() {
       case 'reports':
         return (
           <>
-            {commonHeader('Laporan Saya', 'Kelola dan pantau semua laporan yang telah Anda buat.')}
+            {commonHeader(t('reports.title'), t('reports.subtitle'))}
             <Box sx={{ width: '100%', mx: 0 }}>
-              <Suspense fallback={<LoadingSpinner />}>
-                <ImprovedReportsTable reports={reports} loading={loading} categories={categories} statusFilter={statusFilter} categoryFilter={categoryFilter} searchQuery={searchQuery} onStatusChange={handleStatusChange} onCategoryChange={handleCategoryChange} onSearchChange={handleSearchChange} onLoadMore={handleLoadMore} hasNextPage={pagination.hasNextPage} onCreateReport={() => setModalOpen(true)} />
-              </Suspense>
+              <ImprovedReportsTable reports={reports} loading={loading} categories={categories} statusFilter={statusFilter} categoryFilter={categoryFilter} searchQuery={searchQuery} onStatusChange={handleStatusChange} onCategoryChange={handleCategoryChange} onSearchChange={handleSearchChange} onLoadMore={handleLoadMore} hasNextPage={pagination.hasNextPage} onCreateReport={() => setModalOpen(true)} />
             </Box>
           </>
         );
       case 'chat':
         return (
           <>
-            {commonHeader('Chat & Komunikasi', 'Komunikasi langsung dengan admin untuk laporan Anda.')}
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 3, height: { lg: 'calc(100vh - 200px)' }, px: { xs: 2, sm: 0 } }}>
+            {commonHeader(t('chat.title'), t('chat.subtitle'))}
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 3, height: { lg: 'calc(100vh - 200px)' } }}>
               <Box sx={{ width: { xs: '100%', lg: '350px' }, flexShrink: 0 }}>
-                <Suspense fallback={<LoadingSpinner />}><ChatList onReportSelect={selectReport} /></Suspense>
+                <ChatList onReportSelect={selectReport} />
               </Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Suspense fallback={<LoadingSpinner />}><ChatInterface /></Suspense>
+                <ChatInterface />
               </Box>
             </Box>
           </>
+        );
+      case 'profile':
+        return (
+          <>
+            {commonHeader(t('profile.title'), t('profile.subtitle'))}
+            <Box sx={{ width: '100%', mx: 0 }}>
+              <ProfilePage isEmbedded={true} />
+            </Box>
+          </>
+        );
+      case 'settings':
+        return (
+          <>
+            {commonHeader(t('settings.title'), t('settings.subtitle'))}
+            <Box sx={{ width: '100%', mx: 0 }}>
+              <SettingsPage isEmbedded={true} />
+            </Box>
+          </>
+        );
+      case 'help':
+        return (
+          <Box sx={{ width: '100%', mx: 0 }}>
+            <HelpPage isEmbedded={true} />
+          </Box>
         );
       default:
         return null;
@@ -212,27 +233,23 @@ export default React.memo(function ImprovedStudentDashboard() {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'grey.100' }}>
-      <Suspense fallback={<div style={{ width: drawerWidth }} />}>
-        <StudentSidebar 
-          open={mobileOpen} 
-          onClose={handleDrawerToggle}
-          drawerWidth={drawerWidth}
-          onCreateReport={() => setModalOpen(true)}
-          activeMenu={activeMenu}
-          onMenuChange={setActiveMenu}
-          sidebarOpen={sidebarOpen}
-          onSidebarToggle={handleSidebarToggle}
-        />
-      </Suspense>
+      <StudentSidebar 
+        open={mobileOpen} 
+        onClose={handleDrawerToggle}
+        drawerWidth={drawerWidth}
+        onCreateReport={() => setModalOpen(true)}
+        activeMenu={activeMenu}
+        onMenuChange={setActiveMenu}
+        sidebarOpen={sidebarOpen}
+        onSidebarToggle={handleSidebarToggle}
+      />
       <Box component="main" sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Box sx={{ flex: 1, p: { xs: 2, sm: 3 }, overflowY: 'auto', bgcolor: 'background.default' }}>
           {renderContent()}
           {error && <Alert severity="error" sx={{ mt: 3, borderRadius: 2 }}>{error}</Alert>}
         </Box>
       </Box>
-      <Suspense fallback={<div />}>
-        <CreateReportModal open={modalOpen} onClose={() => setModalOpen(false)} categories={categories} onSubmit={handleCreateReport} />
-      </Suspense>
+      <CreateReportModal open={modalOpen} onClose={() => setModalOpen(false)} categories={categories} onSubmit={handleCreateReport} />
     </Box>
   );
 });
