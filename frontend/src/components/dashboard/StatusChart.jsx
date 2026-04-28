@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Paper, Typography, LinearProgress } from '@mui/material';
+import { Box, Paper, Typography, LinearProgress, Stack, Avatar } from '@mui/material';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis } from 'recharts';
 import { BarChart, TrendingUp } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
@@ -111,18 +111,19 @@ const StatusChart = ({ data }) => {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={2}
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={4}
+                    cornerRadius={6}
                     animationBegin={0}
-                    animationDuration={1000}
+                    animationDuration={1500}
+                    stroke="none"
                   >
                     {dataWithTotal.map((entry, idx) => (
                       <Cell 
                         key={entry.name} 
                         fill={entry.color}
-                        stroke={entry.color}
-                        strokeWidth={2}
+                        style={{ filter: `drop-shadow(0px 4px 8px ${alpha(entry.color, 0.2)})` }}
                       />
                     ))}
                   </Pie>
@@ -139,92 +140,99 @@ const StatusChart = ({ data }) => {
                 textAlign: 'center',
                 pointerEvents: 'none'
               }}>
-                <Typography variant="h4" fontWeight={800} color="primary.main">
+                <Typography variant="h4" fontWeight={900} sx={{ color: 'text.primary', letterSpacing: -1 }}>
                   {total}
                 </Typography>
-                <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                  Total Laporan
+                <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                  Laporan
                 </Typography>
               </Box>
             </Box>
 
             {/* Legend with Progress Bars */}
             <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2, color: 'text.primary' }}>
-                Detail Status
+              <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 2.5, color: 'text.primary', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 1 }}>
+                Detail Distribusi
               </Typography>
-              {data.map((item) => {
-                const percentage = ((item.value / total) * 100);
-                return (
-                  <Box key={item.name} sx={{ mb: 2 }}>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between',
-                      mb: 1
-                    }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ 
-                          width: 12, 
-                          height: 12, 
-                          borderRadius: '50%', 
-                          bgcolor: item.color,
-                          boxShadow: `0 2px 8px ${alpha(item.color, 0.3)}`
-                        }} />
-                        <Typography variant="body2" fontWeight={500}>
-                          {item.name}
-                        </Typography>
+              <Stack spacing={2}>
+                {data.map((item) => {
+                  const percentage = ((item.value / total) * 100);
+                  return (
+                    <Box key={item.name}>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        mb: 1
+                      }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{ 
+                            width: 10, 
+                            height: 10, 
+                            borderRadius: '50%', 
+                            bgcolor: item.color,
+                            boxShadow: `0 0 0 3px ${alpha(item.color, 0.15)}`
+                          }} />
+                          <Typography variant="body2" fontWeight={600} color="text.secondary">
+                            {item.name}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Typography variant="body2" fontWeight={800} color="text.primary">
+                            {item.value}
+                          </Typography>
+                          <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ minWidth: 40, textAlign: 'right' }}>
+                            {percentage.toFixed(1)}%
+                          </Typography>
+                        </Box>
                       </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Typography variant="body2" fontWeight={600} color="text.primary">
-                          {item.value}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ minWidth: 40 }}>
-                          {percentage.toFixed(1)}%
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={percentage}
-                      sx={{
-                        height: 6,
-                        borderRadius: 3,
-                        bgcolor: alpha(item.color, 0.1),
-                        '& .MuiLinearProgress-bar': {
-                          bgcolor: item.color,
+                      <LinearProgress
+                        variant="determinate"
+                        value={percentage}
+                        sx={{
+                          height: 6,
                           borderRadius: 3,
-                          transition: 'transform 1s ease-in-out'
-                        }
-                      }}
-                    />
-                  </Box>
-                );
-              })}
+                          bgcolor: alpha(item.color, 0.08),
+                          '& .MuiLinearProgress-bar': {
+                            bgcolor: item.color,
+                            borderRadius: 3,
+                            transition: 'transform 1.5s cubic-bezier(0.65, 0, 0.35, 1)'
+                          }
+                        }}
+                      />
+                    </Box>
+                  );
+                })}
+              </Stack>
             </Box>
 
             {/* Summary Stats */}
             <Box sx={{ 
-              mt: 3, 
+              mt: 4, 
               p: 2, 
               borderRadius: 3, 
-              bgcolor: alpha(theme.palette.success.main, 0.05),
-              border: `1px solid ${alpha(theme.palette.success.main, 0.1)}`
+              bgcolor: alpha(theme.palette.success.main, 0.04),
+              border: `1px solid ${alpha(theme.palette.success.main, 0.1)}`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
             }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <TrendingUp fontSize="small" sx={{ color: 'success.main' }} />
-                <Typography variant="body2" fontWeight={600} color="success.main">
+              <Avatar sx={{ bgcolor: alpha(theme.palette.success.main, 0.1), color: 'success.main', width: 40, height: 40 }}>
+                <TrendingUp />
+              </Avatar>
+              <Box>
+                <Typography variant="body2" fontWeight={800} color="success.main">
                   Tingkat Penyelesaian
                 </Typography>
+                <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                  {data.find(item => item.name === 'Selesai')?.value || 0} dari {total} laporan selesai 
+                  {total > 0 && (
+                    <span style={{ fontWeight: 800, color: theme.palette.success.main }}>
+                      {' '}({(((data.find(item => item.name === 'Selesai')?.value || 0) / total) * 100).toFixed(1)}%)
+                    </span>
+                  )}
+                </Typography>
               </Box>
-              <Typography variant="body2" color="text.secondary">
-                {data.find(item => item.name === 'Selesai')?.value || 0} dari {total} laporan telah diselesaikan
-                {total > 0 && (
-                  <span style={{ fontWeight: 600, color: theme.palette.success.main }}>
-                    {' '}({(((data.find(item => item.name === 'Selesai')?.value || 0) / total) * 100).toFixed(1)}%)
-                  </span>
-                )}
-              </Typography>
             </Box>
           </>
         )}
@@ -233,4 +241,4 @@ const StatusChart = ({ data }) => {
   );
 };
 
-export default StatusChart; 
+export default StatusChart;

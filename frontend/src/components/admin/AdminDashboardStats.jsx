@@ -127,7 +127,7 @@ const AdminDashboardStats = ({
       {/* High Priority Stats - Larger cards for important metrics */}
       <Grid container spacing={3} sx={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', // Membuat kolom yang fleksibel
+        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
         gridGap: '20px',
         mb: 3
       }}>
@@ -151,6 +151,8 @@ const AdminDashboardStats = ({
               icon={stat.icon}
               color={stat.color}
               subtitle={stat.subtitle}
+              showProgress={stat.showProgress}
+              progressValue={stat.progressValue}
               animateValue
             />
           </Grid>
