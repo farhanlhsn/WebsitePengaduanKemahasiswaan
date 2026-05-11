@@ -442,7 +442,7 @@ const EnhancedAdminDashboard = () => {
   }
 
   return (
-    <Box sx={{ display: 'flex', bgcolor: 'background.default', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', bgcolor: 'background.default', minHeight: '100dvh' }}>
       <AdminSidebar 
         open={mobileOpen} 
         onClose={handleDrawerToggle}

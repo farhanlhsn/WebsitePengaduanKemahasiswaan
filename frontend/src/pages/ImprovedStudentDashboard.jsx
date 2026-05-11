@@ -211,7 +211,7 @@ export default React.memo(function ImprovedStudentDashboard() {
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'grey.100' }}>
+    <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'grey.100' }}>
       <Suspense fallback={<div style={{ width: drawerWidth }} />}>
         <StudentSidebar 
           open={mobileOpen} 

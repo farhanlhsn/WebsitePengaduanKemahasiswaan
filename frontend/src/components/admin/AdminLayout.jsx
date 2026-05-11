@@ -68,7 +68,7 @@ const AdminLayout = ({ children }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', bgcolor: 'background.default', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', bgcolor: 'background.default', minHeight: '100dvh' }}>
       {/* Sidebar */}
       <AdminSidebar
         open={mobileOpen}
