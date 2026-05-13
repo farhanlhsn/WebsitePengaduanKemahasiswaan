@@ -15,30 +15,22 @@ import {
 import { alpha, useTheme } from '@mui/material/styles';
 import useAuthStore from '../stores/authStore';
 import useUserStore from '../stores/userStore';
+import useSettingsStore from '../stores/settingsStore';
 import { useNavigate } from 'react-router-dom';
 
-const SettingsPage = () => {
+const SettingsPage = ({ isEmbedded = false }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { user, devices, logout, logoutDevice, getUserDevices } = useAuthStore();
   const { updateUser, loading, error, clearError } = useUserStore();
 
-  // State untuk pengaturan
-  const [settings, setSettings] = useState({
-    notifications: {
-      email: true,
-      push: true,
-      reportUpdates: true,
-      newFeatures: false
-    },
-    privacy: {
-      showProfile: true,
-      showReports: false,
-      allowTracking: false
-    },
-    language: 'id',
-    theme: 'light'
-  });
+  const { settings, updateAllSettings } = useSettingsStore();
+  const [localSettings, setLocalSettings] = useState(settings);
+
+  // Sync local state if global settings change from elsewhere
+  useEffect(() => {
+    setLocalSettings(settings);
+  }, [settings]);
 
   // State untuk dialog konfirmasi
   const [confirmDialog, setConfirmDialog] = useState({
@@ -59,13 +51,6 @@ const SettingsPage = () => {
   const [passwordDialog, setPasswordDialog] = useState(false);
 
   useEffect(() => {
-    // Load settings dari localStorage atau API
-    const savedSettings = localStorage.getItem('userSettings');
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
-    }
-    
-    // Load user devices
     if (user) {
       getUserDevices();
     }
@@ -74,36 +59,23 @@ const SettingsPage = () => {
   const handleSettingChange = (category, key) => (event) => {
     const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
     
-    if (category === '') {
-      // For top-level settings like language and theme
-      setSettings(prev => ({
-        ...prev,
-        [key]: value
-      }));
-    } else {
-      // For nested settings
-      setSettings(prev => ({
+    setLocalSettings(prev => {
+      if (category === '') {
+        return { ...prev, [key]: value };
+      }
+      return {
         ...prev,
         [category]: {
           ...prev[category],
           [key]: value
         }
-      }));
-    }
+      };
+    });
   };
 
   const saveSettings = async () => {
-    try {
-      localStorage.setItem('userSettings', JSON.stringify(settings));
-      // Di sini bisa ditambahkan API call untuk menyimpan ke backend
-      // await updateUserSettings(settings);
-      
-      // Show success message
-      alert('Pengaturan berhasil disimpan');
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-      alert('Gagal menyimpan pengaturan');
-    }
+    updateAllSettings(localSettings);
+    alert('Pengaturan berhasil disimpan');
   };
 
   const handleLogoutFromDevice = async (deviceId) => {
@@ -195,36 +167,41 @@ const SettingsPage = () => {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f8f9fa', py: 4 }}>
+    <Box sx={{ minHeight: isEmbedded ? 'auto' : '100vh', bgcolor: isEmbedded ? 'transparent' : '#f8f9fa', py: isEmbedded ? 0 : 4 }}>
       {/* Back Button */}
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3, px: 10 }}>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={() => navigate('/dashboard')}
-          variant="outlined"
-          sx={{ 
-            color: 'black',
-            borderColor: 'rgba(0,0,0,0.3)',
-            '&:hover': {
-              borderColor: 'black',
-              bgcolor: 'rgba(0,0,0,0.1)'
-            }
-          }}
-        >
-          Kembali
-        </Button>
-      </Stack>
+      {!isEmbedded && (
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3, px: { xs: 2, sm: 4, md: 10 } }}>
+          <Button
+            startIcon={<ArrowBack />}
+            onClick={() => navigate('/dashboard')}
+            variant="outlined"
+            sx={{ 
+              color: 'text.primary',
+              borderColor: 'rgba(0,0,0,0.2)',
+              borderRadius: 2,
+              '&:hover': {
+                borderColor: 'text.primary',
+                bgcolor: 'rgba(0,0,0,0.05)'
+              }
+            }}
+          >
+            Kembali
+          </Button>
+        </Stack>
+      )}
 
-      <Container maxWidth="md">
+      <Container maxWidth={isEmbedded ? false : "md"} disableGutters={isEmbedded} sx={{ px: isEmbedded ? { xs: 2, sm: 0 } : 2 }}>
         {/* Header */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Pengaturan
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Kelola preferensi akun dan pengaturan aplikasi Anda
-          </Typography>
-        </Box>
+        {!isEmbedded && (
+          <Box sx={{ mb: 4, px: { xs: 2, md: 0 } }}>
+            <Typography variant="h4" fontWeight={800} gutterBottom sx={{ fontSize: { xs: '2rem', md: '2.5rem' } }}>
+              Pengaturan
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Kelola preferensi akun dan pengaturan aplikasi Anda
+            </Typography>
+          </Box>
+        )}
 
         {error && (
           <Alert 
@@ -252,7 +229,7 @@ const SettingsPage = () => {
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={settings.notifications.email}
+                      checked={localSettings.notifications.email}
                       onChange={handleSettingChange('notifications', 'email')}
                     />
                   }
@@ -263,7 +240,7 @@ const SettingsPage = () => {
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={settings.notifications.push}
+                      checked={localSettings.notifications.push}
                       onChange={handleSettingChange('notifications', 'push')}
                     />
                   }
@@ -274,7 +251,7 @@ const SettingsPage = () => {
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={settings.notifications.reportUpdates}
+                      checked={localSettings.notifications.reportUpdates}
                       onChange={handleSettingChange('notifications', 'reportUpdates')}
                     />
                   }
@@ -285,7 +262,7 @@ const SettingsPage = () => {
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={settings.notifications.newFeatures}
+                      checked={localSettings.notifications.newFeatures}
                       onChange={handleSettingChange('notifications', 'newFeatures')}
                     />
                   }
@@ -312,7 +289,7 @@ const SettingsPage = () => {
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={settings.privacy.showProfile}
+                      checked={localSettings.privacy.showProfile}
                       onChange={handleSettingChange('privacy', 'showProfile')}
                     />
                   }
@@ -323,7 +300,7 @@ const SettingsPage = () => {
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={settings.privacy.showReports}
+                      checked={localSettings.privacy.showReports}
                       onChange={handleSettingChange('privacy', 'showReports')}
                     />
                   }
@@ -334,7 +311,7 @@ const SettingsPage = () => {
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={settings.privacy.allowTracking}
+                      checked={localSettings.privacy.allowTracking}
                       onChange={handleSettingChange('privacy', 'allowTracking')}
                     />
                   }
@@ -371,7 +348,7 @@ const SettingsPage = () => {
                 <FormControl fullWidth>
                   <InputLabel>Bahasa</InputLabel>
                   <Select
-                    value={settings.language}
+                    value={localSettings.language}
                     label="Bahasa"
                     onChange={handleSettingChange('', 'language')}
                   >
@@ -384,7 +361,7 @@ const SettingsPage = () => {
                 <FormControl fullWidth>
                   <InputLabel>Tema</InputLabel>
                   <Select
-                    value={settings.theme}
+                    value={localSettings.theme}
                     label="Tema"
                     onChange={handleSettingChange('', 'theme')}
                   >

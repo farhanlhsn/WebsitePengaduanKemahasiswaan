@@ -12,7 +12,8 @@ import {
   IconButton,
   Tooltip,
   Divider,
-  useMediaQuery
+  useMediaQuery,
+  Dialog
 } from '@mui/material';
 import {
   Dashboard,
@@ -177,9 +178,29 @@ const AdminSidebar = ({
   ];
 
   const bottomMenu = [
-    { text: 'Pengaturan', icon: <Settings />,   path: '/admin/settings' },
-    { text: 'Bantuan',    icon: <HelpOutline />, path: '/help' },
-    { text: 'Logout',     icon: <Logout />,      action: handleLogout, color: 'error' },
+    { 
+      id: 'settings',
+      text: 'Pengaturan', 
+      icon: <Settings />, 
+      path: '/admin/settings',
+      description: 'Konfigurasi sistem',
+      syncWithState: true
+    },
+    { 
+      id: 'help',
+      text: 'Bantuan', 
+      icon: <HelpOutline />, 
+      path: '/admin/help',
+      description: 'Panduan dan dukungan',
+      syncWithState: true
+    },
+    { 
+      text: 'Logout', 
+      icon: <Logout />, 
+      action: handleLogout, 
+      color: 'error',
+      description: 'Keluar dari sistem'
+    },
   ];
 
   // ── Render helpers ─────────────────────────────────────────────────────────

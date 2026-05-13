@@ -45,12 +45,12 @@ class ChatApi {
   }
 
   // Send a message to a specific report
-  async sendMessage(reportId, content, attachments = []) {
+  async sendMessage(reportId, content, attachments = [], replyToId = null) {
     try {
-      const response = await api.post(`/chat/reports/${reportId}/messages`, {
-        content,
-        attachments
-      });
+      const payload = { content, attachments };
+      if (replyToId) payload.replyToId = replyToId;
+      
+      const response = await api.post(`/chat/reports/${reportId}/messages`, payload);
       return response.data;
     } catch (error) {
       throw this.handleError(error);

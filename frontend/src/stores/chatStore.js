@@ -77,7 +77,22 @@ const useChatStore = create(
             if (currentReport && message.reportId === currentReport.id) {
               const safeMessages = Array.isArray(messages) ? messages : [];
               if (!safeMessages.some(m => m.id === message.id)) {
-                set({ messages: [...safeMessages, message] });
+                // Enrich replyTo data if message has replyToId but missing replyTo details
+                let enrichedMessage = message;
+                if (message.replyToId && !message.replyTo) {
+                  const originalMsg = safeMessages.find(m => m.id === message.replyToId);
+                  if (originalMsg) {
+                    enrichedMessage = {
+                      ...message,
+                      replyTo: {
+                        id: originalMsg.id,
+                        content: originalMsg.content,
+                        sender: originalMsg.sender ? { name: originalMsg.sender.name } : null
+                      }
+                    };
+                  }
+                }
+                set({ messages: [...safeMessages, enrichedMessage] });
                 // Mark read in backend and reset unread
                 get().markMessagesAsRead(currentReport.id);
               }
@@ -174,22 +189,76 @@ const useChatStore = create(
           const response = await chatApi.getMessages(reportId, page, limit);
           if (response.status === 'success') {
             const { messages, pagination } = response.data;
-            set({ messages: messages.reverse(), pagination }); // Assuming API returns latest first, reverse for display
+            
+            // Build a lookup map from the fetched batch
+            const msgMap = {};
+            messages.forEach(m => { msgMap[m.id] = m; });
+
+            // Enrich any message that has replyToId but null replyTo
+            const enriched = messages.map(m => {
+              if (m.replyToId && !m.replyTo) {
+                const original = msgMap[m.replyToId];
+                if (original) {
+                  return {
+                    ...m,
+                    replyTo: {
+                      id: original.id,
+                      content: original.content,
+                      sender: original.sender ? { name: original.sender.name } : null
+                    }
+                  };
+                }
+              }
+              return m;
+            });
+
+            set({ messages: enriched, pagination });
           }
         } catch (error) {
           set({ error: error.message, messages: [] });
         }
       },
       
-      sendMessage: async (content, attachments = []) => {
-        const { currentReport } = get();
+      sendMessage: async (content, attachments = [], replyToId = null) => {
+        const { currentReport, messages } = get();
         if (!currentReport) throw new Error('No report selected');
 
         try {
           set({ error: null });
-          // The socket 'newMessage' event will handle adding the message to the state.
-          // This avoids duplicate messages.
-          await chatApi.sendMessage(currentReport.id, content, attachments);
+          const result = await chatApi.sendMessage(currentReport.id, content, attachments, replyToId);
+          
+          // Use the API response directly to add the message with full replyTo data
+          if (result.status === 'success' && result.data) {
+            let newMsg = result.data;
+            
+            // Fallback: enrich replyTo from local messages if backend didn't include it
+            if (replyToId && !newMsg.replyTo) {
+              const currentMsgs = Array.isArray(get().messages) ? get().messages : [];
+              const originalMsg = currentMsgs.find(m => m.id === replyToId);
+              if (originalMsg) {
+                newMsg = {
+                  ...newMsg,
+                  replyTo: {
+                    id: originalMsg.id,
+                    content: originalMsg.content,
+                    sender: originalMsg.sender ? { name: originalMsg.sender.name } : null
+                  }
+                };
+              }
+            }
+            
+            // Replace existing (from socket) or append - ensures replyTo data is always present
+            const currentMessages = Array.isArray(get().messages) ? get().messages : [];
+            const existingIndex = currentMessages.findIndex(m => m.id === newMsg.id);
+            if (existingIndex >= 0) {
+              // Socket added it first without replyTo — replace with enriched version
+              const updated = [...currentMessages];
+              updated[existingIndex] = newMsg;
+              set({ messages: updated });
+            } else {
+              set({ messages: [...currentMessages, newMsg] });
+            }
+          }
         } catch (error) {
           set({ error: error.message });
           throw error;

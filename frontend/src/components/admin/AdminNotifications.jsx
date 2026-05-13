@@ -56,7 +56,7 @@ const AdminNotifications = ({ users = [], reports = [], loading = false }) => {
       color: 'primary',
     },
     {
-      id: 'unverified-users',
+      id: 'unverified-users-all',
       type: 'success',
       title: 'Pengguna Belum Terverifikasi',
       count: users.filter(u => {
@@ -204,4 +204,4 @@ const AdminNotifications = ({ users = [], reports = [], loading = false }) => {
   );
 };
 
-export default AdminNotifications; 
+export default AdminNotifications;

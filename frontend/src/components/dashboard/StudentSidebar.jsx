@@ -15,10 +15,12 @@ import {
 import {
   Dashboard,
   Description,
+  Assignment,
   AddCircle,
   Chat,
   Settings,
   HelpOutline,
+  Help,
   Logout,
   AccountCircle,
   DevicesOther,
@@ -26,8 +28,9 @@ import {
   Person,
 } from '@mui/icons-material';
 import { alpha, styled, useTheme } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
+import { useTranslation } from '../../stores/settingsStore';
 import useChatStore from '../../stores/chatStore';
 import DeviceManagement from '../DeviceManagement';
 import UBHLogo from '../ui/UBHLogo';
@@ -155,14 +158,17 @@ const StudentSidebar = ({
   sidebarOpen,
   onSidebarToggle
 }) => {
-  const navigate = useNavigate();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { logout, user } = useAuthStore();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
+  const { t } = useTranslation();
   const { unreadCount } = useChatStore();
   const [deviceModalOpen, setDeviceModalOpen] = useState(false);
 
   const isActive = (id) => activeMenu === id;
+
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const handleClick = (item) => {
     if (item.disabled) return;
@@ -171,41 +177,93 @@ const StudentSidebar = ({
     if (isMobile && onClose) onClose();
   };
 
+  // Enhanced menu with better organization and new items
+  const mainMenu = [
+    { 
+      id: 'dashboard', 
+      text: t('sidebar.dashboard'), 
+      icon: <Dashboard />, 
+      action: () => onMenuChange('dashboard'),
+      description: t('sidebar.desc.dashboard')
+    },
+    { 
+      id: 'reports', 
+      text: t('sidebar.reports'), 
+      icon: <Description />, 
+      action: () => onMenuChange('reports'),
+      description: t('sidebar.desc.reports')
+    },
+    { 
+      id: 'chat', 
+      text: t('sidebar.chat'), 
+      icon: <Chat />, 
+      action: () => onMenuChange('chat'), 
+      badge: unreadCount > 0 ? unreadCount : null,
+      description: t('sidebar.desc.chat')
+    },
+  ];
+
+  // Quick action for creating reports
+  const quickActions = [
+    { 
+      id: 'create', 
+      text: t('sidebar.createReport'), 
+      icon: <AddCircle />, 
+      action: onCreateReport,
+      primary: true,
+      description: t('sidebar.desc.createReport')
+    },
+  ];
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  // ── Menu definitions ──────────────────────────────────────────────────────
-
-  const quickActions = [
-    {
-      id: 'create',
-      text: 'Buat Laporan Baru',
-      icon: <AddCircle />,
-      action: onCreateReport,
-      primary: true,
-    },
-  ];
-
-  const mainMenu = [
-    { id: 'dashboard', text: 'Dashboard',        icon: <Dashboard />,   action: () => onMenuChange('dashboard') },
-    { id: 'reports',   text: 'Laporan Saya',      icon: <Description />, action: () => onMenuChange('reports') },
-    {
-      id: 'chat',
-      text: 'Chat & Komunikasi',
-      icon: <Chat />,
-      action: () => onMenuChange('chat'),
-      badge: unreadCount > 0 ? unreadCount : null,
-    },
-  ];
-
   const bottomMenu = [
-    { text: 'Profil Saya',    icon: <Person />,        action: () => navigate('/profile') },
-    { text: 'Perangkat',      icon: <DevicesOther />,  action: () => setDeviceModalOpen(true) },
-    { text: 'Pengaturan',     icon: <Settings />,      action: () => navigate('/settings') },
-    { text: 'Pusat Bantuan',  icon: <HelpOutline />,   action: () => navigate('/help') },
-    { text: 'Keluar',         icon: <Logout />,        action: handleLogout, color: 'error' },
+    { 
+      id: 'profile',
+      text: t('sidebar.profile'), 
+      icon: <Person />, 
+      action: () => {
+        onMenuChange('profile');
+        navigate('/profile');
+      },
+      description: t('sidebar.desc.profile')
+    },
+    { 
+      text: t('sidebar.devices'), 
+      icon: <DevicesOther />, 
+      action: () => setDeviceModalOpen(true),
+      description: t('sidebar.desc.devices')
+    },
+    { 
+      id: 'settings',
+      text: t('sidebar.settings'), 
+      icon: <Settings />, 
+      action: () => {
+        onMenuChange('settings');
+        navigate('/settings');
+      },
+      description: t('sidebar.desc.settings')
+    },
+    { 
+      id: 'help',
+      text: t('sidebar.help'), 
+      icon: <HelpOutline />, 
+      action: () => {
+        onMenuChange('help');
+        navigate('/help');
+      },
+      description: t('sidebar.desc.help')
+    },
+    { 
+      text: t('sidebar.logout'), 
+      icon: <Logout />, 
+      action: handleLogout, 
+      color: 'error',
+      description: t('sidebar.desc.logout')
+    },
   ];
 
   // ── Render helpers ─────────────────────────────────────────────────────────
