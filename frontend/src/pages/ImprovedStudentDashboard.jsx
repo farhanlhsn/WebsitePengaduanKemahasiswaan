@@ -232,17 +232,19 @@ export default React.memo(function ImprovedStudentDashboard() {
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'grey.100' }}>
-      <StudentSidebar 
-        open={mobileOpen} 
-        onClose={handleDrawerToggle}
-        drawerWidth={drawerWidth}
-        onCreateReport={() => setModalOpen(true)}
-        activeMenu={activeMenu}
-        onMenuChange={setActiveMenu}
-        sidebarOpen={sidebarOpen}
-        onSidebarToggle={handleSidebarToggle}
-      />
+    <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'grey.100' }}>
+      <Suspense fallback={<div style={{ width: drawerWidth }} />}>
+        <StudentSidebar 
+          open={mobileOpen} 
+          onClose={handleDrawerToggle}
+          drawerWidth={drawerWidth}
+          onCreateReport={() => setModalOpen(true)}
+          activeMenu={activeMenu}
+          onMenuChange={setActiveMenu}
+          sidebarOpen={sidebarOpen}
+          onSidebarToggle={handleSidebarToggle}
+        />
+      </Suspense>
       <Box component="main" sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Box sx={{ flex: 1, p: { xs: 2, sm: 3 }, overflowY: 'auto', bgcolor: 'background.default' }}>
           {renderContent()}
