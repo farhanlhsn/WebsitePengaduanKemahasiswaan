@@ -226,8 +226,11 @@ const StudentSidebar = ({
       text: t('sidebar.profile'), 
       icon: <Person />, 
       action: () => {
-        onMenuChange('profile');
-        navigate('/profile');
+        if (onMenuChange) {
+          onMenuChange('profile');
+        } else {
+          navigate('/profile');
+        }
       },
       description: t('sidebar.desc.profile')
     },
@@ -242,8 +245,11 @@ const StudentSidebar = ({
       text: t('sidebar.settings'), 
       icon: <Settings />, 
       action: () => {
-        onMenuChange('settings');
-        navigate('/settings');
+        if (onMenuChange) {
+          onMenuChange('settings');
+        } else {
+          navigate('/settings');
+        }
       },
       description: t('sidebar.desc.settings')
     },
@@ -252,8 +258,11 @@ const StudentSidebar = ({
       text: t('sidebar.help'), 
       icon: <HelpOutline />, 
       action: () => {
-        onMenuChange('help');
-        navigate('/help');
+        if (onMenuChange) {
+          onMenuChange('help');
+        } else {
+          navigate('/help');
+        }
       },
       description: t('sidebar.desc.help')
     },
