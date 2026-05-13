@@ -10,6 +10,7 @@ import {
 } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
 import useAuthStore from '../stores/authStore';
+import GlassCard from '../components/ui/GlassCard';
 
 const DeviceManagement = ({ open, onClose }) => {
   const theme = useTheme();
@@ -122,11 +123,12 @@ const DeviceManagement = ({ open, onClose }) => {
                 <Typography variant="h6" fontWeight={600} gutterBottom>
                   Perangkat Saat Ini
                 </Typography>
-                <Card 
+                <GlassCard variant="glass"
                   sx={{ 
                     mb: 3, 
                     border: `2px solid ${theme.palette.primary.main}`,
-                    bgcolor: alpha(theme.palette.primary.main, 0.02)
+                    bgcolor: alpha(theme.palette.primary.main, 0.02),
+                    p: 0
                   }}
                 >
                   <CardContent sx={{ p: 3 }}>
@@ -165,7 +167,7 @@ const DeviceManagement = ({ open, onClose }) => {
                       </Grid>
                     </Grid>
                   </CardContent>
-                </Card>
+                </GlassCard>
               </>
             )}
 
@@ -188,7 +190,7 @@ const DeviceManagement = ({ open, onClose }) => {
                 </Box>
 
                 {otherDevices.map((device) => (
-                  <Card key={device.id} sx={{ mb: 2 }}>
+                  <GlassCard variant="glass" key={device.id} sx={{ mb: 2, p: 0 }}>
                     <CardContent sx={{ p: 3 }}>
                       <Grid container spacing={2} alignItems="center">
                         <Grid item>
@@ -227,7 +229,7 @@ const DeviceManagement = ({ open, onClose }) => {
                         </Grid>
                       </Grid>
                     </CardContent>
-                  </Card>
+                  </GlassCard>
                 ))}
               </>
             )}

@@ -77,7 +77,7 @@ export default function LoginPage() {
       py: { xs: 4, md: 6 },
       px: { xs: 2, md: 4 }
     }}>
-      <Container maxWidth="sm" sx={{ mx: 'auto' }}>
+      <Container maxWidth="xs" sx={{ mx: 'auto' }}>
         {/* Header */}
         <Box sx={{ textAlign: 'center', mb: { xs: 4, md: 6 } }}>
           <Typography 
@@ -114,20 +114,20 @@ export default function LoginPage() {
             boxShadow: `0 20px 40px ${alpha(theme.palette.common.black, 0.1)}`
           }}
         >
-          <Box sx={{ p: { xs: 4, md: 6 } }}>
+          <Box sx={{ p: { xs: 3, md: 4 } }}>
             {/* Welcome Section */}
             <Box sx={{ textAlign: 'center', mb: 4 }}>
               <Avatar 
                 sx={{ 
-                  width: 80, 
-                  height: 80, 
+                  width: 64, 
+                  height: 64, 
                   bgcolor: 'primary.main',
                   mx: 'auto',
                   mb: 3,
                   boxShadow: `0 8px 20px ${alpha(theme.palette.primary.main, 0.3)}`
                 }}
               >
-                <AccountCircle sx={{ fontSize: 50 }} />
+                <AccountCircle sx={{ fontSize: 40 }} />
               </Avatar>
               
               <Typography variant="h5" fontWeight="bold" color="primary.main" gutterBottom>
@@ -168,8 +168,8 @@ export default function LoginPage() {
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         borderRadius: 3,
-                        height: 60,
-                        fontSize: '1.1rem',
+                        height: 52,
+                        fontSize: '1rem',
                         '&:hover fieldset': {
                           borderColor: 'primary.main',
                           borderWidth: 2,
@@ -203,8 +203,8 @@ export default function LoginPage() {
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         borderRadius: 3,
-                        height: 60,
-                        fontSize: '1.1rem',
+                        height: 52,
+                        fontSize: '1rem',
                         '&:hover fieldset': {
                           borderColor: 'primary.main',
                           borderWidth: 2,
@@ -225,8 +225,8 @@ export default function LoginPage() {
                     mt: 2,
                     mb: 3,
                     borderRadius: 3,
-                    py: 2.5,
-                    fontSize: '1.1rem',
+                    py: 1.5,
+                    fontSize: '1rem',
                     fontWeight: 'bold',
                     background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
                     boxShadow: `0 8px 20px ${alpha(theme.palette.primary.main, 0.4)}`,
@@ -287,8 +287,8 @@ export default function LoginPage() {
                   fullWidth
                   sx={{
                     borderRadius: 3,
-                    py: 2,
-                    fontSize: '1rem',
+                    py: 1.2,
+                    fontSize: '0.9rem',
                     fontWeight: 'bold',
                     borderWidth: 2,
                     '&:hover': {
@@ -307,7 +307,7 @@ export default function LoginPage() {
         </Paper>
 
         {/* Footer Note */}
-        <Box sx={{ textAlign: 'center', mt: 4 }}>
+        <Box sx={{ textAlign: 'center', mt: 3 }}>
           <Typography variant="body2" color="text.secondary">
             Dengan masuk, Anda menyetujui{' '}
             <Button 
@@ -315,8 +315,9 @@ export default function LoginPage() {
               size="small"
               sx={{ 
                 fontWeight: 'bold',
-                textDecoration: 'underline',
+                textDecoration: 'none',
                 minWidth: 'auto',
+                color: 'primary.main',
                 p: 0,
                 '&:hover': {
                   backgroundColor: 'transparent',

@@ -93,7 +93,7 @@ const AuditLogDetailModal = ({ open, onClose, log }) => {
       }
 
       return (
-        <Paper variant="outlined" sx={{ overflow: 'hidden', bgcolor: 'grey.50' }}>
+        <Paper variant="outlined" sx={{ overflow: 'hidden', bgcolor: 'background.paper' }}>
           {Object.entries(metadata).map(([key, value], index) => (
             <Box key={key}>
               <Box sx={{ display: 'flex', p: 1.5, bgcolor: index % 2 === 0 ? 'transparent' : alpha(theme.palette.common.black, 0.02) }}>
@@ -193,7 +193,7 @@ const AuditLogDetailModal = ({ open, onClose, log }) => {
                {log.entityType} <span style={{ opacity: 0.5, fontSize: '0.8em' }}>#{log.entityId}</span>
              </Typography>
           </Box>
-          <IconButton onClick={onClose} sx={{ bgcolor: 'white', '&:hover': { bgcolor: 'grey.100' } }}>
+          <IconButton onClick={onClose} sx={{ bgcolor: 'action.hover', '&:hover': { bgcolor: 'action.selected' } }}>
             <Close />
           </IconButton>
         </Stack>
@@ -245,7 +245,7 @@ const AuditLogDetailModal = ({ open, onClose, log }) => {
         </Grid>
       </DialogContent>
 
-      <DialogActions sx={{ p: 2.5, bgcolor: 'grey.50', borderTop: `1px solid ${theme.palette.divider}` }}>
+      <DialogActions sx={{ p: 2.5, bgcolor: 'background.paper', borderTop: `1px solid ${theme.palette.divider}` }}>
         <Typography variant="caption" color="text.secondary" sx={{ flex: 1, ml: 1 }}>
           Log ID: {log.id}
         </Typography>

@@ -358,7 +358,7 @@ const CategoryManagementPage = () => {
                           variant="caption" 
                           sx={{ 
                             fontFamily: 'monospace', 
-                            bgcolor: 'grey.100', 
+                            bgcolor: 'action.hover', 
                             px: 1, 
                             py: 0.5, 
                             borderRadius: 1,

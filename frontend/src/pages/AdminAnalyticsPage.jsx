@@ -18,23 +18,20 @@ import {
 import { getAdminDashboardStats, getReportStats } from '../services/api';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import useReportStore from '../stores/reportStore';
+import GlassCard from '../components/ui/GlassCard';
 
 // ─── Stat Card ─────────────────────────────────────────────────────────────────
 const StatCard = ({ title, value, icon, color, subtitle }) => {
   const theme = useTheme();
   return (
-    <Paper sx={{
+    <GlassCard variant="glass" sx={{
       p: { xs: 2.5, md: 3 },
-      borderRadius: 4,
       height: '100%',
       position: 'relative',
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
-      boxShadow: `0 10px 40px ${alpha('#000', 0.04)}`,
-      border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-      background: '#fff',
       transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
       '&:hover': {
         transform: 'translateY(-6px)',
@@ -88,7 +85,7 @@ const StatCard = ({ title, value, icon, color, subtitle }) => {
           {subtitle}
         </Typography>
       </Box>
-    </Paper>
+    </GlassCard>
   );
 };
 
@@ -97,7 +94,7 @@ const ChartTooltip = ({ active, payload, label }) => {
   if (active && payload?.length) {
     return (
       <Box sx={{
-        bgcolor: 'rgba(255,255,255,0.97)', p: 1.5, borderRadius: 3,
+        bgcolor: 'background.paper', p: 1.5, borderRadius: 3,
         boxShadow: '0 10px 30px rgba(0,0,0,0.14)',
         border: '1px solid rgba(0,0,0,0.05)',
         backdropFilter: 'blur(10px)', minWidth: 130
@@ -255,7 +252,7 @@ const AdminAnalyticsPage = () => {
           </Box>
 
           {/* Working Time Range Filter */}
-          <Paper sx={{ p: 0.5, borderRadius: 3, bgcolor: alpha(theme.palette.divider, 0.04), display: 'flex', gap: 0.5, alignSelf: { xs: 'flex-start', sm: 'center' } }}>
+          <GlassCard variant="glass" sx={{ p: 0.5, display: 'flex', gap: 0.5, alignSelf: { xs: 'flex-start', sm: 'center' } }}>
             {TIME_RANGES.map(r => (
               <Button
                 key={r.key}
@@ -269,16 +266,16 @@ const AdminAnalyticsPage = () => {
                   fontWeight: 700,
                   px: { xs: 1.5, sm: 2 },
                   py: 0.8,
-                  bgcolor: timeRange === r.key ? 'white' : 'transparent',
+                  bgcolor: timeRange === r.key ? 'background.paper' : 'transparent',
                   color: timeRange === r.key ? 'primary.main' : 'text.secondary',
                   boxShadow: timeRange === r.key ? '0 4px 12px rgba(0,0,0,0.08)' : 'none',
-                  '&:hover': { bgcolor: timeRange === r.key ? 'white' : alpha(theme.palette.primary.main, 0.06) }
+                  '&:hover': { bgcolor: timeRange === r.key ? 'background.paper' : alpha(theme.palette.primary.main, 0.06) }
                 }}
               >
                 {r.label}
               </Button>
             ))}
-          </Paper>
+          </GlassCard>
         </Box>
 
         {/* ── KPI Cards (Responsive Grid: 4 Desktop, 2 Tablet, 1 Mobile) ── */}
@@ -300,11 +297,8 @@ const AdminAnalyticsPage = () => {
 
           {/* Distribusi Status */}
           <Grid item xs={12} sm={4} sx={{ minWidth: 0, flexShrink: 1 }}>
-            <Paper sx={{ 
+            <GlassCard variant="glass" sx={{ 
               p: { xs: 2, md: 2.5 }, 
-              borderRadius: 4, 
-              boxShadow: '0 4px 20px rgba(0,0,0,0.04)', 
-              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`, 
               height: '100%',
               minHeight: 320 // Further reduced height
             }}>
@@ -356,16 +350,13 @@ const AdminAnalyticsPage = () => {
                   </Stack>
                 </>
               )}
-            </Paper>
+            </GlassCard>
           </Grid>
 
           {/* Kategori Terpopuler */}
           <Grid item xs={12} sm={4} sx={{ minWidth: 0, flexShrink: 1 }}>
-            <Paper sx={{ 
+            <GlassCard variant="glass" sx={{ 
               p: { xs: 2, md: 2.5 }, 
-              borderRadius: 4, 
-              boxShadow: '0 4px 20px rgba(0,0,0,0.04)', 
-              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`, 
               height: '100%',
               minHeight: 320 // Further reduced height
             }}>
@@ -395,16 +386,13 @@ const AdminAnalyticsPage = () => {
                   <Typography variant="body2" color="text.secondary">Belum ada data kategori</Typography>
                 </Box>
               )}
-            </Paper>
+            </GlassCard>
           </Grid>
 
           {/* Status Verifikasi Mahasiswa */}
           <Grid item xs={12} sm={4} sx={{ minWidth: 0, flexShrink: 1 }}>
-            <Paper sx={{ 
+            <GlassCard variant="glass" sx={{ 
               p: { xs: 2, md: 2.5 }, 
-              borderRadius: 4, 
-              boxShadow: '0 4px 20px rgba(0,0,0,0.04)', 
-              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`, 
               height: '100%',
               minHeight: 320 // Further reduced height
             }}>
@@ -438,16 +426,13 @@ const AdminAnalyticsPage = () => {
                   Sistem mencatat <b>{dashboardStats?.users?.verified || 0}</b> dari <b>{dashboardStats?.users?.total || 0}</b> mahasiswa telah menyelesaikan verifikasi.
                 </Typography>
               </Box>
-            </Paper>
+            </GlassCard>
           </Grid>
         </Grid>
 
         {/* ── Tren Pengaduan (Full Width, Bottom) ── */}
-        <Paper sx={{ 
+        <GlassCard variant="glass" sx={{ 
           p: { xs: 2, md: 2.5 }, 
-          borderRadius: 4, 
-          boxShadow: '0 4px 20px rgba(0,0,0,0.04)', 
-          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
           minHeight: 380 // Reduced trend chart height
         }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2.5 }}>
@@ -495,7 +480,7 @@ const AdminAnalyticsPage = () => {
               </ResponsiveContainer>
             )}
           </Box>
-        </Paper>
+        </GlassCard>
 
       </Container>
     </AdminLayout>

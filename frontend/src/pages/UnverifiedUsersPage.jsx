@@ -353,7 +353,7 @@ const UnverifiedUsersPage = () => {
                           variant="body2" 
                           sx={{ 
                             fontFamily: 'monospace',
-                            bgcolor: 'grey.100',
+                            bgcolor: 'action.hover',
                             px: 1,
                             py: 0.5,
                             borderRadius: 1,
@@ -456,7 +456,7 @@ const UnverifiedUsersPage = () => {
                 justifyContent: 'center', 
                 alignItems: 'center',
                 minHeight: 300,
-                bgcolor: 'grey.100',
+                bgcolor: 'action.hover',
                 borderRadius: 2,
                 p: 2
               }}>
@@ -523,7 +523,7 @@ const UnverifiedUsersPage = () => {
                     fontWeight={700}
                     sx={{ 
                       fontFamily: 'monospace',
-                      bgcolor: 'grey.100',
+                      bgcolor: 'action.hover',
                       px: 1,
                       py: 0.5,
                       borderRadius: 1,
