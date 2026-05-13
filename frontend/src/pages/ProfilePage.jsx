@@ -13,6 +13,7 @@ import useAuthStore from '../stores/authStore';
 import useUserStore from '../stores/userStore';
 import { ArrowBack } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import GlassCard from '../components/ui/GlassCard';
 
 const ProfilePage = ({ isEmbedded = false }) => {
   const theme = useTheme();
@@ -87,7 +88,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
   }
 
   return (
-    <Box sx={{ minHeight: isEmbedded ? 'auto' : '100vh', bgcolor: isEmbedded ? 'transparent' : '#f8f9fa', py: isEmbedded ? 0 : 4 }}>
+    <Box sx={{ minHeight: isEmbedded ? 'auto' : '100vh', bgcolor: isEmbedded ? 'transparent' : 'background.default', py: isEmbedded ? 0 : 4 }}>
       {!isEmbedded && (
         <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3, position: 'relative', zIndex: 1, justifyContent: 'flex-start', px: { xs: 2, sm: 4, md: 10 } }}>
           <Button
@@ -128,7 +129,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
           mb: 4,
           border: '1px solid',
           borderColor: 'divider',
-          background: '#ffffff'
+          bgcolor: 'background.paper'
         }}>
           {/* Header Section */}
           <Box sx={{ 
@@ -148,7 +149,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
                       bgcolor: 'primary.main',
                       fontSize: { xs: '2rem', md: '2.5rem' },
                       boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.2)}`,
-                      border: '4px solid white'
+                      border: `4px solid ${theme.palette.background.paper}`
                     }}
                   >
                     {user.name ? user.name.charAt(0).toUpperCase() : <AccountCircle sx={{ fontSize: '3rem' }} />}
@@ -165,7 +166,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
                       display: 'flex', 
                       justifyContent: 'center', 
                       alignItems: 'center',
-                      border: '2px solid white'
+                      border: `2px solid ${theme.palette.background.paper}`
                     }}>
                       <Badge sx={{ color: 'white', fontSize: '14px' }} />
                     </Box>
@@ -337,17 +338,12 @@ const ProfilePage = ({ isEmbedded = false }) => {
         </Typography>
         <Grid container spacing={3} sx={{ mb: 2 }}>
           <Grid item xs={12} sm={4}>
-            <Card elevation={0} sx={{ 
+            <GlassCard variant="glass" sx={{ 
               height: '100%', 
-              borderRadius: 3, 
-              border: '1px solid',
-              borderColor: 'divider',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
-              p: 3,
-              transition: 'transform 0.2s',
-              '&:hover': { transform: 'translateY(-4px)', boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.1)}` }
+              p: 1
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main' }}>
@@ -363,21 +359,16 @@ const ProfilePage = ({ isEmbedded = false }) => {
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                 Seluruh laporan yang pernah Anda buat
               </Typography>
-            </Card>
+            </GlassCard>
           </Grid>
           
           <Grid item xs={12} sm={4}>
-            <Card elevation={0} sx={{ 
+            <GlassCard variant="glass" sx={{ 
               height: '100%', 
-              borderRadius: 3, 
-              border: '1px solid',
-              borderColor: 'divider',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
-              p: 3,
-              transition: 'transform 0.2s',
-              '&:hover': { transform: 'translateY(-4px)', boxShadow: `0 8px 24px ${alpha(theme.palette.success.main, 0.1)}` }
+              p: 1
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.success.main, 0.1), color: 'success.main' }}>
@@ -393,21 +384,16 @@ const ProfilePage = ({ isEmbedded = false }) => {
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                 Laporan yang telah terselesaikan
               </Typography>
-            </Card>
+            </GlassCard>
           </Grid>
           
           <Grid item xs={12} sm={4}>
-            <Card elevation={0} sx={{ 
+            <GlassCard variant="glass" sx={{ 
               height: '100%', 
-              borderRadius: 3, 
-              border: '1px solid',
-              borderColor: 'divider',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
-              p: 3,
-              transition: 'transform 0.2s',
-              '&:hover': { transform: 'translateY(-4px)', boxShadow: `0 8px 24px ${alpha(theme.palette.warning.main, 0.1)}` }
+              p: 1
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.warning.main, 0.1), color: 'warning.main' }}>
@@ -423,7 +409,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                 Laporan yang sedang ditindaklanjuti
               </Typography>
-            </Card>
+            </GlassCard>
           </Grid>
         </Grid>
       </Container>

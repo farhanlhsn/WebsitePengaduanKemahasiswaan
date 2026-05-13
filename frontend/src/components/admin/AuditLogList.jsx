@@ -180,7 +180,7 @@ const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPer
                       variant="body2" 
                       sx={{ 
                         fontFamily: 'monospace',
-                        bgcolor: 'grey.100',
+                        bgcolor: 'action.hover',
                         px: 1,
                         py: 0.5,
                         borderRadius: 1,
@@ -224,7 +224,7 @@ const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPer
                       variant="caption" 
                       sx={{ 
                         fontFamily: 'monospace',
-                        bgcolor: 'grey.100',
+                        bgcolor: 'action.hover',
                         px: 1,
                         py: 0.5,
                         borderRadius: 1,

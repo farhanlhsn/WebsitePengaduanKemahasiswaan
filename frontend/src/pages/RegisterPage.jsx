@@ -531,7 +531,7 @@ export default function RegisterPage() {
       py: { xs: 4, md: 6 },
       px: { xs: 2, md: 4 }
     }}>
-      <Container maxWidth="md" sx={{ mx: 'auto' }}>
+      <Container maxWidth="sm" sx={{ mx: 'auto' }}>
         {/* Header */}
         <Box sx={{ textAlign: 'center', mb: { xs: 4, md: 6 } }}>
           
@@ -571,7 +571,7 @@ export default function RegisterPage() {
             maxWidth: '100%'
           }}
         >
-          <Box sx={{ p: { xs: 3, md: 6 } }}>
+          <Box sx={{ p: { xs: 3, md: 4 } }}>
             <Stepper 
               activeStep={activeStep} 
               orientation="vertical"
@@ -630,7 +630,7 @@ export default function RegisterPage() {
                           sx={{ 
                             borderRadius: 3,
                             px: 3,
-                            py: 1.5,
+                            py: 1,
                             borderWidth: 2,
                             '&:hover': {
                               borderWidth: 2,
@@ -653,7 +653,7 @@ export default function RegisterPage() {
                         sx={{ 
                           borderRadius: 3,
                           px: 4,
-                          py: 1.5,
+                          py: 1.2,
                           fontSize: '1rem',
                           fontWeight: 'bold',
                           background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
@@ -698,7 +698,7 @@ export default function RegisterPage() {
                     sx={{
                       borderRadius: 3,
                       px: 4,
-                      py: 2,
+                      py: 1.5,
                       fontSize: '1.1rem',
                       fontWeight: 'bold'
                     }}
@@ -712,8 +712,8 @@ export default function RegisterPage() {
         </Paper>
 
         {/* Login Link */}
-        <Box sx={{ textAlign: 'center', mt: 4 }}>
-          <Typography variant="body1" color="text.secondary">
+        <Box sx={{ textAlign: 'center', mt: 3 }}>
+          <Typography variant="body2" color="text.secondary">
             Sudah punya akun?{' '}
             <Button 
               component={Link}
@@ -721,7 +721,10 @@ export default function RegisterPage() {
               variant="text"
               sx={{ 
                 fontWeight: 'bold',
-                textDecoration: 'underline',
+                textDecoration: 'none',
+                minWidth: 'auto',
+                color: 'primary.main',
+                p: 0,
                 '&:hover': {
                   backgroundColor: 'transparent',
                   textDecoration: 'underline'

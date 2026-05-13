@@ -3,6 +3,7 @@ import { Box, Paper, Typography, LinearProgress, Stack, Avatar } from '@mui/mate
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis } from 'recharts';
 import { BarChart, TrendingUp } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
+import GlassCard from '../ui/GlassCard';
 
 const STATUS_COLORS = {
   PENDING: '#FFC107',
@@ -17,7 +18,7 @@ const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     return (
       <Box sx={{ 
-        bgcolor: 'white', 
+        bgcolor: 'background.paper', 
         p: 2, 
         borderRadius: 3,
         boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
@@ -47,14 +48,9 @@ const StatusChart = ({ data }) => {
   const dataWithTotal = data.map(item => ({ ...item, total }));
 
   return (
-    <Paper sx={{ 
-      p: 3,
-      borderRadius: 4,
+    <GlassCard variant="glass" sx={{ 
       height: '100%',
       minHeight: 400,
-      boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-      border: '1px solid rgba(0,0,0,0.05)',
-      background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
       position: 'relative',
       overflow: 'hidden'
     }}>
@@ -237,7 +233,7 @@ const StatusChart = ({ data }) => {
           </>
         )}
       </Box>
-    </Paper>
+    </GlassCard>
   );
 };
 

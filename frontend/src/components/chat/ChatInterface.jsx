@@ -70,7 +70,7 @@ const MessageBubble = styled(Box, {
     ? theme.palette.primary.main
     : isAdmin 
       ? alpha(theme.palette.secondary.main, 0.1)
-      : alpha(theme.palette.grey[100], 0.8),
+      : theme.palette.action.hover,
   
   color: isOwn 
     ? theme.palette.primary.contrastText
@@ -96,7 +96,7 @@ const MessageBubble = styled(Box, {
       transform: 'translateY(-50%)',
       borderRightColor: isAdmin 
         ? alpha(theme.palette.secondary.main, 0.1)
-        : alpha(theme.palette.grey[100], 0.8),
+        : theme.palette.action.hover,
     }),
   },
 }));

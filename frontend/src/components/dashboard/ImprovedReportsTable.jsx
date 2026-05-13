@@ -450,7 +450,7 @@ const ImprovedReportsTable = React.memo(({
   );
 
   return (
-    <Box sx={{ bgcolor: '#f8f9fa', minHeight: '100%', pt: 0 }}>
+    <Box sx={{ bgcolor: 'background.default', minHeight: '100%', pt: 0 }}>
       <GlassCard variant="glass" sx={{ borderRadius: { xs: 0, sm: 4 }, overflow: 'hidden' }}>
         {/* Header Section */}
         <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
@@ -537,7 +537,7 @@ const ImprovedReportsTable = React.memo(({
                   value={statusFilter}
                   label="Status"
                   onChange={onStatusChange}
-                  sx={{ borderRadius: 2, backgroundColor: 'white' }}
+                  sx={{ borderRadius: 2, backgroundColor: 'background.paper' }}
                 >
                   <MenuItem value="">Semua Status</MenuItem>
                   <MenuItem value="PENDING">Menunggu</MenuItem>
@@ -555,7 +555,7 @@ const ImprovedReportsTable = React.memo(({
                   value={categoryFilter}
                   label="Kategori"
                   onChange={onCategoryChange}
-                  sx={{ borderRadius: 2, backgroundColor: 'white' }}
+                  sx={{ borderRadius: 2, backgroundColor: 'background.paper' }}
                 >
                   <MenuItem value="">Semua Kategori</MenuItem>
                   {categories.map((cat) => (

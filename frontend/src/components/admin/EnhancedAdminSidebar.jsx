@@ -13,7 +13,11 @@ import {
   Tooltip,
   Divider,
   useMediaQuery,
-  Dialog
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button
 } from '@mui/material';
 import {
   Dashboard,
@@ -147,6 +151,7 @@ const AdminSidebar = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { logout, user } = useAuthStore();
   const [, setHoveredItem] = useState(null);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   const isActive = (id) => activeMenu === id;
 
@@ -158,7 +163,11 @@ const AdminSidebar = ({
     if (isMobile && onClose) onClose();
   }, [navigate, onMenuChange, isMobile, onClose]);
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
+    setLogoutDialogOpen(true);
+  };
+
+  const confirmLogout = async () => {
     await logout();
     navigate('/login');
   };
@@ -197,7 +206,7 @@ const AdminSidebar = ({
     { 
       text: 'Logout', 
       icon: <Logout />, 
-      action: handleLogout, 
+      action: handleLogoutClick, 
       color: 'error',
       description: 'Keluar dari sistem'
     },
@@ -380,6 +389,7 @@ const AdminSidebar = ({
     background: `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.98)} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`,
     backdropFilter: 'blur(20px)',
     zIndex: 1200,
+    borderRadius: 0,
     transition: theme.transitions.create('width', {
       easing: theme.transitions.easing.sharp,
       duration: 250,
@@ -401,6 +411,7 @@ const AdminSidebar = ({
             height: '100dvh',
             background: paperSx.background,
             backdropFilter: 'blur(20px)',
+            borderRadius: 0,
           },
         }}
       >
@@ -426,6 +437,36 @@ const AdminSidebar = ({
           <ChevronLeft />
         </ToggleBtn>
       </Box>
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog 
+        open={logoutDialogOpen} 
+        onClose={() => setLogoutDialogOpen(false)}
+        PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+      >
+        <DialogTitle sx={{ pb: 0.5, fontWeight: 800 }}>Konfirmasi Keluar</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Apakah Anda yakin ingin keluar dari sistem?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button 
+            onClick={() => setLogoutDialogOpen(false)}
+            sx={{ borderRadius: 2, fontWeight: 600 }}
+          >
+            Batal
+          </Button>
+          <Button 
+            variant="contained" 
+            color="error" 
+            onClick={confirmLogout}
+            sx={{ borderRadius: 2, fontWeight: 600 }}
+          >
+            Ya, Keluar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

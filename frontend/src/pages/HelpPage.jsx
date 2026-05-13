@@ -16,22 +16,9 @@ import {
 import { alpha, useTheme, styled } from '@mui/material/styles';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
+import GlassCard from '../components/ui/GlassCard';
 
 // Styled Components
-const GlassCard = styled(Paper)(({ theme }) => ({
-  background: 'rgba(255, 255, 255, 0.7)',
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
-  border: '1px solid rgba(255, 255, 255, 0.5)',
-  boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.05)',
-  borderRadius: theme.spacing(3),
-  overflow: 'hidden',
-  transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-  '&:hover': {
-    boxShadow: '0 12px 40px 0 rgba(0, 0, 0, 0.08)',
-  }
-}));
-
 const StyledAccordion = styled(Accordion)(({ theme }) => ({
   background: 'transparent',
   boxShadow: 'none',
@@ -41,7 +28,7 @@ const StyledAccordion = styled(Accordion)(({ theme }) => ({
   '&:before': { display: 'none' },
   '&.Mui-expanded': {
     margin: `0 0 ${theme.spacing(1.5)} 0`,
-    background: 'white',
+    background: theme.palette.background.paper,
     boxShadow: '0 4px 20px 0 rgba(0,0,0,0.05)',
   }
 }));
@@ -165,7 +152,7 @@ const HelpPage = ({ isEmbedded = false }) => {
   return (
     <Box sx={{ 
       minHeight: isEmbedded ? 'auto' : '100vh', 
-      bgcolor: isEmbedded ? 'transparent' : '#f8f9fa', 
+      bgcolor: isEmbedded ? 'transparent' : 'background.default', 
       py: isEmbedded ? 0 : 4 
     }}>
       {!isEmbedded && (
@@ -204,7 +191,7 @@ const HelpPage = ({ isEmbedded = false }) => {
             InputProps={{
               startAdornment: <InputAdornment position="start"><Search color="primary" /></InputAdornment>,
               sx: { 
-                bgcolor: 'white', 
+                bgcolor: 'background.paper', 
                 borderRadius: 4, 
                 fontSize: '1.1rem',
                 boxShadow: '0 4px 20px 0 rgba(0,0,0,0.05)',
@@ -218,7 +205,7 @@ const HelpPage = ({ isEmbedded = false }) => {
 
         <Stack spacing={4}>
           {/* Quick Guide */}
-              <GlassCard sx={{ p: 3 }}>
+              <GlassCard variant="glass" sx={{ p: 3 }}>
                 <Typography variant="h6" fontWeight={700} gutterBottom sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
                   <Book color="primary" sx={{ mr: 1.5 }} /> Panduan Cepat
                 </Typography>
@@ -231,7 +218,7 @@ const HelpPage = ({ isEmbedded = false }) => {
                         height: '100%', transition: 'all 0.2s',
                         '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.08), transform: 'translateY(-2px)' }
                       }}>
-                        <Avatar sx={{ mx: 'auto', mb: 1.5, bgcolor: 'white', color: 'primary.main', boxShadow: theme.shadows[2] }}>
+                        <Avatar sx={{ mx: 'auto', mb: 1.5, bgcolor: 'background.paper', color: 'primary.main', boxShadow: theme.shadows[2] }}>
                           {guide.icon}
                         </Avatar>
                         <Typography variant="subtitle2" fontWeight={700}>{guide.title}</Typography>
@@ -245,7 +232,7 @@ const HelpPage = ({ isEmbedded = false }) => {
               </GlassCard>
 
               {/* FAQ Section */}
-              <GlassCard sx={{ p: 3 }}>
+              <GlassCard variant="glass" sx={{ p: 3 }}>
                 <Typography variant="h6" fontWeight={700} gutterBottom sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
                   <QuestionAnswer color="primary" sx={{ mr: 1.5 }} /> Pertanyaan Umum (FAQ)
                 </Typography>
@@ -299,7 +286,7 @@ const HelpPage = ({ isEmbedded = false }) => {
             
             {/* Contact Card */}
             <Grid item xs={12} lg={7}>
-              <GlassCard sx={{ p: 4, bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
+              <GlassCard variant="glass" sx={{ p: 4, bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
                 <Typography variant="h6" fontWeight={700} gutterBottom sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <ContactSupport color="primary" sx={{ mr: 1.5 }} /> Butuh Bantuan Lanjut?
                 </Typography>
@@ -314,7 +301,7 @@ const HelpPage = ({ isEmbedded = false }) => {
                       onClick={method.action}
                       sx={{ 
                         display: 'flex', alignItems: 'center', p: 1.5, borderRadius: 3,
-                        bgcolor: 'white', cursor: 'pointer', transition: 'all 0.2s',
+                        bgcolor: 'background.paper', cursor: 'pointer', transition: 'all 0.2s',
                         border: '1px solid rgba(0,0,0,0.03)',
                         '&:hover': { borderColor: theme.palette.primary.main, transform: 'translateX(4px)' }
                       }}
@@ -344,7 +331,7 @@ const HelpPage = ({ isEmbedded = false }) => {
 
             {/* Resource Links */}
             <Grid item xs={12} lg={5}>
-              <GlassCard sx={{ p: 4 }}>
+              <GlassCard variant="glass" sx={{ p: 4 }}>
                 <Typography variant="subtitle1" fontWeight={700} gutterBottom sx={{ mb: 2 }}>
                   Tautan Penting
                 </Typography>
