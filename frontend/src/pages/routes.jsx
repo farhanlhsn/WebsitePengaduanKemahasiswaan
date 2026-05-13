@@ -20,6 +20,7 @@ const CategoryManagementPage = createLazyComponent(() => import("./CategoryManag
 const SystemSecurityPage = createLazyComponent(() => import("./SystemSecurityPage.jsx"));
 const ProfilePage = createLazyComponent(() => import("./ProfilePage.jsx"));
 const SettingsPage = createLazyComponent(() => import("./SettingsPage.jsx"));
+const AdminSettingsPage = createLazyComponent(() => import("./AdminSettingsPage.jsx"));
 const HelpPage = createLazyComponent(() => import("./HelpPage.jsx"));
 const AuthProvider = createLazyComponent(() => import("../components/AuthProvider.jsx"));
 const Footer = createLazyComponent(() => import("../components/footer.jsx"));
@@ -252,6 +253,22 @@ export const router = createBrowserRouter([
         element: (
             <OptimizedAuthWrapper>
                 <SystemSecurityPage />
+            </OptimizedAuthWrapper>
+        ),
+    },
+    {
+        path: "/admin/settings",
+        element: (
+            <OptimizedAuthWrapper>
+                <AdminSettingsPage />
+            </OptimizedAuthWrapper>
+        ),
+    },
+    {
+        path: "/admin/help",
+        element: (
+            <OptimizedAuthWrapper>
+                <EnhancedAdminDashboard />
             </OptimizedAuthWrapper>
         ),
     },

@@ -87,6 +87,9 @@ model Message {
   createdAt DateTime  @default(now())
   isRead    Boolean   @default(false)
   deletedAt DateTime?
+  replyToId Int?
+  replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies   Message[] @relation("MessageReplies")
   report    Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
   sender    User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
   attachments Attachment[]

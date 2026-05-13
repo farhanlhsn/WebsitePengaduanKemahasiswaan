@@ -6,7 +6,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button
 } from '@mui/material';
 import {
-  Send, AttachFile, MoreVert, Reply, Forward, Delete,
+  Send, AttachFile, MoreVert, Reply, Delete,
   Check, DoneAll, Schedule, Person, AdminPanelSettings,
   Close, Image, Description, GetApp
 } from '@mui/icons-material';
@@ -151,6 +151,9 @@ const ChatInterface = ({
   const [filePreviewOpen, setFilePreviewOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [messageToDelete, setMessageToDelete] = useState(null);
   
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -178,9 +181,10 @@ const ChatInterface = ({
         }));
       }
 
-      await sendMessage(newMessage.trim(), attachments);
+      await sendMessage(newMessage.trim(), attachments, replyingTo?.id);
       setNewMessage('');
       setSelectedFile(null);
+      setReplyingTo(null);
       
       // Stop typing indicator
       if (isTyping) {
@@ -289,10 +293,23 @@ const ChatInterface = ({
     );
   };
 
-  const handleDeleteMessage = async (messageId) => {
+  const handleReplyClick = () => {
+    setReplyingTo(selectedMessage);
+    handleMenuClose();
+  };
+
+  const handleDeleteClick = () => {
+    setMessageToDelete(selectedMessage);
+    setDeleteConfirmOpen(true);
+    handleMenuClose();
+  };
+
+  const confirmDeleteMessage = async () => {
+    if (!messageToDelete) return;
     try {
-      await deleteMessage(messageId);
-      handleMenuClose();
+      await deleteMessage(messageToDelete.id);
+      setDeleteConfirmOpen(false);
+      setMessageToDelete(null);
     } catch (error) {
       console.error('Failed to delete message:', error);
     }
@@ -438,6 +455,35 @@ const ChatInterface = ({
                     gap: 1
                   }}>
                     <MessageBubble isOwn={isOwn} isAdmin={isAdmin}>
+                      {/* Reply quote */}
+                      {message.replyTo && (
+                        <Box sx={{
+                          mb: 1,
+                          p: 1,
+                          borderRadius: 1.5,
+                          borderLeft: `3px solid ${isOwn ? 'rgba(255,255,255,0.5)' : theme.palette.primary.main}`,
+                          bgcolor: isOwn 
+                            ? 'rgba(255,255,255,0.15)' 
+                            : alpha(theme.palette.primary.main, 0.08),
+                          cursor: 'pointer',
+                        }}>
+                          <Typography variant="caption" fontWeight={700} sx={{ 
+                            color: isOwn ? 'rgba(255,255,255,0.85)' : 'primary.main',
+                            display: 'block'
+                          }}>
+                            {message.replyTo.sender?.name || 'Pengguna'}
+                          </Typography>
+                          <Typography variant="caption" sx={{ 
+                            color: isOwn ? 'rgba(255,255,255,0.7)' : 'text.secondary',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                          }}>
+                            {message.replyTo.content}
+                          </Typography>
+                        </Box>
+                      )}
                       <Typography variant="body2" sx={{ mb: 0.5 }}>
                         {message.content}
                       </Typography>
@@ -481,6 +527,42 @@ const ChatInterface = ({
           </Stack>
         )}
       </MessagesContainer>
+
+      {/* Reply Preview Bar */}
+      {replyingTo && (
+        <Box sx={{
+          px: 3,
+          py: 1.5,
+          borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          bgcolor: alpha(theme.palette.primary.main, 0.04),
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+        }}>
+          <Reply sx={{ color: 'primary.main', fontSize: 20 }} />
+          <Box sx={{
+            flex: 1,
+            borderLeft: `3px solid ${theme.palette.primary.main}`,
+            pl: 1.5,
+            py: 0.5,
+          }}>
+            <Typography variant="caption" fontWeight={700} color="primary.main" display="block">
+              {replyingTo.sender?.name || 'Pengguna'}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{
+              display: '-webkit-box',
+              WebkitLineClamp: 1,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}>
+              {replyingTo.content}
+            </Typography>
+          </Box>
+          <IconButton size="small" onClick={() => setReplyingTo(null)}>
+            <Close fontSize="small" />
+          </IconButton>
+        </Box>
+      )}
 
       {/* Input Area */}
       <InputContainer>
@@ -571,15 +653,11 @@ const ChatInterface = ({
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
       >
-        <MenuItem onClick={handleMenuClose}>
+        <MenuItem onClick={handleReplyClick}>
           <Reply fontSize="small" sx={{ mr: 1 }} />
           Balas
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <Forward fontSize="small" sx={{ mr: 1 }} />
-          Teruskan
-        </MenuItem>
-        <MenuItem onClick={() => handleDeleteMessage(selectedMessage?.id)}>
+        <MenuItem onClick={handleDeleteClick}>
           <Delete fontSize="small" sx={{ mr: 1 }} />
           Hapus
         </MenuItem>
@@ -628,6 +706,56 @@ const ChatInterface = ({
               Download
             </Button>
           )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={() => { setDeleteConfirmOpen(false); setMessageToDelete(null); }}
+        PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+      >
+        <DialogTitle sx={{ pb: 0.5 }}>
+          <Typography variant="h6" fontWeight={700}>Hapus Pesan?</Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Pesan yang dihapus tidak dapat dikembalikan. Apakah Anda yakin ingin menghapus pesan ini?
+          </Typography>
+          {messageToDelete && (
+            <Box sx={{
+              mt: 2,
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: alpha(theme.palette.grey[500], 0.08),
+              borderLeft: `3px solid ${theme.palette.error.main}`,
+            }}>
+              <Typography variant="body2" sx={{
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}>
+                {messageToDelete.content}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button 
+            onClick={() => { setDeleteConfirmOpen(false); setMessageToDelete(null); }}
+            sx={{ borderRadius: 2 }}
+          >
+            Batal
+          </Button>
+          <Button 
+            variant="contained" 
+            color="error" 
+            onClick={confirmDeleteMessage}
+            sx={{ borderRadius: 2 }}
+          >
+            Ya, Hapus
+          </Button>
         </DialogActions>
       </Dialog>
     </ChatContainer>

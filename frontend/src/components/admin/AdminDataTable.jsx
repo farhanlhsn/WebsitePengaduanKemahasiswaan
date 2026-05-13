@@ -468,12 +468,29 @@ const AdminDataTable = ({
                     
                     {actions.length > 0 && (
                       <TableCell align="center">
-                        <IconButton
-                          size="small"
-                          onClick={(e) => handleMenuOpen(e, row)}
-                        >
-                          <MoreVert />
-                        </IconButton>
+                        {actions.length === 1 ? (
+                          <Tooltip title={actions[0].label}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleAction(actions[0].id, row)}
+                              sx={{ 
+                                color: 'primary.main',
+                                '&:hover': { 
+                                  bgcolor: alpha(theme.palette.primary.main, 0.08) 
+                                }
+                              }}
+                            >
+                              {actions[0].icon}
+                            </IconButton>
+                          </Tooltip>
+                        ) : (
+                          <IconButton
+                            size="small"
+                            onClick={(e) => handleMenuOpen(e, row)}
+                          >
+                            <MoreVert />
+                          </IconButton>
+                        )}
                       </TableCell>
                     )}
                   </TableRow>

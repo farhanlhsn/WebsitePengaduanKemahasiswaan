@@ -28,14 +28,15 @@ class ChatControllers {
   async sendMessage(req, res) {
     try {
       const { reportId } = req.params;
-      const { content, attachments } = req.body;
+      const { content, attachments, replyToId } = req.body;
       const senderId = req.user.userId;
 
       const messageData = {
         content,
         senderId,
         reportId,
-        attachments: attachments || []
+        attachments: attachments || [],
+        replyToId
       };
 
       log.info('Send message', { reportId, senderId });

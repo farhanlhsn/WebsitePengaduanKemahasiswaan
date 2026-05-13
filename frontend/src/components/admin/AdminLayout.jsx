@@ -23,7 +23,7 @@ const AdminLayout = ({ children }) => {
 
   // Check if user is admin
   useEffect(() => {
-    if (user && user.role !== 'ADMIN') {
+    if (user && user.role === 'MAHASISWA') {
       navigate('/dashboard');
     }
   }, [user, navigate]);
@@ -47,6 +47,8 @@ const AdminLayout = ({ children }) => {
       setActiveMenu('reports');
     } else if (path.includes('/users')) {
       setActiveMenu('users');
+    } else if (path.includes('/settings')) {
+      setActiveMenu('settings');
     } else if (path.includes('/admin')) {
       setActiveMenu('dashboard');
     }

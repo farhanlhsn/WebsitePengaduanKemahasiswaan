@@ -17,20 +17,22 @@ import {
 import { 
   Dashboard, 
   Description, 
+  Assignment,
   AddCircle, 
   Chat, 
   Settings, 
   HelpOutline, 
+  Help,
   Logout, 
   AccountCircle, 
   DevicesOther, 
   ChevronLeft,
   Person,
-
 } from '@mui/icons-material';
 import { alpha, styled, useTheme } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
+import { useTranslation } from '../../stores/settingsStore';
 import useChatStore from '../../stores/chatStore';
 import DeviceManagement from '../DeviceManagement';
 import UBHLogo from '../ui/UBHLogo';
@@ -206,10 +208,11 @@ const StudentSidebar = ({
   sidebarOpen,
   onSidebarToggle
 }) => {
-  const navigate = useNavigate();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { logout, user } = useAuthStore();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
+  const { t } = useTranslation();
   const { unreadCount } = useChatStore();
   const [deviceModalOpen, setDeviceModalOpen] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
@@ -220,25 +223,25 @@ const StudentSidebar = ({
   const studentMenu = [
     { 
       id: 'dashboard', 
-      text: 'Dashboard', 
+      text: t('sidebar.dashboard'), 
       icon: <Dashboard />, 
       action: () => onMenuChange('dashboard'),
-      description: 'Ringkasan aktivitas Anda'
+      description: t('sidebar.desc.dashboard')
     },
     { 
       id: 'reports', 
-      text: 'Laporan Saya', 
-      icon: <Description />, 
+      text: t('sidebar.reports'), 
+      icon: <Assignment />, 
       action: () => onMenuChange('reports'),
-      description: 'Kelola semua laporan Anda'
+      description: t('sidebar.desc.reports')
     },
     { 
       id: 'chat', 
-      text: 'Chat & Komunikasi', 
+      text: t('sidebar.chat'), 
       icon: <Chat />, 
       action: () => onMenuChange('chat'), 
       badge: unreadCount > 0 ? unreadCount : null,
-      description: 'Komunikasi dengan dosen dan teman'
+      description: t('sidebar.desc.chat')
     },
   ];
 
@@ -246,11 +249,11 @@ const StudentSidebar = ({
   const quickActions = [
     { 
       id: 'create', 
-      text: 'Buat Laporan Baru', 
+      text: t('sidebar.createReport'), 
       icon: <AddCircle />, 
       action: onCreateReport,
       primary: true,
-      description: 'Mulai buat laporan baru'
+      description: t('sidebar.desc.createReport')
     },
   ];
 
@@ -261,35 +264,38 @@ const StudentSidebar = ({
 
   const bottomMenu = [
     { 
-      text: 'Profil Saya', 
+      id: 'profile',
+      text: t('sidebar.profile'), 
       icon: <Person />, 
-      action: () => navigate('/profile'),
-      description: 'Kelola profil dan informasi pribadi'
+      action: () => onMenuChange('profile'),
+      description: t('sidebar.desc.profile')
     },
     { 
-      text: 'Perangkat', 
+      text: t('sidebar.devices'), 
       icon: <DevicesOther />, 
       action: () => setDeviceModalOpen(true),
-      description: 'Kelola perangkat yang terhubung'
+      description: t('sidebar.desc.devices')
     },
     { 
-      text: 'Pengaturan', 
+      id: 'settings',
+      text: t('sidebar.settings'), 
       icon: <Settings />, 
-      action: () => navigate('/settings'),
-      description: 'Sesuaikan preferensi aplikasi'
+      action: () => onMenuChange('settings'),
+      description: t('sidebar.desc.settings')
     },
     { 
-      text: 'Pusat Bantuan', 
-      icon: <HelpOutline />, 
-      action: () => navigate('/help'),
-      description: 'Dapatkan bantuan dan panduan'
+      id: 'help',
+      text: t('sidebar.help'), 
+      icon: <Help />, 
+      action: () => onMenuChange('help'),
+      description: t('sidebar.desc.help')
     },
     { 
-      text: 'Keluar', 
+      text: t('sidebar.logout'), 
       icon: <Logout />, 
       action: handleLogout, 
       color: 'error.main',
-      description: 'Keluar dari akun Anda'
+      description: t('sidebar.desc.logout')
     },
   ];
 

@@ -15,6 +15,9 @@ import useReportStore from '../stores/reportStore';
 import useCategoryStore from '../stores/categoryStore';
 import useChatStore from '../stores/chatStore';
 
+// API imports
+import { getAdminDashboardStats } from '../services/api';
+
 // Sidebar khusus untuk Admin
 import AdminSidebar from '../components/admin/EnhancedAdminSidebar'; 
 
@@ -28,6 +31,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import UserDetailModal from '../components/admin/UserDetailModal';
 import UserStatistics from '../components/admin/UserStatistics';
 import AdminNotifications from '../components/admin/AdminNotifications';
+import HelpPage from './HelpPage';
 
 // Utils imports
 import { exportUsersToExcel, generateUserReport } from '../utils/exportUtils';
@@ -51,6 +55,8 @@ const EnhancedAdminDashboard = () => {
   const [activeMenu, setActiveMenu] = useState('dashboard');
   const [selectedUser, setSelectedUser] = useState(null);
   const [userDetailModalOpen, setUserDetailModalOpen] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
   
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const savedState = localStorage.getItem('sidebar-open-admin');
@@ -59,23 +65,29 @@ const EnhancedAdminDashboard = () => {
 
   // Check if user is admin
   useEffect(() => {
-    if (user && user.role !== 'ADMIN') {
+    if (user && user.role === 'MAHASISWA') {
       navigate('/dashboard');
     }
   }, [user, navigate]);
 
-  // Load data on component mount - HAPUS pemanggilan getUserStats
+  // Load data on component mount
   useEffect(() => {
     if (user?.role === 'ADMIN') {
       const loadData = async () => {
         try {
-          await Promise.all([
+          // Load dashboard stats from dedicated API endpoint
+          setDashboardLoading(true);
+          const [statsResult] = await Promise.all([
+            getAdminDashboardStats(),
             getAllUsers(true),
             getAllReports({}, false),
             getCategories()
           ]);
+          setDashboardStats(statsResult);
         } catch (error) {
           console.error('Failed to load admin data:', error);
+        } finally {
+          setDashboardLoading(false);
         }
       };
       loadData();
@@ -90,6 +102,8 @@ const EnhancedAdminDashboard = () => {
       setActiveMenu('reports');
     } else if (location.pathname.startsWith('/admin/users')) {
       setActiveMenu('users');
+    } else if (location.pathname.startsWith('/admin/help')) {
+      setActiveMenu('help');
     } else if (location.pathname.startsWith('/admin')) {
       setActiveMenu('dashboard');
     }
@@ -108,23 +122,20 @@ const EnhancedAdminDashboard = () => {
 
   const handleRefreshData = useCallback(async () => {
     try {
-      await Promise.all([
+      setDashboardLoading(true);
+      const [statsResult] = await Promise.all([
+        getAdminDashboardStats(),
         getAllUsers(true),
         getAllReports({}, false),
       ]);
+      setDashboardStats(statsResult);
     } catch (error) {
       console.error('Failed to refresh data:', error);
+    } finally {
+      setDashboardLoading(false);
     }
   }, [getAllUsers, getAllReports]);
 
-  // Memoized statistics
-  const reportStats = useMemo(() => ({
-    total: reports.length,
-    pending: reports.filter(r => r.status === 'PENDING').length,
-    inProgress: reports.filter(r => ['IN_REVIEW', 'IN_PROGRESS'].includes(r.status)).length,
-    resolved: reports.filter(r => r.status === 'RESOLVED').length,
-  }), [reports]);
-  
   // Process users to include computed status
   const processedUsers = useMemo(() => {
     return users.map(user => ({
@@ -136,19 +147,22 @@ const EnhancedAdminDashboard = () => {
     }));
   }, [users]);
 
-  const systemStats = useMemo(() => ({
-    avgResponseTime: '2.5h',
-    uptime: '99.8%',
-  }), []);
+  // Local report stats for chart data
+  const localReportStats = useMemo(() => ({
+    total: reports.length,
+    pending: reports.filter(r => r.status === 'PENDING').length,
+    inProgress: reports.filter(r => ['IN_REVIEW', 'IN_PROGRESS'].includes(r.status)).length,
+    resolved: reports.filter(r => r.status === 'RESOLVED').length,
+  }), [reports]);
 
   const chartData = useMemo(() => [
-    { name: 'Menunggu', value: reportStats.pending, color: theme.palette.warning.main },
+    { name: 'Menunggu', value: localReportStats.pending, color: theme.palette.warning.main },
     { name: 'Ditinjau', value: reports.filter(r => r.status === 'IN_REVIEW').length, color: theme.palette.info.main },
     { name: 'Diproses', value: reports.filter(r => r.status === 'IN_PROGRESS').length, color: theme.palette.secondary.main },
-    { name: 'Selesai', value: reportStats.resolved, color: theme.palette.success.main },
+    { name: 'Selesai', value: localReportStats.resolved, color: theme.palette.success.main },
     { name: 'Ditolak', value: reports.filter(r => r.status === 'REJECTED').length, color: theme.palette.error.main },
     { name: 'Dibatalkan', value: reports.filter(r => r.status === 'CANCELED').length, color: theme.palette.grey[500] }
-  ].filter(item => item.value > 0), [reports, reportStats, theme]);
+  ].filter(item => item.value > 0), [reports, localReportStats, theme]);
 
   // Table configurations
   const userTableColumns = useMemo(() => [
@@ -312,7 +326,7 @@ const EnhancedAdminDashboard = () => {
           <Fade in timeout={300}>
             <Box>
               {commonHeader('Dashboard', 'Ringkasan sistem dan statistik keseluruhan')}
-              <AdminDashboardStats userStats={userStats} reportStats={reportStats} systemStats={systemStats} loading={userLoading || reportLoading} />
+              <AdminDashboardStats dashboardStats={dashboardStats} loading={dashboardLoading || userLoading || reportLoading} />
               <Grid container spacing={3} sx={{ mt: 2 }}>
                 <Grid 
                   xs={12} 
@@ -424,6 +438,15 @@ const EnhancedAdminDashboard = () => {
             </Box>
           </Fade>
         );
+      case 'help':
+        return (
+          <Fade in timeout={300}>
+            <Box>
+              {commonHeader('Pusat Bantuan', 'Temukan jawaban untuk pertanyaan Anda dengan cepat')}
+              <HelpPage isEmbedded={true} />
+            </Box>
+          </Fade>
+        );
       default:
         return (
           <Box sx={{ textAlign: 'center', py: 8 }}>
@@ -433,7 +456,7 @@ const EnhancedAdminDashboard = () => {
     }
   };
 
-  if (user?.role !== 'ADMIN') {
+  if (user?.role === 'MAHASISWA') {
     return <LoadingSpinner fullScreen message="Mengalihkan..." />;
   }
 
