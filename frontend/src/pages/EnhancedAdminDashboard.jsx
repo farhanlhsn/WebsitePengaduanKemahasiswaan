@@ -32,6 +32,7 @@ import UserDetailModal from '../components/admin/UserDetailModal';
 import UserStatistics from '../components/admin/UserStatistics';
 import AdminNotifications from '../components/admin/AdminNotifications';
 import HelpPage from './HelpPage';
+import AdminSettingsPage from './AdminSettingsPage';
 
 // Utils imports
 import { exportUsersToExcel, generateUserReport } from '../utils/exportUtils';
@@ -104,6 +105,8 @@ const EnhancedAdminDashboard = () => {
       setActiveMenu('users');
     } else if (location.pathname.startsWith('/admin/help')) {
       setActiveMenu('help');
+    } else if (location.pathname.startsWith('/admin/settings')) {
+      setActiveMenu('settings');
     } else if (location.pathname.startsWith('/admin')) {
       setActiveMenu('dashboard');
     }
@@ -444,6 +447,14 @@ const EnhancedAdminDashboard = () => {
             <Box>
               {commonHeader('Pusat Bantuan', 'Temukan jawaban untuk pertanyaan Anda dengan cepat')}
               <HelpPage isEmbedded={true} />
+            </Box>
+          </Fade>
+        );
+      case 'settings':
+        return (
+          <Fade in timeout={300}>
+            <Box>
+              <AdminSettingsPage isEmbedded={true} />
             </Box>
           </Fade>
         );

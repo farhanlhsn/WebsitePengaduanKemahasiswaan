@@ -15,7 +15,7 @@ import useAuthStore from '../stores/authStore';
 import useSettingsStore from '../stores/settingsStore';
 import AdminLayout from '../components/admin/AdminLayout';
 
-const AdminSettingsPage = () => {
+const AdminSettingsPage = ({ isEmbedded = false }) => {
   const theme = useTheme();
   const { user, devices, logoutDevice, getUserDevices } = useAuthStore();
   
@@ -135,19 +135,22 @@ const AdminSettingsPage = () => {
   };
 
   if (!user) {
+    const loadingContent = (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+    if (isEmbedded) return loadingContent;
     return (
       <AdminLayout>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-          <CircularProgress />
-        </Box>
+        {loadingContent}
       </AdminLayout>
     );
   }
 
-  return (
-    <AdminLayout>
-      <Container maxWidth="xl">
-        <Box sx={{ mb: 4 }}>
+  const content = (
+      <Container maxWidth="xl" disableGutters={isEmbedded}>
+        <Box sx={{ mb: 4, mt: isEmbedded ? 0 : 2 }}>
           <Typography variant="h4" fontWeight="bold" gutterBottom>
             Pengaturan Admin
           </Typography>
@@ -411,6 +414,15 @@ const AdminSettingsPage = () => {
           </DialogActions>
         </Dialog>
       </Container>
+  );
+
+  if (isEmbedded) {
+    return content;
+  }
+
+  return (
+    <AdminLayout>
+      {content}
     </AdminLayout>
   );
 };

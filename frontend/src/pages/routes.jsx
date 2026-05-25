@@ -172,7 +172,7 @@ export const router = createBrowserRouter([
         path: "/admin/settings",
         element: (
             <OptimizedAuthWrapper>
-                <SettingsPage />
+                <EnhancedAdminDashboard />
             </OptimizedAuthWrapper>
         ),
     },
@@ -264,14 +264,7 @@ export const router = createBrowserRouter([
             </OptimizedAuthWrapper>
         ),
     },
-    {
-        path: "/admin/settings",
-        element: (
-            <OptimizedAuthWrapper>
-                <AdminSettingsPage />
-            </OptimizedAuthWrapper>
-        ),
-    },
+
     {
         path: "/admin/help",
         element: (
