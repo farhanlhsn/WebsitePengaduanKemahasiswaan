@@ -17,49 +17,92 @@ model User {
   ktmPath       String?
   role          UserRole       @default(MAHASISWA)
   isVerified    Boolean        @default(false)
+  tokenVersion  Int            @default(0)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   deletedAt     DateTime?
   messages      Message[]
   refreshTokens RefreshToken[]
   reports       Report[]
+  assignedReports Report[]     @relation("AssignedReports")
+  passwordResetTokens PasswordResetToken[]
+  // Categories this admin is assigned to handle. SUPERADMIN ignores this list
+  // and has access to all categories.
+  categoryAssignments AdminCategoryAssignment[] @relation("AssignmentAssignee")
+  // Assignments this user (typically a SUPERADMIN) has granted to others.
+  grantedAssignments  AdminCategoryAssignment[] @relation("AssignmentGrantor")
+  chatPendingUploads  ChatPendingUpload[]
 
   @@map("users")
 }
 
 model Category {
-  id        Int       @id @default(autoincrement())
-  name      String    @unique
-  slug      String    @unique
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
-  updatedAt DateTime  @updatedAt
-  reports   Report[]
+  id              Int            @id @default(autoincrement())
+  name            String         @unique
+  slug            String         @unique
+  defaultPriority ReportPriority @default(MEDIUM)
+  allowAnonymous  Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  deletedAt       DateTime?
+  updatedAt       DateTime       @updatedAt
+  reports         Report[]
+  adminAssignments AdminCategoryAssignment[]
 
   @@map("categories")
 }
 
+/**
+ * Per-category admin assignment.
+ *
+ * SUPERADMINs grant individual ADMINs access to one or more categories. An
+ * ADMIN with no rows here cannot see any reports. SUPERADMIN itself has access
+ * to all categories implicitly and does not appear in this table.
+ */
+model AdminCategoryAssignment {
+  id          Int      @id @default(autoincrement())
+  adminId     Int
+  categoryId  Int
+  assignedById Int
+  assignedAt  DateTime @default(now())
+
+  admin       User     @relation("AssignmentAssignee", fields: [adminId], references: [id], onDelete: Cascade)
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  assignedBy  User     @relation("AssignmentGrantor", fields: [assignedById], references: [id])
+
+  @@unique([adminId, categoryId])
+  @@index([adminId])
+  @@index([categoryId])
+  @@map("admin_category_assignments")
+}
+
 model Report {
-  id                 Int          @id @default(autoincrement())
-  registrationNumber String       @unique
+  id                 Int            @id @default(autoincrement())
+  registrationNumber String         @unique
   title              String
-  description        String       @db.Text
-  status             ReportStatus @default(PENDING)
+  description        String         @db.Text
+  status             ReportStatus   @default(PENDING)
+  priority           ReportPriority @default(MEDIUM)
+  isAnonymous        Boolean        @default(false)
   userId             Int?
   categoryId         Int?
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  assignedToId       Int?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
   closedAt           DateTime?
   deletedAt          DateTime?
   attachments        Attachment[]
   messages           Message[]
-  category           Category?    @relation(fields: [categoryId], references: [id])
-  user               User?        @relation(fields: [userId], references: [id])
+  category           Category?      @relation(fields: [categoryId], references: [id])
+  user               User?          @relation(fields: [userId], references: [id])
+  assignedTo         User?          @relation("AssignedReports", fields: [assignedToId], references: [id])
+  chatPendingUploads ChatPendingUpload[]
 
   @@index([userId, status, categoryId])
   @@index([categoryId], map: "reports_categoryId_idx")
   @@index([status])
   @@index([status, categoryId])
+  @@index([priority, status])
+  @@index([assignedToId])
   @@map("reports")
 }
 
@@ -80,20 +123,22 @@ model Attachment {
 }
 
 model Message {
-  id        Int       @id @default(autoincrement())
-  content   String    @db.Text
-  senderId  Int
-  reportId  Int
-  createdAt DateTime  @default(now())
-  isRead    Boolean   @default(false)
-  deletedAt DateTime?
-  replyToId Int?
+  id              Int       @id @default(autoincrement())
+  content         String    @db.Text
+  senderId        Int
+  reportId        Int
+  clientMessageId String?   @db.VarChar(64)
+  createdAt       DateTime  @default(now())
+  isRead          Boolean   @default(false)
+  deletedAt       DateTime?
+  replyToId       Int?
   replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id])
   replies   Message[] @relation("MessageReplies")
   report    Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
   sender    User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
   attachments Attachment[]
 
+  @@unique([reportId, senderId, clientMessageId])
   @@index([reportId, createdAt])
   @@index([senderId], map: "messages_senderId_idx")
   @@map("messages")
@@ -101,7 +146,7 @@ model Message {
 
 model RefreshToken {
   id         Int      @id @default(autoincrement())
-  token      String   @unique @db.VarChar(500)
+  tokenHash  String   @unique @db.VarChar(64)
   userId     Int
   expiresAt  DateTime
   createdAt  DateTime @default(now())
@@ -120,6 +165,7 @@ model RefreshToken {
 enum UserRole {
   MAHASISWA
   ADMIN
+  SUPERADMIN
 }
 
 enum ReportStatus {
@@ -131,9 +177,18 @@ enum ReportStatus {
   CANCELED
 }
 
+enum ReportPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 enum AuditEntity { 
   USER 
   REPORT 
+  CATEGORY
+  ASSIGNMENT
 }
 
 enum AuditAction { 
@@ -142,6 +197,13 @@ enum AuditAction {
   HARD_DELETE
   UPDATE_STATUS
   VERIFY_MAHASISWA 
+  VIEW_ANONYMOUS
+  CREATE
+  UPDATE
+  PROMOTE_ADMIN
+  DEMOTE_ADMIN
+  GRANT_CATEGORY
+  REVOKE_CATEGORY
 }
 
 model AuditLog {
@@ -160,4 +222,38 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@index([actorId])
+}
+
+model ChatPendingUpload {
+  id         Int      @id @default(autoincrement())
+  token      String   @unique @db.VarChar(64)
+  reportId   Int
+  uploaderId Int
+  filePath   String
+  fileName   String
+  fileType   String
+  fileSize   Int
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  report     Report   @relation(fields: [reportId], references: [id], onDelete: Restrict)
+  uploader   User     @relation(fields: [uploaderId], references: [id], onDelete: Restrict)
+
+  @@index([reportId, uploaderId])
+  @@index([expiresAt])
+  @@map("chat_pending_uploads")
+}
+
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  tokenHash String    @unique @db.VarChar(64)
+  userId    Int
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
