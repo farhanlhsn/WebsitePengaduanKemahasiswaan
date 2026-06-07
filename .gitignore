@@ -2,8 +2,6 @@
 # Dependencies
 # ================================
 node_modules/
-package-lock.json
-yarn.lock
 
 # ================================
 # Environment Variables
@@ -77,6 +75,13 @@ uploads/*
 coverage/
 *.lcov
 .nyc_output/
+frontend/.vitest-attachments/
+frontend/.playwright-browsers/
+frontend/tests/**/__screenshots__/
+frontend/tests/e2e/.e2e-state.json
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
 
 # ================================
 # Misc
@@ -88,6 +93,6 @@ coverage/
 *.pid.lock
 lighthouse-report.html
 stats.html
-backend/package-lock.json
-frontend/package-lock.json
-package-lock.json
+
+.kiro/
+backend/docs/
