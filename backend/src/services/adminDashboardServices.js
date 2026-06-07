@@ -1,16 +1,31 @@
 const prisma = require('../utils/prisma');
 const SoftDeleteHelper = require('../utils/softDelete');
+const { isSuperAdmin } = require('../utils/rbac');
+const adminGovernanceServices = require('./adminGovernanceServices');
 const { getLogger } = require('../utils/logger');
 
 const log = getLogger('admin-dashboard:service');
 
 class AdminDashboardServices {
+  async resolveScope(user) {
+    if (isSuperAdmin(user)) {
+      return { type: 'GLOBAL', categoryIds: null, categoryFilter: {} };
+    }
+    const categoryIds = await adminGovernanceServices.getAccessibleCategoryIds(user);
+    return {
+      type: 'CATEGORY',
+      categoryIds: categoryIds || [],
+      categoryFilter: categoryIds?.length ? { categoryId: { in: categoryIds } } : { categoryId: -1 },
+    };
+  }
+
   /**
    * Get comprehensive dashboard statistics for admin
    */
-  async getDashboardStats() {
+  async getDashboardStats(user) {
     try {
-      // Get all stats in parallel for better performance
+      const scope = await this.resolveScope(user);
+
       const [
         usersStats,
         reportsStats,
@@ -20,13 +35,13 @@ class AdminDashboardServices {
         recentAuditLogs,
         reportsTrend
       ] = await Promise.all([
-        this.getUsersStats(),
-        this.getReportsStats(),
-        this.getCategoriesStats(),
-        this.getRecentReports(5),
-        this.getRecentUsers(5),
-        this.getRecentAuditLogs(10),
-        this.getReportsTrend(7) // Last 7 days
+        this.getUsersStats(user, scope),
+        this.getReportsStats(scope),
+        this.getCategoriesStats(scope),
+        this.getRecentReports(5, scope),
+        isSuperAdmin(user) ? this.getRecentUsers(5) : Promise.resolve([]),
+        isSuperAdmin(user) ? this.getRecentAuditLogs(10) : Promise.resolve([]),
+        this.getReportsTrend(7, scope)
       ]);
 
       const stats = {
@@ -41,10 +56,14 @@ class AdminDashboardServices {
         trends: {
           reports: reportsTrend
         },
+        scope: {
+          type: scope.type,
+          categoryIds: scope.type === 'GLOBAL' ? [] : scope.categoryIds,
+        },
         timestamp: new Date().toISOString()
       };
 
-      log.info('getDashboardStats success');
+      log.info('getDashboardStats success', { scope: scope.type });
       return stats;
     } catch (error) {
       log.error('getDashboardStats failed', { error: error.message });
@@ -55,8 +74,19 @@ class AdminDashboardServices {
   /**
    * Get users statistics
    */
-  async getUsersStats() {
+  async getUsersStats(user, scope) {
     try {
+      if (!isSuperAdmin(user)) {
+        return {
+          total: 0,
+          deleted: 0,
+          active: 0,
+          verified: 0,
+          unverified: 0,
+          byRole: { mahasiswa: 0, admin: 0 },
+        };
+      }
+
       const [total, deleted, verified, mahasiswa, admin] = await Promise.all([
         SoftDeleteHelper.count(prisma.user),
         SoftDeleteHelper.count(prisma.user, {}, true),
@@ -85,14 +115,15 @@ class AdminDashboardServices {
   /**
    * Get reports statistics
    */
-  async getReportsStats() {
+  async getReportsStats(scope) {
     try {
+      const reportWhere = { deletedAt: null, ...scope.categoryFilter };
       const [total, deleted, byStatus] = await Promise.all([
-        SoftDeleteHelper.count(prisma.report),
-        SoftDeleteHelper.count(prisma.report, {}, true),
+        SoftDeleteHelper.count(prisma.report, { where: scope.categoryFilter }),
+        SoftDeleteHelper.count(prisma.report, { where: scope.categoryFilter }, true),
         prisma.report.groupBy({
           by: ['status'],
-          where: { deletedAt: null },
+          where: reportWhere,
           _count: true
         })
       ]);
@@ -122,20 +153,26 @@ class AdminDashboardServices {
   /**
    * Get categories statistics
    */
-  async getCategoriesStats() {
+  async getCategoriesStats(scope) {
     try {
+      const categoryWhere = scope.type === 'GLOBAL'
+        ? { deletedAt: null }
+        : { deletedAt: null, id: { in: scope.categoryIds } };
+
       const [total, deleted, withReportCounts] = await Promise.all([
-        SoftDeleteHelper.count(prisma.category),
-        SoftDeleteHelper.count(prisma.category, {}, true),
+        prisma.category.count({ where: categoryWhere }),
+        scope.type === 'GLOBAL'
+          ? SoftDeleteHelper.count(prisma.category, {}, true)
+          : Promise.resolve(0),
         prisma.category.findMany({
-          where: { deletedAt: null },
+          where: categoryWhere,
           select: {
             id: true,
             name: true,
             _count: {
               select: {
                 reports: {
-                  where: { deletedAt: null }
+                  where: { deletedAt: null, ...scope.categoryFilter }
                 }
               }
             }
@@ -170,17 +207,21 @@ class AdminDashboardServices {
   /**
    * Get recent reports
    */
-  async getRecentReports(limit = 5) {
+  async getRecentReports(limit = 5, scope = { categoryFilter: {} }) {
     try {
       const reports = await SoftDeleteHelper.findMany(
         prisma.report,
         {
+          where: scope.categoryFilter,
           select: {
             id: true,
             registrationNumber: true,
             title: true,
             status: true,
             createdAt: true,
+            // Required for anonymity masking in the controller.
+            isAnonymous: true,
+            userId: true,
             user: {
               select: {
                 id: true,
@@ -256,18 +297,17 @@ class AdminDashboardServices {
   /**
    * Get reports trend (count per day for the last N days)
    */
-  async getReportsTrend(days = 7) {
+  async getReportsTrend(days = 7, scope = { categoryFilter: {} }) {
     try {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
       startDate.setHours(0, 0, 0, 0);
 
-      // Get reports created in the last N days
       const reports = await prisma.report.findMany({
         where: {
-          createdAt: {
-            gte: startDate
-          }
+          createdAt: { gte: startDate },
+          deletedAt: null,
+          ...scope.categoryFilter,
         },
         select: {
           createdAt: true

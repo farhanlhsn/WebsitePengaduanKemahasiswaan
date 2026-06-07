@@ -10,8 +10,26 @@ const validate = require('../middlewares/validationMiddleware');
 router.use(authMiddleware);
 router.use(isAdminMiddleware);
 
-// Bulk operations for users
-// POST /api/bulk-operations/users/verify
+/**
+ * @swagger
+ * /v1/api/bulk-operations/users/verify:
+ *   post:
+ *     tags: [Bulk Operations]
+ *     summary: Bulk verify multiple students
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [userIds]
+ *             properties:
+ *               userIds:
+ *                 type: array
+ *                 items: { type: integer }
+ *     responses:
+ *       200: { description: Bulk verification result }
+ */
 router.post(
   '/users/verify',
   [

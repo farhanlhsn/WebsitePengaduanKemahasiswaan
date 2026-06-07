@@ -2,8 +2,17 @@ const prisma = require('../utils/prisma');
 const SoftDeleteHelper = require('../utils/softDelete');
 const { getLogger } = require('../utils/logger');
 const log = getLogger('category:service');
+const CATEGORY_CACHE_TTL_MS = 60 * 1000;
 
 class CategoryServices {
+  constructor() {
+    this.categoryListCache = new Map();
+  }
+
+  invalidateCategoryCache() {
+    this.categoryListCache.clear();
+  }
+
   async getCategoryById(categoryId, includeDeleted = false) {
     try {
       const category = await SoftDeleteHelper.findUnique(
@@ -14,6 +23,8 @@ class CategoryServices {
             id: true,
             name: true,
             slug: true,
+            defaultPriority: true,
+            allowAnonymous: true,
             createdAt: true,
             updatedAt: true,
             deletedAt: true
@@ -56,6 +67,8 @@ class CategoryServices {
             id: true,
             name: true,
             slug: true,
+            defaultPriority: true,
+            allowAnonymous: true,
             createdAt: true,
             updatedAt: true,
             deletedAt: true
@@ -91,6 +104,11 @@ class CategoryServices {
   async getAllCategories(includeDeleted = false) {
     try {
       log.info('getAllCategories', { includeDeleted });
+      const cacheKey = includeDeleted ? 'all:with-deleted' : 'all:active';
+      const cached = this.categoryListCache.get(cacheKey);
+      if (cached && Date.now() - cached.createdAt < CATEGORY_CACHE_TTL_MS) {
+        return cached.data;
+      }
       
       const categories = await SoftDeleteHelper.findMany(
         prisma.category,
@@ -99,6 +117,8 @@ class CategoryServices {
             id: true,
             name: true,
             slug: true,
+            defaultPriority: true,
+            allowAnonymous: true,
             createdAt: true,
             updatedAt: true,
             deletedAt: true,
@@ -109,6 +129,7 @@ class CategoryServices {
       );
 
       log.info('getAllCategories fetched', { count: categories.length });
+      this.categoryListCache.set(cacheKey, { data: categories, createdAt: Date.now() });
       return categories;
 
     } catch (error) {
@@ -212,14 +233,27 @@ class CategoryServices {
         throw new Error('Category slug already exists');
       }
 
-      const newCategory = await prisma.category.create({
-        data: {
-          name: categoryData.name,
-          slug: slug,
-        },
-      });
+      // Whitelist allowed fields
+      const data = {
+        name: categoryData.name,
+        slug: slug,
+      };
+      if (categoryData.defaultPriority !== undefined) {
+        data.defaultPriority = categoryData.defaultPriority;
+      }
+      if (categoryData.allowAnonymous !== undefined) {
+        data.allowAnonymous = !!categoryData.allowAnonymous;
+      }
+
+      const newCategory = await prisma.category.create({ data });
       
-      log.info('createCategory success', { id: newCategory.id, name: newCategory.name });
+      log.info('createCategory success', {
+        id: newCategory.id,
+        name: newCategory.name,
+        defaultPriority: newCategory.defaultPriority,
+        allowAnonymous: newCategory.allowAnonymous
+      });
+      this.invalidateCategoryCache();
       return newCategory;
     } catch (error) {
       log.warn('createCategory failed', { error: error.message });
@@ -258,20 +292,30 @@ class CategoryServices {
         }
       }
 
-      const updateData = { ...categoryData };
-      if (categoryData.name) {
+      // Whitelist updatable fields explicitly to avoid leaking unintended writes
+      const updateData = { updatedAt: new Date() };
+      if (categoryData.name !== undefined) {
+        updateData.name = categoryData.name;
         updateData.slug = this.generateSlug(categoryData.name);
+      }
+      if (categoryData.defaultPriority !== undefined) {
+        updateData.defaultPriority = categoryData.defaultPriority;
+      }
+      if (categoryData.allowAnonymous !== undefined) {
+        updateData.allowAnonymous = !!categoryData.allowAnonymous;
       }
 
       const updatedCategory = await prisma.category.update({
         where: { id: categoryId },
-        data: {
-          ...updateData,
-          updatedAt: new Date()
-        },
+        data: updateData,
       });
       
-      log.info('updateCategory success', { id: updatedCategory.id });
+      log.info('updateCategory success', {
+        id: updatedCategory.id,
+        defaultPriority: updatedCategory.defaultPriority,
+        allowAnonymous: updatedCategory.allowAnonymous
+      });
+      this.invalidateCategoryCache();
       return updatedCategory;
     } catch (error) {
       log.warn('updateCategory failed', { categoryId, error: error.message });
@@ -294,6 +338,7 @@ class CategoryServices {
       // Soft delete category
       const result = await SoftDeleteHelper.softDelete(prisma.category, categoryId);
       log.info('deleteCategory success', { categoryId });
+      this.invalidateCategoryCache();
       return result;
     } catch (error) {
       log.warn('deleteCategory failed', { categoryId, error: error.message });
@@ -332,6 +377,7 @@ class CategoryServices {
       // Restore category
       const result = await SoftDeleteHelper.restore(prisma.category, categoryId);
       log.info('restoreCategory success', { categoryId });
+      this.invalidateCategoryCache();
       return result;
     } catch (error) {
       log.warn('restoreCategory failed', { categoryId, error: error.message });
@@ -355,6 +401,7 @@ class CategoryServices {
       // Hard delete category
       const result = await SoftDeleteHelper.hardDelete(prisma.category, categoryId);
       log.info('permanentDeleteCategory success', { categoryId });
+      this.invalidateCategoryCache();
       return result;
     } catch (error) {
       log.warn('permanentDeleteCategory failed', { categoryId, error: error.message });
@@ -419,6 +466,7 @@ class CategoryServices {
       // Cleanup categories deleted more than specified days ago
       const result = await SoftDeleteHelper.cleanupOldDeleted(prisma.category, daysOld);
       log.info('cleanupOldDeletedCategories success', { daysOld });
+      this.invalidateCategoryCache();
       return result;
     } catch (error) {
       log.warn('cleanupOldDeletedCategories failed', { error: error.message });

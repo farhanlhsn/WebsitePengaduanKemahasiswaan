@@ -3,6 +3,12 @@ const SoftDeleteHelper = require('../utils/softDelete');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const {
+  REPORT_CHAT_MIMES,
+  sanitizeOriginalName,
+  createMulterFilename,
+  createMulterFileFilter,
+} = require('../utils/fileValidation');
 
 // Ensure attachments directory exists
 const attachmentsDir = path.join(__dirname, '../../uploads/reports/attachments');
@@ -21,14 +27,14 @@ const storage = multer.diskStorage({
     cb(null, attachmentsDir);
   },
   filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
-  }
+    createMulterFilename(req, file, cb, REPORT_CHAT_MIMES);
+  },
 });
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per file
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: createMulterFileFilter(REPORT_CHAT_MIMES),
 });
 
 class AttachmentServices {
@@ -43,11 +49,10 @@ class AttachmentServices {
       for (const file of files) {
         // Construct public path
         const relativePath = `/uploads/reports/attachments/${file.filename}`;
-        // Save file metadata to database
         const attachment = await prisma.attachment.create({
           data: {
             filePath: relativePath,
-            fileName: file.originalname,
+            fileName: sanitizeOriginalName(file.originalname),
             fileType: file.mimetype,
             reportId: parseInt(reportId)
           }

@@ -1,11 +1,15 @@
 const ResponseFormatter = require('../utils/responseFormatter');
+const { isAdmin } = require('../utils/rbac');
 const { getLogger } = require('../utils/logger');
 
 const log = getLogger('middleware:isAdmin');
 
 /**
- * Middleware to check if the user has ADMIN role
- * Must be used after authMiddleware
+ * Middleware to check if the user has ADMIN-tier access (ADMIN or SUPERADMIN).
+ * Must be used after authMiddleware.
+ *
+ * SUPERADMIN is a superset of ADMIN — all admin endpoints accept SUPERADMIN.
+ * Endpoints that require SUPERADMIN exclusively must use isSuperAdminMiddleware.
  */
 const isAdminMiddleware = (req, res, next) => {
   try {
@@ -17,8 +21,7 @@ const isAdminMiddleware = (req, res, next) => {
       );
     }
 
-    // Check if user has ADMIN role
-    if (req.user.role !== 'ADMIN') {
+    if (!isAdmin(req.user)) {
       log.warn('isAdminMiddleware: Access denied for non-admin', {
         userId: req.user.userId,
         role: req.user.role,
@@ -31,6 +34,7 @@ const isAdminMiddleware = (req, res, next) => {
 
     log.info('isAdminMiddleware: Admin access granted', {
       userId: req.user.userId,
+      role: req.user.role,
       path: req.originalUrl
     });
     

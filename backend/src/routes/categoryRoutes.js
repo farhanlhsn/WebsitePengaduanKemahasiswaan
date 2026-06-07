@@ -3,10 +3,29 @@ const router = express.Router();
 const categoryController = require('../controllers/categoryControllers');
 const authMiddleware = require('../middlewares/authMiddleware');
 const isAdminMiddleware = require('../middlewares/isAdminMiddleware');
+const isSuperAdminMiddleware = require('../middlewares/isSuperAdminMiddleware');
 const { body, param, query } = require('express-validator');
 const validate = require('../middlewares/validationMiddleware');
 
 // Public routes (no auth required)
+/**
+ * @swagger
+ * /v1/api/categories/search:
+ *   get:
+ *     tags: [Categories]
+ *     summary: Search categories by query string
+ *     security: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: includeDeleted
+ *         schema: { type: boolean }
+ *     responses:
+ *       200: { description: Matching categories }
+ */
 router.get(
   '/search',
   [
@@ -30,23 +49,49 @@ router.get(
 );             // GET /api/categories?includeDeleted=true
 
 // Protected routes (auth required)
-router.use(authMiddleware); // All routes below require authentication
+router.use(authMiddleware);
 
-// Category management routes  
-router.get('/stats', categoryController.getCategoryStats);        // GET /api/categories/stats
-router.get('/with-reports', [query('includeDeleted').optional().isBoolean().toBoolean()], validate, categoryController.getCategoriesWithReports); // GET /api/categories/with-reports?includeDeleted=true
-router.get('/:id', [param('id').isInt().withMessage('id must be an integer'), query('includeDeleted').optional().isBoolean().toBoolean()], validate, categoryController.getCategoryById);           // GET /api/categories/123?includeDeleted=true
+router.get('/stats', categoryController.getCategoryStats);
+router.get(
+  '/with-reports',
+  isAdminMiddleware,
+  [query('includeDeleted').optional().isBoolean().toBoolean()],
+  validate,
+  categoryController.getCategoriesWithReports
+);
+router.get('/:id', [param('id').isInt().withMessage('id must be an integer'), query('includeDeleted').optional().isBoolean().toBoolean()], validate, categoryController.getCategoryById);
 
-// Create and update
-router.post('/', [body('name').trim().notEmpty().withMessage('Category name is required')], validate, categoryController.createCategory);              // POST /api/categories
-router.put('/:id', [param('id').isInt().withMessage('id must be an integer'), body('name').optional().isString().isLength({ min: 1 })], validate, categoryController.updateCategory);            // PUT /api/categories/123
+// Create and update — SUPERADMIN only (BE-6)
+router.post(
+  '/',
+  isSuperAdminMiddleware,
+  [
+    body('name').trim().notEmpty().withMessage('Category name is required'),
+    body('defaultPriority').optional().isIn(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).withMessage('defaultPriority must be one of LOW, MEDIUM, HIGH, URGENT'),
+    body('allowAnonymous').optional().isBoolean().withMessage('allowAnonymous must be a boolean').toBoolean(),
+  ],
+  validate,
+  categoryController.createCategory
+);
+router.put(
+  '/:id',
+  isSuperAdminMiddleware,
+  [
+    param('id').isInt().withMessage('id must be an integer'),
+    body('name').optional().isString().isLength({ min: 1 }),
+    body('defaultPriority').optional().isIn(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).withMessage('defaultPriority must be one of LOW, MEDIUM, HIGH, URGENT'),
+    body('allowAnonymous').optional().isBoolean().withMessage('allowAnonymous must be a boolean').toBoolean(),
+  ],
+  validate,
+  categoryController.updateCategory
+);
 
-// Soft delete operations
-router.delete('/:id', [param('id').isInt().withMessage('id must be an integer')], validate, categoryController.deleteCategory);         // DELETE /api/categories/123 (soft delete)
-router.post('/:id/restore', [param('id').isInt().withMessage('id must be an integer')], validate, categoryController.restoreCategory);  // POST /api/categories/123/restore
+// Soft delete operations — SUPERADMIN only (BE-6)
+router.delete('/:id', isSuperAdminMiddleware, [param('id').isInt().withMessage('id must be an integer')], validate, categoryController.deleteCategory);
+router.post('/:id/restore', isSuperAdminMiddleware, [param('id').isInt().withMessage('id must be an integer')], validate, categoryController.restoreCategory);
 
-// Admin-only routes
-router.delete('/:id/permanent', isAdminMiddleware, [param('id').isInt().withMessage('id must be an integer')], validate, categoryController.permanentDeleteCategory); // DELETE /api/categories/123/permanent
-router.post('/cleanup', isAdminMiddleware, [query('daysOld').optional().isInt({ min: 1 }).toInt()], validate, categoryController.cleanupOldDeletedCategories);     // POST /api/categories/cleanup?daysOld=90
+// SUPERADMIN-only destructive routes
+router.delete('/:id/permanent', isSuperAdminMiddleware, [param('id').isInt().withMessage('id must be an integer')], validate, categoryController.permanentDeleteCategory);
+router.post('/cleanup', isSuperAdminMiddleware, [query('daysOld').optional().isInt({ min: 1 }).toInt()], validate, categoryController.cleanupOldDeletedCategories);
 
 module.exports = router;

@@ -1,240 +1,235 @@
 const chatServices = require('../services/chatServices');
 const ResponseFormatter = require('../utils/responseFormatter');
+const { anonymizeChatMessage, shouldMaskReporter } = require('../utils/anonymizer');
+const { notifyChatListRefresh } = require('../utils/chatNotify');
+const { ChatError } = require('../utils/chatErrors');
+const { deleteFileFromDisk } = require('../utils/fileDisk');
+const {
+  createPendingUploadRecords,
+  toPublicDto,
+} = require('../services/chatPendingUploadService');
+const { scheduleOfflineEmailNotification } = require('../services/chatOfflineNotificationService');
 const { getLogger } = require('../utils/logger');
+
 const log = getLogger('chat:controller');
 
+function handleChatError(res, error) {
+  if (error instanceof ChatError) {
+    return res.status(error.statusCode).json({
+      ...ResponseFormatter.error(error.message, error.statusCode),
+      code: error.code,
+    });
+  }
+  log.warn('Chat error', { error: error.message });
+  return res.status(400).json(ResponseFormatter.error(error.message));
+}
+
 class ChatControllers {
-  // Get messages for a specific report
   async getMessages(req, res) {
     try {
       const { reportId } = req.params;
       const { page = 1, limit = 50 } = req.query;
-      
-      log.info('Get messages', { reportId, page, limit });
+
       const result = await chatServices.getMessagesByReportId(
-        reportId, 
-        parseInt(page), 
+        reportId,
+        parseInt(page),
         parseInt(limit)
       );
-      
+
+      const reportCtx = result.report;
+      if (reportCtx) {
+        for (const msg of result.messages) {
+          anonymizeChatMessage(msg, reportCtx, req.user);
+          if (msg.replyTo) {
+            anonymizeChatMessage(msg.replyTo, reportCtx, req.user);
+          }
+        }
+      }
+
       res.json(ResponseFormatter.success(result, 'Messages retrieved successfully'));
     } catch (error) {
-      log.warn('Get messages failed', { error: error.message });
-      res.status(400).json(ResponseFormatter.error(error.message));
+      return handleChatError(res, error);
     }
   }
 
-  // Send a new message
   async sendMessage(req, res) {
     try {
       const { reportId } = req.params;
-      const { content, attachments, replyToId } = req.body;
+      const { content, attachmentTokens = [], replyToId, clientMessageId, idempotencyKey } = req.body;
       const senderId = req.user.userId;
 
       const messageData = {
         content,
         senderId,
         reportId,
-        attachments: attachments || [],
-        replyToId
+        attachmentTokens,
+        replyToId,
+        clientMessageId: clientMessageId || idempotencyKey || null,
       };
 
-      log.info('Send message', { reportId, senderId });
-      const message = await chatServices.sendMessage(messageData);
-      
-      // Emit to Socket.IO room
+      const message = await chatServices.sendMessage(messageData, req.reportAccess);
+
+      const reportCtx = message.report;
+      delete message.report;
+
       const io = req.app.get('io');
       if (io) {
-        // Prepare payload with timestamp
-        const payload = {
+        const basePayload = {
           ...message,
-          timestamp: new Date().toISOString()
+          reportId: parseInt(reportId),
+          timestamp: new Date().toISOString(),
         };
-        // Emit to the specific report room for active chats
-        io.to(`report_${reportId}`).emit('newMessage', payload);
-        // Also broadcast globally so chat lists update instantly for other users
-        io.emit('newMessage', payload);
+
+        if (reportCtx?.isAnonymous && message.senderId === reportCtx.userId) {
+          const anonPayload = JSON.parse(JSON.stringify(basePayload));
+          anonymizeChatMessage(anonPayload, reportCtx, { userId: -1 });
+          io.to(`report_${reportId}`).emit('chat:message', anonPayload);
+        } else {
+          io.to(`report_${reportId}`).emit('chat:message', basePayload);
+        }
+
+        notifyChatListRefresh(io, parseInt(reportId), { hasNew: true });
       }
 
       res.status(201).json(ResponseFormatter.success(message, 'Message sent successfully'));
+
+      scheduleOfflineEmailNotification({
+        io,
+        reportId,
+        sender: { userId: senderId, role: req.user.role, name: req.user.name },
+      });
     } catch (error) {
-      log.warn('Send message failed', { error: error.message });
-      res.status(400).json(ResponseFormatter.error(error.message));
+      return handleChatError(res, error);
     }
   }
 
-  // Mark messages as read
   async markAsRead(req, res) {
     try {
       const { reportId } = req.params;
       const userId = req.user.userId;
 
-      // Mark messages as read and get the result
-      log.info('Mark messages as read', { reportId, userId });
-      const result = await chatServices.markMessagesAsRead(reportId, userId);
-      
-      // Emit read status to Socket.IO room
+      await chatServices.markMessagesAsRead(reportId, userId, req.reportAccess);
+
       const io = req.app.get('io');
       if (io) {
-        io.to(`report_${reportId}`).emit('messagesRead', {
-          reportId,
-          userId,
-          timestamp: new Date().toISOString()
+        io.to(`report_${reportId}`).emit('chat:read', {
+          reportId: parseInt(reportId),
+          readByUserId: userId,
+          timestamp: new Date().toISOString(),
         });
       }
 
-      // Return success without data payload
       res.json({
         status: 'success',
         statusCode: 200,
         message: 'Messages marked as read',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      log.warn('Mark as read failed', { error: error.message });
-      res.status(400).json(ResponseFormatter.error(error.message));
+      return handleChatError(res, error);
     }
   }
 
-  // Get unread message count
   async getUnreadCount(req, res) {
     try {
       const userId = req.user.userId;
-      log.info('Get unread count', { userId });
       const result = await chatServices.getUnreadMessageCount(userId);
-      
       res.json(ResponseFormatter.success(result, 'Unread count retrieved'));
     } catch (error) {
-      log.warn('Get unread count failed', { error: error.message });
-      res.status(400).json(ResponseFormatter.error(error.message));
+      return handleChatError(res, error);
     }
   }
 
-  // Get reports with messages (chat list)
   async getReportsWithMessages(req, res) {
     try {
       const userId = req.user.userId;
       const { page = 1, limit = 20 } = req.query;
-      
-      log.info('Get reports with messages', { userId, page, limit });
+
       const result = await chatServices.getReportsWithMessages(
-        userId, 
-        parseInt(page), 
+        userId,
+        parseInt(page),
         parseInt(limit)
       );
-      
-      // Build a streamlined payload for chat list
+
       const { reports, pagination } = result;
-      const chatReports = reports.map(r => ({
-        id: r.id,
-        registrationNumber: r.registrationNumber,
-        title: r.title,
-        status: r.status,
-        user: { name: r.user.name },
-        lastMessage: r.lastMessage
-          ? {
-              content: r.lastMessage.content,
-              createdAt: r.lastMessage.createdAt,
-              senderRole: r.lastMessage.sender.role
-            }
-          : null,
-        unreadCount: r.unreadCount
-      }));
+      const chatReports = reports.map((r) => {
+        const masked = shouldMaskReporter(r, req.user);
+        const reporterName = masked ? 'Anonim' : r.user?.name;
+
+        let lastMessage = null;
+        if (r.lastMessage) {
+          const lm = { ...r.lastMessage };
+          if (masked && lm.senderId === r.userId) {
+            lm.sender = lm.sender ? { ...lm.sender, name: 'Anonim' } : { name: 'Anonim' };
+          }
+          lastMessage = {
+            content: lm.content,
+            createdAt: lm.createdAt,
+            senderRole: lm.sender?.role,
+          };
+        }
+
+        return {
+          id: r.id,
+          registrationNumber: r.registrationNumber,
+          title: r.title,
+          status: r.status,
+          isAnonymous: !!r.isAnonymous,
+          user: { name: reporterName },
+          lastMessage,
+          unreadCount: r.unreadCount,
+        };
+      });
+
       res.json(ResponseFormatter.success({ reports: chatReports, pagination }, 'Chat list retrieved successfully'));
     } catch (error) {
-      log.warn('Get reports with messages failed', { error: error.message });
-      res.status(400).json(ResponseFormatter.error(error.message));
+      return handleChatError(res, error);
     }
   }
 
-  // Delete a message
   async deleteMessage(req, res) {
     try {
       const { messageId } = req.params;
-      const userId = req.user.userId;
 
-      log.info('Delete message', { messageId, userId });
-      await chatServices.deleteMessage(messageId, userId);
-      
-      // Emit delete event to Socket.IO
+      const { reportId } = await chatServices.deleteMessage(messageId, req.user);
+
       const io = req.app.get('io');
       if (io) {
-        // You might want to emit to specific room based on report ID
-        // For now, we'll emit a general message delete event
-        io.emit('messageDeleted', {
-          messageId,
-          deletedBy: userId,
-          timestamp: new Date().toISOString()
+        io.to(`report_${reportId}`).emit('chat:message:deleted', {
+          messageId: parseInt(messageId),
+          reportId,
+          deletedBy: req.user.userId,
+          timestamp: new Date().toISOString(),
         });
       }
 
       res.json(ResponseFormatter.success('Message deleted successfully'));
     } catch (error) {
-      log.warn('Delete message failed', { error: error.message });
-      res.status(400).json(ResponseFormatter.error(error.message));
+      return handleChatError(res, error);
     }
   }
 
-  // Join chat room (for Socket.IO)
-  async joinRoom(req, res) {
-    try {
-      const { reportId } = req.params;
-      const userId = req.user.userId;
-
-      // Verify user has access to this report
-      const user = await require('../utils/prisma').user.findUnique({
-        where: { id: userId },
-        select: { role: true }
-      });
-
-      const report = await require('../utils/prisma').report.findUnique({
-        where: { id: parseInt(reportId) },
-        select: { userId: true }
-      });
-
-      if (!report) {
-        return res.status(404).json(ResponseFormatter.error('Report not found'));
-      }
-
-      // Check permission
-      if (user.role !== 'ADMIN' && report.userId !== userId) {
-        return res.status(403).json(ResponseFormatter.error('Unauthorized access to this chat'));
-      }
-
-      res.json(ResponseFormatter.success('Room access granted', {
-        roomId: `report_${reportId}`,
-        reportId,
-        userId
-      }));
-    } catch (error) {
-      log.warn('Join room failed', { error: error.message });
-      res.status(400).json(ResponseFormatter.error(error.message));
-    }
-  }
-
-  // Upload a chat attachment file
   async uploadFile(req, res) {
+    const files = req.files;
+    if (!files || !files.length) {
+      return res.status(400).json(ResponseFormatter.error('No file uploaded', 400));
+    }
+
+    const writtenPaths = files.map((f) => f.path);
+    const reportId = parseInt(req.params.reportId);
+    const uploaderId = req.user.userId;
+
     try {
-      const files = req.files;
-      if (!files || !files.length) {
-        return res.status(400).json(ResponseFormatter.error('No file uploaded', 400));
-      }
-      // Build metadata array
-      const attachments = files.map(file => {
-        // Compute public file path
-        const rel = file.path.split('uploads')[1];
-        const filePath = '/uploads' + rel.replace(/\\/g, '/');
-        return {
-          fileName: file.originalname,
-          fileType: file.mimetype,
-          filePath
-        };
-      });
-      // Return the attachment metadata; actual DB save occurs when sending message
-      res.status(201).json(ResponseFormatter.success({ attachments }, 'File uploaded successfully'));
+      const records = await createPendingUploadRecords(files, reportId, uploaderId);
+      return res.status(201).json(
+        ResponseFormatter.success(
+          { attachments: records.map(toPublicDto) },
+          'File uploaded successfully'
+        )
+      );
     } catch (error) {
-      log.warn('Upload file failed', { error: error.message });
-      res.status(400).json(ResponseFormatter.error(error.message));
+      await Promise.allSettled(writtenPaths.map(deleteFileFromDisk));
+      return handleChatError(res, error);
     }
   }
 }

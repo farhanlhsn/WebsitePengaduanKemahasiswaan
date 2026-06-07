@@ -1,14 +1,33 @@
 const userServices = require('../services/userServices');
 const auditLogServices = require('../services/auditLogServices');
+const emailService = require('../services/emailService');
 const ResponseFormatter = require('../utils/responseFormatter');
+const { canAccessUser } = require('../utils/accessPolicy');
+const {
+  UserGovernanceError,
+  assertCanManageUser,
+  getTargetUserOrThrow,
+  filterUsersForActor,
+} = require('../utils/userGovernancePolicy');
 const { getLogger } = require('../utils/logger');
 const log = getLogger('user:controller');
+
+function handleGovernanceError(res, error) {
+  if (error instanceof UserGovernanceError) {
+    return res.status(error.statusCode).json({
+      ...ResponseFormatter.error(error.message, error.statusCode),
+      code: error.code,
+    });
+  }
+  return null;
+}
 
 exports.getAllUsers = async (req, res) => {
   try {
     const includeDeleted = req.query.includeDeleted === 'true' || req.query.includeDeleted === true;
     log.info('Get all users', { includeDeleted });
-    const users = await userServices.getAllUsers(includeDeleted);
+    let users = await userServices.getAllUsers(includeDeleted);
+    users = filterUsersForActor(req.user, users);
     
     res.status(200).json(ResponseFormatter.success(users, 'Users retrieved successfully'));
   } catch (error) {
@@ -25,7 +44,11 @@ exports.getUserById = async (req, res) => {
     
     // Validate userId
     if (!userId || isNaN(userId)) {
-      return ResponseFormatter.error(res, 'Invalid user ID provided', 400);
+      return res.status(400).json(ResponseFormatter.error('Invalid user ID provided', 400));
+    }
+
+    if (!canAccessUser(req.user, userId)) {
+      return res.status(403).json(ResponseFormatter.error('Access denied', 403));
     }
     
     const user = await userServices.getUserById(userId, includeDeleted);
@@ -40,6 +63,8 @@ exports.updateUser = async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     log.info('Update user', { userId });
+    const target = await getTargetUserOrThrow(userId, true);
+    await assertCanManageUser(req.user, target, 'update');
     const updatedUser = await userServices.updateUser(userId, req.body);
     
     // Remove password from response
@@ -47,6 +72,7 @@ exports.updateUser = async (req, res) => {
     
     res.status(200).json(ResponseFormatter.success(userWithoutPassword, 'User updated successfully'));
   } catch (error) {
+    if (handleGovernanceError(res, error)) return;
     log.warn('updateUser error', { error: error.message });
     res.status(400).json(ResponseFormatter.error('Update failed', 400));
   }
@@ -60,10 +86,13 @@ exports.deleteUser = async (req, res) => {
     if (!userId || isNaN(userId)) {
       return res.status(400).json(ResponseFormatter.error('Invalid user ID provided', 400));
     }
+
+    const user = await getTargetUserOrThrow(userId, true);
+    await assertCanManageUser(req.user, user, 'soft_delete');
     
     // Get user details before deletion for audit log
     // Include deleted users to allow soft-deleting an already deleted user (idempotent) or just to verify existence
-    const user = await userServices.getUserById(userId, true);
+    const userDetails = await userServices.getUserById(userId, true);
     
     await userServices.deleteUser(userId);
     
@@ -79,9 +108,9 @@ exports.deleteUser = async (req, res) => {
         ip: req.ip,
         userAgent: req.headers['user-agent'],
         metadata: {
-          userName: user.name,
-          userEmail: user.email,
-          userRole: user.role
+          userName: userDetails.name,
+          userEmail: userDetails.email,
+          userRole: userDetails.role
         }
       });
     } catch (auditError) {
@@ -90,6 +119,7 @@ exports.deleteUser = async (req, res) => {
     
     res.status(200).json(ResponseFormatter.success(null, 'User deleted successfully (soft delete)'));
   } catch (error) {
+    if (handleGovernanceError(res, error)) return;
     log.warn('deleteUser error', { error: error.message });
     res.status(400).json(ResponseFormatter.error('Failed to delete user', 400));
   }
@@ -103,6 +133,9 @@ exports.restoreUser = async (req, res) => {
     if (!userId || isNaN(userId)) {
       return res.status(400).json(ResponseFormatter.error('Invalid user ID provided', 400));
     }
+
+    const target = await getTargetUserOrThrow(userId, true);
+    await assertCanManageUser(req.user, target, 'restore');
     
     const restoredUser = await userServices.restoreUser(userId);
     
@@ -131,6 +164,7 @@ exports.restoreUser = async (req, res) => {
     
     res.status(200).json(ResponseFormatter.success(userWithoutPassword, 'User restored successfully'));
   } catch (error) {
+    if (handleGovernanceError(res, error)) return;
     log.warn('restoreUser error', { error: error.message });
     res.status(400).json(ResponseFormatter.error('Failed to restore user', 400));
   }
@@ -144,9 +178,11 @@ exports.permanentDeleteUser = async (req, res) => {
     if (!userId || isNaN(userId)) {
       return res.status(400).json(ResponseFormatter.error('Invalid user ID provided', 400));
     }
+
+    const target = await getTargetUserOrThrow(userId, true);
+    await assertCanManageUser(req.user, target, 'permanent_delete');
     
-    // Get user details before permanent deletion for audit log
-    const user = await userServices.getUserById(userId, true); // Include deleted
+    const user = await userServices.getUserById(userId, true);
     
     await userServices.permanentDeleteUser(userId);
     
@@ -173,6 +209,7 @@ exports.permanentDeleteUser = async (req, res) => {
     
     res.status(200).json(ResponseFormatter.success(null, 'User permanently deleted'));
   } catch (error) {
+    if (handleGovernanceError(res, error)) return;
     log.warn('permanentDeleteUser error', { error: error.message });
     res.status(400).json(ResponseFormatter.error('Failed to permanently delete user', 400));
   }
@@ -203,10 +240,69 @@ exports.getUserByEmail = async (req, res) => {
   }
 };
 
+exports.rejectStudent = async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { reason } = req.body;
+    log.info('Reject student', { userId, reason });
+
+    const target = await getTargetUserOrThrow(userId);
+    await assertCanManageUser(req.user, target, 'reject');
+
+    const user = await userServices.getUserById(userId);
+
+    if (!user) {
+      return res.status(404).json(ResponseFormatter.error('User not found', 404));
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json(ResponseFormatter.error('User is already verified', 400));
+    }
+
+    // Soft delete the user (rejected)
+    await userServices.deleteUser(userId);
+
+    // Create audit log
+    try {
+      await auditLogServices.createAuditLog({
+        entityType: 'USER',
+        action: 'SOFT_DELETE',
+        entityId: userId,
+        actorId: req.user.userId,
+        actorName: req.user.name,
+        actorRole: req.user.role,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: {
+          userName: user.name,
+          userEmail: user.email,
+          nim: user.nim,
+          action: 'REJECT_REGISTRATION',
+          reason
+        }
+      });
+    } catch (auditError) {
+      log.error('Failed to create audit log for reject student', { error: auditError.message });
+    }
+
+    // Send rejection email
+    emailService.sendRejectionEmail(user.email, user.name, reason)
+      .catch(err => log.error('Rejection email failed', { error: err.message }));
+
+    res.status(200).json(ResponseFormatter.success(null, 'Registrasi ditolak'));
+  } catch (error) {
+    if (handleGovernanceError(res, error)) return;
+    log.warn('rejectStudent error', { error: error.message });
+    res.status(400).json(ResponseFormatter.error('Failed to reject student', 400));
+  }
+};
+
 exports.verifyStudent = async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     log.info('Verify student', { userId });
+    const target = await getTargetUserOrThrow(userId);
+    await assertCanManageUser(req.user, target, 'verify');
     const user = await userServices.verifyUser(userId);
     
     // Create audit log
@@ -231,10 +327,15 @@ exports.verifyStudent = async (req, res) => {
       // Don't fail the operation if audit logging fails
     }
     
+    // Send verification email notification (fire-and-forget)
+    emailService.notifyAccountVerified(user.email, user.name)
+      .catch(err => log.error('Verification email failed', { error: err.message }));
+    
     const { password, ...userWithoutPassword } = user;
     
     res.status(200).json(ResponseFormatter.success(userWithoutPassword, 'User verified successfully'));
   } catch (error) {
+    if (handleGovernanceError(res, error)) return;
     log.warn('verifyStudent error', { error: error.message });
     res.status(404).json(ResponseFormatter.error('User not found', 404));
   }
@@ -254,12 +355,14 @@ exports.getUserVerificationStats = async (req, res) => {
 
 exports.cleanupOldDeletedUsers = async (req, res) => {
   try {
+    await assertCanManageUser(req.user, null, 'cleanup');
     const daysOld = parseInt(req.query.daysOld) || 90;
     log.info('Cleanup old deleted users', { daysOld });
     const result = await userServices.cleanupOldDeletedUsers(daysOld);
     
     res.status(200).json(ResponseFormatter.success(result, `Cleaned up users deleted more than ${daysOld} days ago`));
   } catch (error) {
+    if (handleGovernanceError(res, error)) return;
     log.error('cleanupOldDeletedUsers error', { error: error.message });
     res.status(500).json(ResponseFormatter.error('Failed to cleanup old deleted users', 500));
   }
@@ -269,6 +372,11 @@ exports.getUserStatsById = async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     log.info('Get user stats by id', { userId });
+
+    if (!canAccessUser(req.user, userId)) {
+      return res.status(403).json(ResponseFormatter.error('Access denied', 403));
+    }
+
     const stats = await userServices.getUserStatsById(userId);
     res.status(200).json(ResponseFormatter.success(stats, 'User statistics retrieved successfully'));
   } catch (error) {

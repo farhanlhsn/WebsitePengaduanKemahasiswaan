@@ -1,227 +1,254 @@
 const prisma = require('../utils/prisma');
+const { isAdmin, isStudent, isSuperAdmin } = require('../utils/rbac');
+const { canDeleteChatMessage } = require('../utils/chatPolicies');
+const { ChatError, chatError } = require('../utils/chatErrors');
+const {
+  validateAttachmentTokens,
+  MAX_TOTAL_ATTACHMENT_SIZE,
+  promotePendingToAttachment,
+} = require('./chatPendingUploadService');
+
+const MESSAGE_INCLUDE = {
+  sender: { select: { id: true, name: true, role: true } },
+  attachments: {
+    where: { deletedAt: null },
+    select: { id: true, fileName: true, filePath: true, fileType: true, createdAt: true },
+  },
+  replyTo: {
+    select: {
+      id: true,
+      content: true,
+      sender: { select: { name: true } },
+    },
+  },
+};
 
 class ChatServices {
-  // Get messages for a specific report
   async getMessagesByReportId(reportId, page = 1, limit = 50) {
     try {
       const offset = (page - 1) * limit;
-      
+
+      const report = await prisma.report.findFirst({
+        where: { id: parseInt(reportId), deletedAt: null },
+        select: { id: true, userId: true, isAnonymous: true },
+      });
+
+      if (!report) {
+        throw chatError('ACCESS_DENIED', 403);
+      }
+
       const messages = await prisma.message.findMany({
-        where: {
-          reportId: parseInt(reportId),
-          deletedAt: null
-        },
-        include: {
-          sender: {
-            select: {
-              id: true,
-              name: true,
-              role: true
-            }
-          },
-          attachments: {
-            where: {
-              deletedAt: null
-            },
-            select: {
-              id: true,
-              fileName: true,
-              filePath: true,
-              fileType: true,
-              createdAt: true
-            }
-          },
-          replyTo: {
-            select: {
-              id: true,
-              content: true,
-              sender: {
-                select: {
-                  name: true
-                }
-              }
-            }
-          }
-        },
-        orderBy: {
-          createdAt: 'asc'
-        },
+        where: { reportId: parseInt(reportId), deletedAt: null },
+        include: MESSAGE_INCLUDE,
+        orderBy: { createdAt: 'asc' },
         skip: offset,
-        take: limit
+        take: limit,
       });
 
       const totalMessages = await prisma.message.count({
-        where: {
-          reportId: parseInt(reportId),
-          deletedAt: null
-        }
+        where: { reportId: parseInt(reportId), deletedAt: null },
       });
 
       return {
+        report,
         messages,
         pagination: {
           page,
           limit,
           total: totalMessages,
-          totalPages: Math.ceil(totalMessages / limit)
-        }
+          totalPages: Math.ceil(totalMessages / limit),
+        },
       };
     } catch (error) {
+      if (error instanceof ChatError) throw error;
       throw new Error(`Failed to get messages: ${error.message}`);
     }
   }
 
-  // Send a new message
-  async sendMessage(data) {
-    try {
-      const { content, senderId, reportId, attachments = [], replyToId } = data;
-
-      // Verify report exists and user has access
-      const report = await prisma.report.findUnique({
-        where: { id: parseInt(reportId) },
-        include: {
-          user: {
-            select: { id: true, role: true }
-          }
-        }
-      });
-
-      if (!report) {
-        throw new Error('Report not found');
-      }
-
-      // Check if user has permission to send message to this report
-      const sender = await prisma.user.findUnique({
-        where: { id: parseInt(senderId) },
-        select: { id: true, role: true }
-      });
-
-      if (!sender) {
-        throw new Error('Sender not found');
-      }
-
-      // Only report owner or admin can send messages
-      if (sender.role !== 'ADMIN' && report.userId !== sender.id) {
-        throw new Error('Unauthorized to send message to this report');
-      }
-
-      // Create message with transaction
-      const result = await prisma.$transaction(async (tx) => {
-        // Create message
-        const message = await tx.message.create({
-          data: {
-            content,
-            senderId: parseInt(senderId),
-            reportId: parseInt(reportId),
-            ...(replyToId && { replyToId: parseInt(replyToId) })
-          },
-          include: {
-            sender: {
-              select: {
-                id: true,
-                name: true,
-                role: true
-              }
-            },
-            replyTo: {
-              select: {
-                id: true,
-                content: true,
-                sender: {
-                  select: { name: true }
-                }
-              }
-            }
-          }
-        });
-
-        // Create attachments if any
-        if (attachments && attachments.length > 0) {
-          const attachmentData = attachments.map(attachment => ({
-            ...attachment,
-            messageId: message.id,
-            reportId: parseInt(reportId)
-          }));
-
-          await tx.attachment.createMany({
-            data: attachmentData
-          });
-
-          // Get created attachments
-          const createdAttachments = await tx.attachment.findMany({
-            where: {
-              messageId: message.id
-            },
-            select: {
-              id: true,
-              fileName: true,
-              filePath: true,
-              fileType: true,
-              createdAt: true
-            }
-          });
-
-          message.attachments = createdAttachments;
-        } else {
-          message.attachments = [];
-        }
-
-        return message;
-      });
-
-      return result;
-    } catch (error) {
-      throw new Error(`Failed to send message: ${error.message}`);
+  async sendMessage(data, reportAccess) {
+    if (!reportAccess) {
+      throw new Error('reportAccess is required');
     }
+
+    const reportId = parseInt(data.reportId);
+    if (reportAccess.id !== reportId) {
+      throw new Error('reportAccess mismatch');
+    }
+
+    const { content, senderId, attachmentTokens = [], replyToId, clientMessageId } = data;
+    validateAttachmentTokens(attachmentTokens);
+
+    if (clientMessageId) {
+      const existing = await prisma.message.findFirst({
+        where: {
+          reportId,
+          senderId: parseInt(senderId),
+          clientMessageId: String(clientMessageId),
+          deletedAt: null,
+        },
+        include: MESSAGE_INCLUDE,
+      });
+      if (existing) {
+        const report = await prisma.report.findFirst({
+          where: { id: reportId, deletedAt: null },
+          select: { id: true, userId: true, isAnonymous: true, status: true },
+        });
+        existing.report = {
+          id: report.id,
+          userId: report.userId,
+          isAnonymous: report.isAnonymous,
+        };
+        return existing;
+      }
+    }
+
+    const report = await prisma.report.findFirst({
+      where: { id: reportId, deletedAt: null },
+      select: { id: true, userId: true, isAnonymous: true, status: true },
+    });
+
+    if (!report) {
+      throw chatError('ACCESS_DENIED', 403);
+    }
+
+    const closedStatuses = ['RESOLVED', 'REJECTED', 'CANCELED'];
+    if (closedStatuses.includes(report.status)) {
+      throw new Error('Cannot send messages on a closed report. Status: ' + report.status);
+    }
+
+    const reportContext = {
+      id: report.id,
+      userId: report.userId,
+      isAnonymous: report.isAnonymous,
+    };
+
+    const message = await prisma.$transaction(async (tx) => {
+      const pendings = [];
+      for (const token of attachmentTokens) {
+        const pending = await tx.chatPendingUpload.findUnique({ where: { token } });
+        if (!pending) throw chatError('INVALID_ATTACHMENT', 400);
+        if (pending.expiresAt < new Date()) throw chatError('INVALID_ATTACHMENT', 400);
+        if (pending.reportId !== reportId) throw chatError('INVALID_ATTACHMENT', 400);
+        if (pending.uploaderId !== parseInt(senderId)) throw chatError('INVALID_ATTACHMENT', 400);
+        pendings.push(pending);
+      }
+
+      const totalSize = pendings.reduce((sum, p) => sum + p.fileSize, 0);
+      if (totalSize > MAX_TOTAL_ATTACHMENT_SIZE) {
+        throw chatError('ATTACHMENT_TOO_LARGE', 400);
+      }
+
+      if (replyToId) {
+        const replyTarget = await tx.message.findFirst({
+          where: {
+            id: parseInt(replyToId),
+            reportId,
+            deletedAt: null,
+          },
+        });
+        if (!replyTarget) throw chatError('INVALID_REPLY', 400);
+      }
+
+      const created = await tx.message.create({
+        data: {
+          content,
+          senderId: parseInt(senderId),
+          reportId,
+          ...(replyToId && { replyToId: parseInt(replyToId) }),
+          ...(clientMessageId && { clientMessageId: String(clientMessageId) }),
+        },
+      });
+
+      for (const pending of pendings) {
+        await tx.attachment.create({
+          data: {
+            messageId: created.id,
+            reportId,
+            filePath: pending.filePath,
+            fileName: pending.fileName,
+            fileType: pending.fileType,
+          },
+        });
+        await tx.chatPendingUpload.delete({ where: { id: pending.id } });
+      }
+
+      return { created, pendings };
+    });
+
+    for (const pending of message.pendings) {
+      const publicPath = await promotePendingToAttachment(pending);
+      await prisma.attachment.updateMany({
+        where: { messageId: message.created.id, filePath: pending.filePath },
+        data: { filePath: publicPath },
+      });
+    }
+
+    const fullMessage = await prisma.message.findUnique({
+      where: { id: message.created.id },
+      include: MESSAGE_INCLUDE,
+    });
+
+    fullMessage.report = reportContext;
+    return fullMessage;
   }
 
-  // Mark messages as read
-  async markMessagesAsRead(reportId, userId) {
+  async markMessagesAsRead(reportId, userId, reportAccess) {
+    if (!reportAccess) {
+      throw new Error('reportAccess is required');
+    }
+    if (reportAccess.id !== parseInt(reportId)) {
+      throw new Error('reportAccess mismatch');
+    }
+
     try {
-      // Only mark messages as read that were not sent by the current user
       await prisma.message.updateMany({
         where: {
           reportId: parseInt(reportId),
           senderId: { not: parseInt(userId) },
-          isRead: false
+          isRead: false,
+          deletedAt: null,
         },
-        data: {
-          isRead: true
-        }
+        data: { isRead: true },
       });
-
       return { success: true };
     } catch (error) {
       throw new Error(`Failed to mark messages as read: ${error.message}`);
     }
   }
 
-  // Get unread message count for a user
   async getUnreadMessageCount(userId) {
     try {
       const user = await prisma.user.findUnique({
         where: { id: parseInt(userId) },
-        select: { role: true }
+        select: { role: true },
       });
 
       if (!user) {
         throw new Error('User not found');
       }
 
-      let whereClause = {
-        isRead: false,
-        senderId: { not: parseInt(userId) }
-      };
+      let reportFilter = {};
 
-      // If user is not admin, only count messages from their reports
-      if (user.role !== 'ADMIN') {
-        whereClause.report = {
-          userId: parseInt(userId)
-        };
+      if (isStudent(user)) {
+        reportFilter = { userId: parseInt(userId) };
+      } else if (user.role === 'ADMIN') {
+        const assignments = await prisma.adminCategoryAssignment.findMany({
+          where: { adminId: parseInt(userId) },
+          select: { categoryId: true },
+        });
+        const ids = assignments.map((a) => a.categoryId);
+        if (ids.length === 0) return { unreadCount: 0 };
+        reportFilter = { categoryId: { in: ids } };
       }
+      // SUPERADMIN: no filter
 
       const unreadCount = await prisma.message.count({
-        where: whereClause
+        where: {
+          isRead: false,
+          senderId: { not: parseInt(userId) },
+          deletedAt: null,
+          report: { deletedAt: null, ...reportFilter },
+        },
       });
 
       return { unreadCount };
@@ -230,154 +257,124 @@ class ChatServices {
     }
   }
 
-  // Get reports with latest messages (for chat list)
   async getReportsWithMessages(userId, page = 1, limit = 20) {
     try {
       const user = await prisma.user.findUnique({
         where: { id: parseInt(userId) },
-        select: { role: true }
+        select: { role: true },
       });
 
       if (!user) {
         throw new Error('User not found');
       }
 
-      let whereClause = {
-        deletedAt: null
-      };
+      let whereClause = { deletedAt: null };
 
-      // If user is not admin, only show their reports
-      if (user.role !== 'ADMIN') {
+      if (!isAdmin(user)) {
         whereClause.userId = parseInt(userId);
+      } else if (user.role === 'ADMIN') {
+        const assignments = await prisma.adminCategoryAssignment.findMany({
+          where: { adminId: parseInt(userId) },
+          select: { categoryId: true },
+        });
+        const ids = assignments.map((a) => a.categoryId);
+        if (ids.length === 0) {
+          return {
+            reports: [],
+            pagination: { page, limit, total: 0, totalPages: 0 },
+          };
+        }
+        whereClause.categoryId = { in: ids };
       }
 
       const offset = (page - 1) * limit;
 
       const reports = await prisma.report.findMany({
         where: whereClause,
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              role: true
-            }
-          },
-          category: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
+        select: {
+          id: true,
+          registrationNumber: true,
+          title: true,
+          status: true,
+          isAnonymous: true,
+          userId: true,
+          updatedAt: true,
+          user: { select: { id: true, name: true, role: true } },
+          category: { select: { id: true, name: true } },
           messages: {
-            orderBy: {
-              createdAt: 'desc'
-            },
+            orderBy: { createdAt: 'desc' },
             take: 1,
-            include: {
-              sender: {
-                select: {
-                  id: true,
-                  name: true,
-                  role: true
-                }
-              }
-            }
+            select: {
+              id: true,
+              content: true,
+              createdAt: true,
+              senderId: true,
+              sender: { select: { id: true, name: true, role: true } },
+            },
           },
           _count: {
             select: {
               messages: {
                 where: {
                   isRead: false,
-                  senderId: { not: parseInt(userId) }
-                }
-              }
-            }
-          }
-        },
-        orderBy: [
-          {
-            messages: {
-              _count: 'desc'
-            }
+                  senderId: { not: parseInt(userId) },
+                  deletedAt: null,
+                },
+              },
+            },
           },
-          {
-            updatedAt: 'desc'
-          }
-        ],
+        },
+        orderBy: [{ updatedAt: 'desc' }],
         skip: offset,
-        take: limit
+        take: limit,
       });
 
-      const totalReports = await prisma.report.count({
-        where: whereClause
-      });
+      const totalReports = await prisma.report.count({ where: whereClause });
 
       return {
-        reports: reports.map(report => ({
+        reports: reports.map((report) => ({
           ...report,
           lastMessage: report.messages[0] || null,
           unreadCount: report._count.messages,
           messages: undefined,
-          _count: undefined
+          _count: undefined,
         })),
         pagination: {
           page,
           limit,
           total: totalReports,
-          totalPages: Math.ceil(totalReports / limit)
-        }
+          totalPages: Math.ceil(totalReports / limit),
+        },
       };
     } catch (error) {
       throw new Error(`Failed to get reports with messages: ${error.message}`);
     }
   }
 
-  // Delete a message (soft delete)
-  async deleteMessage(messageId, userId) {
+  async deleteMessage(messageId, actor) {
     try {
-      // Check if message exists and user has permission
-      const message = await prisma.message.findUnique({
-        where: { id: parseInt(messageId) },
-        include: {
-          report: {
-            select: {
-              userId: true
-            }
-          },
-          sender: {
-            select: {
-              id: true,
-              role: true
-            }
-          }
-        }
+      const message = await prisma.message.findFirst({
+        where: { id: parseInt(messageId), deletedAt: null },
+        select: { id: true, senderId: true, reportId: true },
       });
 
       if (!message) {
-        throw new Error('Message not found');
+        throw chatError('ACCESS_DENIED', 403);
       }
 
-      const user = await prisma.user.findUnique({
-        where: { id: parseInt(userId) },
-        select: { role: true }
-      });
-
-      // Only message sender or admin can delete
-      if (message.senderId !== parseInt(userId) && user.role !== 'ADMIN') {
-        throw new Error('Unauthorized to delete this message');
+      const deleteAccess = await canDeleteChatMessage(actor, message);
+      if (!deleteAccess.allowed) {
+        throw chatError('ACCESS_DENIED', 403);
       }
 
-      // Soft delete message
       await prisma.message.update({
-        where: { id: parseInt(messageId) },
-        data: {
-          deletedAt: new Date()
-        }
+        where: { id: message.id },
+        data: { deletedAt: new Date() },
       });
 
-      return { success: true };
+      return { success: true, reportId: message.reportId };
     } catch (error) {
+      if (error.name === 'ChatError') throw error;
       throw new Error(`Failed to delete message: ${error.message}`);
     }
   }

@@ -12,32 +12,35 @@ const prisma = new PrismaClient({
   },
 });
 
-// Reconnect helper
 async function connectWithRetry(retries = 5, delay = 3000) {
   for (let i = 0; i < retries; i++) {
     try {
       await prisma.$connect();
-      console.log('✅ Prisma connected to database');
+      if (process.env.NODE_ENV !== 'test') {
+        console.log('✅ Prisma connected to database');
+      }
       return;
     } catch (err) {
-      console.warn(`⚠️  Prisma connection attempt ${i + 1}/${retries} failed: ${err.message}`);
+      if (process.env.NODE_ENV !== 'test') {
+        console.warn(`⚠️  Prisma connection attempt ${i + 1}/${retries} failed: ${err.message}`);
+      }
       if (i < retries - 1) {
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
-  console.error('❌ Prisma could not connect after multiple retries');
+  if (process.env.NODE_ENV !== 'test') {
+    console.error('❌ Prisma could not connect after multiple retries');
+  }
 }
-
-connectWithRetry();
 
 prisma.$on('warn', (e) => {
   console.warn(`Prisma Warning: ${e.message}`);
 });
 
 prisma.$on('error', (e) => {
+  if (process.env.NODE_ENV === 'test') return;
   console.error(`Prisma Error: ${e.message}`);
-  // Auto-reconnect on connection closed
   if (e.message.includes('Closed') || e.message.includes('connection')) {
     console.log('🔄 Attempting to reconnect to database...');
     connectWithRetry(3, 2000);
@@ -45,3 +48,4 @@ prisma.$on('error', (e) => {
 });
 
 module.exports = prisma;
+module.exports.connectWithRetry = connectWithRetry;

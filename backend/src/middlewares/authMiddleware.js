@@ -1,8 +1,8 @@
 const jwt = require('jsonwebtoken');
+const prisma = require('../utils/prisma');
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   try {
-    console.log('authMiddleware called');
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
     
@@ -17,11 +17,32 @@ const authMiddleware = (req, res, next) => {
     // Verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
+    // Validate tokenVersion against database
+    // This ensures tokens are invalidated after password reset or force-logout
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { id: true, tokenVersion: true, role: true, name: true, deletedAt: true }
+    });
+
+    if (!user || user.deletedAt) {
+      return res.status(401).json({
+        error: 'User not found or deleted',
+        code: 'USER_INVALID'
+      });
+    }
+
+    if (decoded.tokenVersion === undefined || decoded.tokenVersion !== user.tokenVersion) {
+      return res.status(401).json({
+        error: 'Token has been revoked',
+        code: 'TOKEN_REVOKED'
+      });
+    }
+    
     // Add user info to request object
     req.user = {
       userId: decoded.userId,
-      role: decoded.role,
-      name: decoded.name
+      role: user.role,
+      name: user.name
     };
     
     next();

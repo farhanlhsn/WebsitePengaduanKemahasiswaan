@@ -2,16 +2,39 @@ const express = require('express');
 const router = express.Router();
 const auditLogController = require('../controllers/auditLogControllers');
 const authMiddleware = require('../middlewares/authMiddleware');
-const isAdminMiddleware = require('../middlewares/isAdminMiddleware');
+const isSuperAdminMiddleware = require('../middlewares/isSuperAdminMiddleware');
 const { param, query } = require('express-validator');
 const validate = require('../middlewares/validationMiddleware');
 
-// All routes require authentication and admin privileges
+// All routes require authentication and SUPERADMIN privileges (BE-6)
 router.use(authMiddleware);
-router.use(isAdminMiddleware);
+router.use(isSuperAdminMiddleware);
 
-// Get audit statistics
-// GET /api/audit-logs/stats
+/**
+ * @swagger
+ * /v1/api/audit-logs:
+ *   get:
+ *     tags: [Audit Logs]
+ *     summary: List audit logs (admin only)
+ *     parameters:
+ *       - in: query
+ *         name: entityType
+ *         schema: { type: string, enum: [USER, REPORT] }
+ *       - in: query
+ *         name: action
+ *         schema: { type: string }
+ *       - in: query
+ *         name: actorId
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 50 }
+ *       - in: query
+ *         name: offset
+ *         schema: { type: integer, default: 0 }
+ *     responses:
+ *       200: { description: Paginated audit logs }
+ */
 router.get('/stats', auditLogController.getAuditStats);
 
 // Get all audit logs with filters and pagination
@@ -19,10 +42,10 @@ router.get('/stats', auditLogController.getAuditStats);
 router.get(
   '/',
   [
-    query('entityType').optional().isIn(['USER', 'REPORT']).withMessage('Invalid entity type'),
+    query('entityType').optional().isIn(['USER', 'REPORT', 'CATEGORY', 'ASSIGNMENT']).withMessage('Invalid entity type'),
     query('action')
       .optional()
-      .isIn(['SOFT_DELETE', 'RESTORE', 'HARD_DELETE', 'UPDATE_STATUS', 'VERIFY_MAHASISWA'])
+      .isIn(['SOFT_DELETE', 'RESTORE', 'HARD_DELETE', 'UPDATE_STATUS', 'VERIFY_MAHASISWA', 'VIEW_ANONYMOUS', 'CREATE', 'UPDATE', 'PROMOTE_ADMIN', 'DEMOTE_ADMIN', 'GRANT_CATEGORY', 'REVOKE_CATEGORY'])
       .withMessage('Invalid action'),
     query('actorId').optional().isInt().toInt().withMessage('Actor ID must be an integer'),
     query('entityId').optional().isInt().toInt().withMessage('Entity ID must be an integer'),
@@ -40,7 +63,7 @@ router.get(
 router.get(
   '/entity/:entityType/:entityId',
   [
-    param('entityType').isIn(['USER', 'REPORT']).withMessage('Invalid entity type'),
+    param('entityType').isIn(['USER', 'REPORT', 'CATEGORY', 'ASSIGNMENT']).withMessage('Invalid entity type'),
     param('entityId').isInt().toInt().withMessage('Entity ID must be an integer'),
   ],
   validate,

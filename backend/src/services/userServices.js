@@ -115,8 +115,21 @@ class UserServices {
 
   async permanentDeleteUser(userId) {
     try {
-      // Hard delete user (be careful!)
+      const { deletePendingUploadsByUploader } = require('./chatPendingUploadService');
+      const { deleteFileFromDisk } = require('../utils/fileDisk');
+
+      const user = await prisma.user.findUnique({
+        where: { id: parseInt(userId) },
+        select: { ktmPath: true },
+      });
+
+      await deletePendingUploadsByUploader(parseInt(userId));
       const result = await SoftDeleteHelper.hardDelete(prisma.user, userId);
+
+      if (user?.ktmPath) {
+        await deleteFileFromDisk(user.ktmPath);
+      }
+
       log.info('permanentDeleteUser success', { userId });
       return result;
     } catch (error) {
@@ -204,21 +217,22 @@ class UserServices {
 
   async getUserStatsById(userId) {
     try{
-      const data = await SoftDeleteHelper.findMany(prisma.report, {
-        where: {userId: userId},
-        select: {
-          status: true,
-        }
-      },
-      false
-      )
-      const total = data.length;
-      const pending = data.filter(report => report.status === 'PENDING').length;
-      const inReview = data.filter(report => report.status === 'IN_REVIEW').length;
-      const inProgress = data.filter(report => report.status === 'IN_PROGRESS').length;
-      const resolved = data.filter(report => report.status === 'RESOLVED').length;
-      const rejected = data.filter(report => report.status === 'REJECTED').length;
-      const canceled = data.filter(report => report.status === 'CANCELED').length;
+      const grouped = await prisma.report.groupBy({
+        by: ['status'],
+        where: { userId, deletedAt: null },
+        _count: { _all: true },
+      });
+      const counts = grouped.reduce((acc, item) => {
+        acc[item.status] = item._count._all;
+        return acc;
+      }, {});
+      const pending = counts.PENDING || 0;
+      const inReview = counts.IN_REVIEW || 0;
+      const inProgress = counts.IN_PROGRESS || 0;
+      const resolved = counts.RESOLVED || 0;
+      const rejected = counts.REJECTED || 0;
+      const canceled = counts.CANCELED || 0;
+      const total = pending + inReview + inProgress + resolved + rejected + canceled;
       
       const result = {
         total,

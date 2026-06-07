@@ -2,11 +2,10 @@ const prisma = require('../utils/prisma');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { getDeviceInfo } = require('../utils/deviceDetection');
+const { hashToken } = require('../utils/tokenHash');
 const axios = require('axios');
-const dotenv = require('dotenv');
 const { getLogger } = require('../utils/logger');
 const log = getLogger('auth:service');
-dotenv.config();
 
 class AuthServices {
   async login(data, req) {
@@ -27,7 +26,7 @@ class AuthServices {
 
       // Access token 
       const accessToken = jwt.sign(
-        { userId: user.id, role: user.role, name: user.name },
+        { userId: user.id, role: user.role, name: user.name, tokenVersion: user.tokenVersion },
         process.env.JWT_SECRET,
         { expiresIn: '15m' } 
       );
@@ -45,6 +44,8 @@ class AuthServices {
       // Simpan atau update refresh token untuk device ini
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       
+      const tokenHash = hashToken(refreshToken);
+
       await prisma.refreshToken.upsert({
         where: {
           userId_deviceId: {
@@ -53,14 +54,14 @@ class AuthServices {
           }
         },
         update: {
-          token: refreshToken,
+          tokenHash,
           expiresAt: expiresAt,
           lastUsedAt: new Date(),
           userAgent: deviceInfo.userAgent,
           ipAddress: deviceInfo.ipAddress
         },
         create: {
-          token: refreshToken,
+          tokenHash,
           userId: user.id,
           deviceId: deviceInfo.deviceId,
           deviceName: deviceInfo.deviceName,
@@ -208,11 +209,10 @@ class AuthServices {
   }
 
   async logout(userId, refreshToken) {
-    // Hapus spesifik refresh token
     await prisma.refreshToken.deleteMany({
       where: {
         userId: userId,
-        token: refreshToken
+        tokenHash: hashToken(refreshToken)
       }
     });
     log.info('Service logout', { userId });
@@ -268,19 +268,6 @@ class AuthServices {
       log.warn('Service registerStudent failed', { email: studentData?.email, error: error.message });
       throw error;
     }
-  }
-
-  async registerAdmin(adminData) {
-    const hashedPassword = await bcrypt.hash(adminData.password, 10);
-    const user = await prisma.user.create({
-      data: {
-        ...adminData,
-        password: hashedPassword,
-        role: 'ADMIN'
-      }
-    });
-    log.info('Service registerAdmin success', { userId: user.id, email: user.email });
-    return user;
   }
 
   /**

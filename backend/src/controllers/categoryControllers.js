@@ -1,11 +1,18 @@
 const categoryServices = require('../services/categoryServices');
 const ResponseFormatter = require('../utils/responseFormatter');
+const { isSuperAdmin } = require('../utils/rbac');
 const { getLogger } = require('../utils/logger');
 const log = getLogger('category:controller');
 
+function resolveIncludeDeleted(req) {
+  const requested = req.query.includeDeleted === 'true' || req.query.includeDeleted === true;
+  if (!requested) return false;
+  return !!(req.user && isSuperAdmin(req.user));
+}
+
 exports.getAllCategories = async (req, res) => {
   try {
-    const includeDeleted = req.query.includeDeleted === 'true' || req.query.includeDeleted === true;
+    const includeDeleted = resolveIncludeDeleted(req);
     log.info('Get all categories', { includeDeleted });
     const categories = await categoryServices.getAllCategories(includeDeleted);
     
@@ -18,7 +25,7 @@ exports.getAllCategories = async (req, res) => {
 
 exports.getCategoriesWithReports = async (req, res) => {
   try {
-    const includeDeleted = req.query.includeDeleted === 'true' || req.query.includeDeleted === true;
+    const includeDeleted = resolveIncludeDeleted(req);
     log.info('Get categories with reports', { includeDeleted });
     const categories = await categoryServices.getCategoriesWithReports(includeDeleted);
     
@@ -32,7 +39,7 @@ exports.getCategoriesWithReports = async (req, res) => {
 exports.getCategoryById = async (req, res) => {
   try {
     const categoryId = parseInt(req.params.id);
-    const includeDeleted = req.query.includeDeleted === 'true' || req.query.includeDeleted === true;
+    const includeDeleted = resolveIncludeDeleted(req);
     log.info('Get category by id', { id: categoryId, includeDeleted });
     
     if (!categoryId || isNaN(categoryId)) {
@@ -50,7 +57,7 @@ exports.getCategoryById = async (req, res) => {
 exports.getCategoryBySlug = async (req, res) => {
   try {
     const slug = req.params.slug;
-    const includeDeleted = req.query.includeDeleted === 'true' || req.query.includeDeleted === true;
+    const includeDeleted = resolveIncludeDeleted(req);
     log.info('Get category by slug', { slug, includeDeleted });
     
     if (!slug) {

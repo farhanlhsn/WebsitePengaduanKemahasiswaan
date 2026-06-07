@@ -4,6 +4,30 @@ const RegistrationGenerator = require('../utils/registrationGenerator');
 const { getLogger } = require('../utils/logger');
 const log = getLogger('report:service');
 
+/**
+ * Fields that must NEVER be mutable post-creation. Used by service-level
+ * mutation helpers to defend against accidental future regressions where a
+ * generic update endpoint forgets to whitelist allowed fields.
+ *
+ * - isAnonymous: anonymity guarantee — flipping this would expose the reporter
+ *   retroactively or deny their masking, both unacceptable.
+ * - userId: the authoring user. Reassigning the author breaks audit trail.
+ * - registrationNumber: human-facing identifier; if it changes, references in
+ *   email / chat / external systems become inconsistent.
+ */
+const IMMUTABLE_FIELDS = Object.freeze(['isAnonymous', 'userId', 'registrationNumber']);
+
+function assertImmutableFieldsNotMutated(updates) {
+  if (!updates || typeof updates !== 'object') return;
+  for (const field of IMMUTABLE_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(updates, field)) {
+      throw new Error(
+        `Field "${field}" is immutable and cannot be updated after report creation`
+      );
+    }
+  }
+}
+
 class ReportServices {
   async getReportById(id, includeDeleted = false) {
     try {
@@ -15,6 +39,8 @@ class ReportServices {
           title: true,
           description: true,
           status: true,
+          priority: true,
+          isAnonymous: true,
           userId: true,
           categoryId: true,
           category: {
@@ -22,6 +48,7 @@ class ReportServices {
               id: true,
               slug: true,
               name: true,
+              allowAnonymous: true,
             }
           },
           user: {
@@ -51,6 +78,7 @@ class ReportServices {
               createdAt: true,
               sender: {
                 select: {
+                  id: true,
                   name: true,
                   role: true,
                 }
@@ -99,6 +127,9 @@ class ReportServices {
           title: true,
           description: true,
           status: true,
+          priority: true,
+          isAnonymous: true,
+          userId: true,
           registrationNumber: true,
           category: {
             select: {
@@ -112,7 +143,10 @@ class ReportServices {
           deletedAt: true,
           user: {
             select: {
-              name: true
+              id: true,
+              name: true,
+              nim: true,
+              email: true,
             }
           }
         },
@@ -182,6 +216,9 @@ class ReportServices {
           title: true,
           description: true,
           status: true,
+          priority: true,
+          isAnonymous: true,
+          userId: true,
           registrationNumber: true,
           category: {
             select: {
@@ -195,7 +232,10 @@ class ReportServices {
           deletedAt: true,
           user: {
             select: {
-              name: true
+              id: true,
+              name: true,
+              nim: true,
+              email: true,
             }
           }
         },
@@ -235,14 +275,19 @@ class ReportServices {
 
   async createReport(reportData) {
     try {
-      // Ambil category untuk mendapatkan slug
+      // Ambil category untuk mendapatkan slug, default priority, dan anonymous setting
       const category = await prisma.category.findUnique({
         where: { id: reportData.categoryId },
-        select: { slug: true }
+        select: { slug: true, defaultPriority: true, allowAnonymous: true }
       });
       
       if (!category) {
         throw new Error('Category not found');
+      }
+
+      // Validate anonymous flag
+      if (reportData.isAnonymous && !category.allowAnonymous) {
+        throw new Error('Anonymous reporting is not allowed for this category');
       }
       
       // Generate registration number
@@ -250,11 +295,16 @@ class ReportServices {
       
       const report = await prisma.report.create({
         data: {
-          ...reportData,
-          registrationNumber
+          title: reportData.title,
+          description: reportData.description,
+          userId: reportData.userId,
+          categoryId: reportData.categoryId,
+          registrationNumber,
+          priority: category.defaultPriority || 'MEDIUM',
+          isAnonymous: reportData.isAnonymous || false
         },
       });
-      log.info('createReport success', { id: report.id, userId: report.userId });
+      log.info('createReport success', { id: report.id, userId: report.userId, priority: report.priority, isAnonymous: report.isAnonymous });
       return report;
     } catch (error) {
       log.warn('createReport failed', { error: error.message });
@@ -264,13 +314,21 @@ class ReportServices {
 
   async updateReportStatus(id, status) {
     try {
+      // Defense-in-depth: status is the only mutable input here. We rebuild the
+      // update payload explicitly rather than spreading caller-provided data,
+      // and run the immutable-field guard for symmetry with future updaters.
+      const updates = { status };
+      assertImmutableFieldsNotMutated(updates);
       const report = await prisma.report.update({
         where: { id },
-        data: { status },
+        data: updates,
         select: {
           id: true,
           status: true,
           updatedAt: true,
+          userId: true,
+          title: true,
+          registrationNumber: true,
         }
       });
       log.info('updateReportStatus success', { id, status });
@@ -305,7 +363,19 @@ class ReportServices {
 
   async permanentDeleteReport(id) {
     try {
+      const { deletePendingUploadsByReport } = require('./chatPendingUploadService');
+      const { deleteFileFromDisk } = require('../utils/fileDisk');
+
+      const attachments = await prisma.attachment.findMany({
+        where: { reportId: parseInt(id) },
+        select: { filePath: true },
+      });
+
+      await deletePendingUploadsByReport(parseInt(id));
       const report = await SoftDeleteHelper.hardDelete(prisma.report, id);
+
+      await Promise.allSettled(attachments.map((a) => deleteFileFromDisk(a.filePath)));
+
       log.info('permanentDeleteReport success', { id });
       return report;
     } catch (error) {
@@ -317,20 +387,24 @@ class ReportServices {
   async getReportStats() {
     try{
       log.info('getReportStats start');
-      const data = await SoftDeleteHelper.findMany(prisma.report, {
-        select: {
-          status: true,
-        }
-      }, false)
-      log.info('getReportStats data retrieved', { count: data.length });
-      
-      const total = data.length;
-      const pending = data.filter(report => report.status === 'PENDING').length;
-      const inReview = data.filter(report => report.status === 'IN_REVIEW').length;
-      const inProgress = data.filter(report => report.status === 'IN_PROGRESS').length;
-      const resolved = data.filter(report => report.status === 'RESOLVED').length;
-      const rejected = data.filter(report => report.status === 'REJECTED').length;
-      const canceled = data.filter(report => report.status === 'CANCELED').length;
+      const grouped = await prisma.report.groupBy({
+        by: ['status'],
+        where: { deletedAt: null },
+        _count: { _all: true },
+      });
+
+      const counts = grouped.reduce((acc, item) => {
+        acc[item.status] = item._count._all;
+        return acc;
+      }, {});
+
+      const pending = counts.PENDING || 0;
+      const inReview = counts.IN_REVIEW || 0;
+      const inProgress = counts.IN_PROGRESS || 0;
+      const resolved = counts.RESOLVED || 0;
+      const rejected = counts.REJECTED || 0;
+      const canceled = counts.CANCELED || 0;
+      const total = pending + inReview + inProgress + resolved + rejected + canceled;
       
       const stats = {
         total,
@@ -352,4 +426,8 @@ class ReportServices {
 
 }
 
-module.exports = new ReportServices();
+const reportServices = new ReportServices();
+reportServices.IMMUTABLE_FIELDS = IMMUTABLE_FIELDS;
+reportServices.assertImmutableFieldsNotMutated = assertImmutableFieldsNotMutated;
+
+module.exports = reportServices;

@@ -2,9 +2,20 @@ const authServices = require('../services/authServices');
 const prisma = require('../utils/prisma');
 const jwt = require('jsonwebtoken');
 const { getLogger } = require('../utils/logger');
+const { validatePassword } = require('../utils/passwordPolicy');
+const { isAllowedDomain, getAllowedDomains } = require('../utils/emailValidator');
 const log = getLogger('auth:controller');
+const { refreshCookieOptions, clearRefreshCookie } = require('../utils/refreshCookie');
+const { hashToken } = require('../utils/tokenHash');
 
-exports.uploadKtm = async (req, res) => {
+/**
+ * Process KTM file upload and return the file path.
+ * Standalone function to avoid `this` binding issues when called from route handlers.
+ * @param {object} req - Express request object with file attached by multer
+ * @returns {string} The path to the uploaded KTM file
+ * @throws {Error} If no file, invalid type, or file too large
+ */
+async function uploadKtm(req) {
   try {
     const file = req.file;
     if (!file) {
@@ -32,6 +43,8 @@ exports.uploadKtm = async (req, res) => {
   }
 }
 
+exports.uploadKtm = uploadKtm;
+
 exports.registerStudent = async (req, res) => {
   try {
     log.info('Register student attempt', { email: req.body?.email, nim: req.body?.nim });
@@ -53,12 +66,25 @@ exports.registerStudent = async (req, res) => {
         message: 'Please provide a valid email address' 
       });
     }
+
+    // Validasi email domain (whitelist kampus)
+    if (!isAllowedDomain(email)) {
+      const domains = getAllowedDomains();
+      return res.status(400).json({
+        error: 'Email domain tidak diizinkan',
+        message: domains.length > 0
+          ? `Hanya email kampus yang diperbolehkan (contoh: @${domains[0]})`
+          : 'Email domain tidak valid'
+      });
+    }
     
     // Validasi password strength
-    if (password.length < 6) {
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
       return res.status(400).json({ 
-        error: 'Password too short',
-        message: 'Password must be at least 6 characters long' 
+        error: 'Password tidak memenuhi syarat',
+        message: passwordCheck.errors.join('. '),
+        details: passwordCheck.errors
       });
     }
     
@@ -74,7 +100,7 @@ exports.registerStudent = async (req, res) => {
     // Upload KTM
     let ktmPath = null;
     if (req.file) {
-      ktmPath = await this.uploadKtm(req, res);
+      ktmPath = await uploadKtm(req);
     }
     
     // Register user
@@ -127,27 +153,6 @@ exports.registerStudent = async (req, res) => {
   }
 };
 
-exports.registerAdmin = async (req, res) => {
-  try {
-    log.info('Register admin attempt', { email: req.body?.email });
-    const user = await authServices.registerAdmin(req.body);
-    log.info('Register admin success', { userId: user.id, email: user.email });
-    res.status(201).json({
-        status: 'success',
-        message: 'Admin registration successful',
-        data: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        }
-    });
-  } catch (error) {
-    log.error('Admin registration failed', { error: error.message, stack: error.stack });
-    res.status(400).json({ error: 'Admin registration failed' });
-  }
-}
-
 exports.login = async (req, res) => {
   try {
     log.info('Login attempt', { email: req.body?.email, ip: req.ip });
@@ -157,10 +162,8 @@ exports.login = async (req, res) => {
 
     // Set refresh token in a secure cookie
     res.cookie('refreshToken', user.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000
+      ...refreshCookieOptions(),
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     log.info('Login success', { userId: user.id, email: user.email, device: user.deviceInfo?.deviceName });
@@ -186,44 +189,31 @@ exports.login = async (req, res) => {
 };
 
 exports.logout = async (req, res) => {
+  clearRefreshCookie(res);
+
   try {
     const refreshToken = req.cookies.refreshToken;
-    if (!refreshToken) return res.status(204).send();
+    if (!refreshToken) {
+      return res.status(200).json({
+        status: 'success',
+        message: 'Logout successful'
+      });
+    }
 
-    // Verifikasi token untuk mendapatkan user ID
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    const userId = decoded.userId;
+    await authServices.logout(decoded.userId, refreshToken);
 
-    // Panggil service logout
-    await authServices.logout(userId, refreshToken);
-
-    // Hapus cookie
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
-    });
-
-    log.info('Logout success', { userId });
-    res.status(200).json({
+    log.info('Logout success', { userId: decoded.userId });
+    return res.status(200).json({
       status: 'success',
       message: 'Logout successful'
     });
   } catch (error) {
-    // Handle token expired/invalid
-    if (error instanceof jwt.TokenExpiredError) {
-      log.warn('Logout token expired');
-      res.clearCookie('refreshToken');
-      return res.status(401).json({ error: 'Token expired' });
-    }
-    if (error instanceof jwt.JsonWebTokenError) {
-      log.warn('Logout invalid token');
-      res.clearCookie('refreshToken');
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-    
-    log.error('Logout failed', { error: error.message });
-    res.status(400).json({ error: 'Logout failed' });
+    log.warn('Logout with invalid or expired token — cookie cleared', { error: error.message });
+    return res.status(200).json({
+      status: 'success',
+      message: 'Logout successful'
+    });
   }
 };
 
@@ -232,44 +222,107 @@ exports.refreshToken = async (req, res) => {
   if (!refreshToken) return res.sendStatus(401);
 
   try {
-    // Verifikasi token
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    
-    // Cek di database
-    const storedToken = await prisma.refreshToken.findFirst({
-      where: {
-        token: refreshToken,
-        userId: decoded.userId,
-        deviceId: decoded.deviceId
-      }
+    const tokenHash = hashToken(refreshToken);
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true, role: true, name: true, email: true, nim: true,
+        isVerified: true, tokenVersion: true, deletedAt: true,
+      },
     });
 
-    if (!storedToken || storedToken.expiresAt < new Date()) {
-      log.warn('Refresh token invalid or expired');
+    if (!user || user.deletedAt) {
+      await prisma.refreshToken.deleteMany({ where: { userId: decoded.userId } });
+      clearRefreshCookie(res);
       return res.sendStatus(403);
     }
 
-    // Update last used time
-    await prisma.refreshToken.update({
-      where: { id: storedToken.id },
-      data: { lastUsedAt: new Date() }
-    });
-
-    // Buat access token baru
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId }
-    });
-
     const newAccessToken = jwt.sign(
-      { userId: user.id, role: user.role, name: user.name },
+      { userId: user.id, role: user.role, name: user.name, tokenVersion: user.tokenVersion },
       process.env.JWT_SECRET,
       { expiresIn: '15m' }
     );
 
-    log.info('Access token refreshed', { userId: user.id });
-    res.json({ accessToken: newAccessToken });
+    const newRefreshToken = jwt.sign(
+      { userId: user.id, deviceId: decoded.deviceId },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: '7d' }
+    );
+    const newTokenHash = hashToken(newRefreshToken);
+    const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    const rotation = await prisma.$transaction(async (tx) => {
+      const stored = await tx.refreshToken.findFirst({
+        where: {
+          userId: decoded.userId,
+          deviceId: decoded.deviceId,
+          tokenHash,
+          expiresAt: { gt: new Date() },
+        },
+      });
+
+      if (!stored) {
+        return { ok: false };
+      }
+
+      const consumed = await tx.refreshToken.deleteMany({
+        where: { id: stored.id, tokenHash },
+      });
+
+      if (consumed.count !== 1) {
+        return { ok: false };
+      }
+
+      await tx.refreshToken.create({
+        data: {
+          tokenHash: newTokenHash,
+          userId: user.id,
+          deviceId: decoded.deviceId,
+          deviceName: stored.deviceName,
+          userAgent: stored.userAgent,
+          ipAddress: stored.ipAddress,
+          expiresAt: newExpiresAt,
+          lastUsedAt: new Date(),
+        },
+      });
+
+      return { ok: true };
+    });
+
+    if (!rotation.ok) {
+      log.warn('Refresh token reuse detected — possible token theft', {
+        userId: decoded.userId,
+        deviceId: decoded.deviceId,
+      });
+      await prisma.refreshToken.deleteMany({
+        where: { userId: decoded.userId, deviceId: decoded.deviceId },
+      });
+      clearRefreshCookie(res);
+      return res.sendStatus(403);
+    }
+
+    res.cookie('refreshToken', newRefreshToken, {
+      ...refreshCookieOptions(),
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    log.info('Token rotated', { userId: user.id, deviceId: decoded.deviceId });
+    res.json({
+      accessToken: newAccessToken,
+      data: {
+        id: user.id,
+        name: user.name,
+        nim: user.nim,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+      },
+    });
   } catch (error) {
     log.warn('Refresh token failed', { error: error.message });
+    clearRefreshCookie(res);
     res.sendStatus(403);
   }
 };

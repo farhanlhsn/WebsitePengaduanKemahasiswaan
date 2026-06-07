@@ -6,19 +6,36 @@ module.exports = async function compressImagesMiddleware(req, res, next) {
 
   const compressPromises = req.files.map(async (file) => {
     if (file.mimetype.startsWith('image/')) {
-      let quality = 70;
-      let data = await sharp(file.path)
-        .jpeg({ quality })
-        .toBuffer();
-      // Jika masih > 1MB, turunkan quality
-      while (data.length > 1024 * 1024 && quality > 40) {
-        quality -= 10;
-        data = await sharp(file.path)
-          .jpeg({ quality })
-          .toBuffer();
+      try {
+        let pipeline = sharp(file.path);
+        const metadata = await pipeline.metadata();
+
+        // Smart resize: limit max dimension to 1200px while maintaining aspect ratio
+        if (metadata.width > 1200 || metadata.height > 1200) {
+          pipeline = pipeline.resize({
+            width: 1200,
+            height: 1200,
+            fit: 'inside',
+            withoutEnlargement: true
+          });
+        }
+
+        // Apply format-specific optimizations
+        if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/jpg') {
+          pipeline = pipeline.jpeg({ quality: 80, mozjpeg: true });
+        } else if (file.mimetype === 'image/png') {
+          pipeline = pipeline.png({ quality: 80, compressionLevel: 8, palette: true });
+        } else if (file.mimetype === 'image/webp') {
+          pipeline = pipeline.webp({ quality: 80 });
+        }
+
+        const data = await pipeline.toBuffer();
+        await fs.promises.writeFile(file.path, data);
+        file.size = data.length;
+      } catch (err) {
+        console.error('Error compressing image:', file.originalname, err);
+        // Fallback: keep the original file if sharp fails
       }
-      await fs.promises.writeFile(file.path, data);
-      file.size = data.length;
     }
   });
 
