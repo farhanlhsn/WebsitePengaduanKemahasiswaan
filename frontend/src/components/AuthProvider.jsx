@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { getAccessToken } from '../services/authToken';
 import useAuthStore from '../stores/authStore';
 import useChatStore from '../stores/chatStore';
 import { CircularProgress, Box } from '@mui/material';
@@ -7,7 +8,7 @@ import { CircularProgress, Box } from '@mui/material';
 const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { initializeAuth, isAuthenticated, refreshAuthToken, logout, user } = useAuthStore();
+  const { initializeAuth, isAuthenticated, refreshAuthToken, logout } = useAuthStore();
   const { initialize: initializeChat, cleanup: cleanupChat } = useChatStore();
   const [isInitialized, setIsInitialized] = React.useState(false);
 
@@ -17,20 +18,23 @@ const AuthProvider = ({ children }) => {
         // Initialize auth from localStorage
         initializeAuth();
         
-        // If user is authenticated, try to refresh token
-        if (isAuthenticated()) {
+        // Restore session from httpOnly cookie only when no in-memory access token.
+        if (!getAccessToken()) {
           try {
             await refreshAuthToken();
-            
-            // Initialize chat after successful auth
+
             const { user } = useAuthStore.getState();
             if (user?.id) {
               await initializeChat(user.id);
             }
-          } catch (error) {
-            console.log('Token refresh failed, logging out...');
+          } catch {
             await logout();
             cleanupChat();
+          }
+        } else {
+          const { user } = useAuthStore.getState();
+          if (user?.id) {
+            await initializeChat(user.id);
           }
         }
       } catch (error) {
@@ -47,17 +51,22 @@ const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!isInitialized) return;
 
-    const publicPaths = ['/login', '/register'];
-    const isPublicPath = publicPaths.includes(location.pathname);
+    const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/waiting-verification'];
+    const isPublicPath = publicPaths.some(p => location.pathname.startsWith(p));
     const authenticated = isAuthenticated();
     const { user } = useAuthStore.getState();
 
     if (!authenticated && !isPublicPath) {
       cleanupChat(); // Cleanup chat when logging out
       navigate('/login', { replace: true });
-    } else if (authenticated && isPublicPath) {
+    } else if (authenticated && user?.role === 'MAHASISWA' && !user?.isVerified) {
+      // Redirect unverified students to waiting page
+      if (!location.pathname.startsWith('/waiting-verification')) {
+        navigate('/waiting-verification', { replace: true });
+      }
+    } else if (authenticated && isPublicPath && !location.pathname.startsWith('/waiting-verification')) {
       // Redirect based on user role
-      const redirectPath = user?.role === 'ADMIN' ? '/admin' : '/dashboard';
+      const redirectPath = ['ADMIN', 'SUPERADMIN'].includes(user?.role) ? '/admin' : '/dashboard';
       navigate(redirectPath, { replace: true });
     }
   }, [isInitialized, location.pathname, navigate, isAuthenticated, cleanupChat]);

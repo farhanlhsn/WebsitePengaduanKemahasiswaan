@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import useSettingsStore from './stores/settingsStore';
 import { getTheme } from './theme';

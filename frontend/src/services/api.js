@@ -1,71 +1,4 @@
-import axios from 'axios';
-import { getOrCreateDeviceFingerprint } from '../main';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:6060/v1/api';
-
-// Create axios instance with default config
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  withCredentials: true, // Enable cookies
-});
-
-// Request interceptor to add auth token
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  const fingerprint = getOrCreateDeviceFingerprint();
-  config.headers['X-Device-Fingerprint'] = fingerprint;
-  return config;
-});
-
-// Response interceptor for error handling and auto-refresh
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    
-    // Don't try to refresh token if:
-    // 1. Already tried (_retry flag)
-    // 2. Request is to login endpoint
-    // 3. Request is to refresh-token endpoint  
-    // 4. Response is not 401
-    if (
-      error.response?.status === 401 && 
-      !originalRequest._retry &&
-      !originalRequest.url?.includes('/auth/login') &&
-      !originalRequest.url?.includes('/auth/refresh-token')
-    ) {
-      originalRequest._retry = true;
-      
-      try {
-        // Try to refresh the token
-        const refreshResponse = await apiClient.post('/auth/refresh-token');
-        const { accessToken } = refreshResponse.data;
-        
-        // Update localStorage and retry original request
-        localStorage.setItem('token', accessToken);
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        // Refresh failed, clear auth and redirect to login
-        localStorage.removeItem('token');
-        
-        // Only redirect if we're not already on login page
-        if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
-        }
-        
-        return Promise.reject(refreshError);
-      }
-    }
-    
-    return Promise.reject(error);
-  }
-);
+import { apiClient, refreshAccessToken } from './axiosClient';
 
 // ==================== AUTH API ====================
 
@@ -110,11 +43,7 @@ export const logout = async () => {
   return response.data;
 };
 
-export const refreshToken = async () => {
-  // Refresh token is sent automatically via httpOnly cookie
-  const response = await apiClient.post('/auth/refresh-token');
-  return response.data;
-};
+export const refreshToken = async () => refreshAccessToken();
 
 export const getUserDevices = async () => {
   const response = await apiClient.get('/auth/devices');
@@ -192,8 +121,8 @@ export const getReportById = async (reportId) => {
   return response.data.data;
 };
 
-export const updateReportStatus = async (reportId, status) => {
-  const response = await apiClient.patch(`/reports/${reportId}/status`, { status });
+export const updateReportStatus = async (reportId, status, reason = null) => {
+  const response = await apiClient.patch(`/reports/${reportId}/status`, { status, ...(reason ? { reason } : {}) });
   return response.data.data;
 };
 
@@ -445,4 +374,81 @@ export const bulkRestoreCategories = async (categoryIds) => {
 export const permanentDeleteReport = async (reportId) => {
   const response = await apiClient.delete(`/reports/${reportId}/permanent`);
   return response.data.data;
+};
+
+// ==================== PASSWORD RESET API ====================
+
+export const forgotPassword = async (email) => {
+  const response = await apiClient.post('/auth/forgot-password', { email });
+  return response.data;
+};
+
+export const resetPassword = async (token, newPassword) => {
+  const response = await apiClient.post('/auth/reset-password', { token, newPassword });
+  return response.data;
+};
+
+export const changePassword = async (currentPassword, newPassword) => {
+  const response = await apiClient.post('/auth/change-password', { currentPassword, newPassword });
+  return response.data;
+};
+
+// ==================== REPORT PRIORITY API ====================
+
+export const updateReportPriority = async (reportId, priority) => {
+  const response = await apiClient.patch(`/reports/${reportId}/priority`, { priority });
+  return response.data.data;
+};
+
+// ==================== REPORT ASSIGNMENT API ====================
+
+export const assignReport = async (reportId, assignedToId) => {
+  const response = await apiClient.patch(`/reports/${reportId}/assign`, { assignedToId });
+  return response.data.data;
+};
+
+export const getMyAssignedReports = async (filters = {}, lastItemId = null, limit = 10) => {
+  const params = new URLSearchParams({ limit: limit.toString(), assignedToId: 'me' });
+  Object.keys(filters).forEach(key => {
+    if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+      params.append(key, filters[key]);
+    }
+  });
+  if (lastItemId) params.append('lastItemId', lastItemId);
+  const response = await apiClient.get(`/reports?${params}`);
+  return response.data.data;
+};
+
+// ==================== REPORT EDIT API ====================
+
+export const editReport = async (reportId, data) => {
+  const response = await apiClient.put(`/reports/${reportId}`, data);
+  return response.data.data;
+};
+
+// ==================== USER REJECTION API ====================
+
+export const rejectStudent = async (userId, reason) => {
+  const response = await apiClient.put(`/users/reject/${userId}`, { reason });
+  return response.data;
+};
+
+// ==================== EXPORT API ====================
+
+export const exportReportsCsv = async (filters = {}) => {
+  const params = new URLSearchParams();
+  Object.keys(filters).forEach(key => {
+    if (filters[key]) params.append(key, filters[key]);
+  });
+  const response = await apiClient.get(`/admin/export/reports?${params}`, {
+    responseType: 'blob'
+  });
+  return response.data;
+};
+
+export const exportUsersCsv = async () => {
+  const response = await apiClient.get('/admin/export/users', {
+    responseType: 'blob'
+  });
+  return response.data;
 };

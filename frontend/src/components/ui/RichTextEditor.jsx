@@ -242,23 +242,23 @@ const RichTextEditor = ({
       switch (e.key) {
         case 'b':
           e.preventDefault();
-          toggleBold();
+          executeCommand('bold');
           break;
         case 'i':
           e.preventDefault();
-          toggleItalic();
+          executeCommand('italic');
           break;
         case 'u':
           e.preventDefault();
-          toggleUnderline();
+          executeCommand('underline');
           break;
         case 'z':
           if (e.shiftKey) {
             e.preventDefault();
-            redo();
+            executeCommand('redo');
           } else {
             e.preventDefault();
-            undo();
+            executeCommand('undo');
           }
           break;
         default:
@@ -271,14 +271,14 @@ const RichTextEditor = ({
       e.preventDefault();
       executeCommand('insertHTML', '<p><br></p>');
     }
-  }, [toggleBold, toggleItalic, toggleUnderline, undo, redo]);
+  }, [executeCommand]);
 
   // Handle paste to clean up formatting
   const handlePaste = useCallback((e) => {
     e.preventDefault();
     const text = e.clipboardData.getData('text/plain');
     executeCommand('insertText', text);
-  }, []);
+  }, [executeCommand]);
 
   return (
     <Box>

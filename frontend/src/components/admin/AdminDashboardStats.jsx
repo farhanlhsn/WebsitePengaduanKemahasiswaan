@@ -5,14 +5,11 @@ import {
   Schedule, Chat, Category, PersonAdd
 } from '@mui/icons-material';
 import EnhancedStatCard from '../dashboard/EnhancedStatCard';
-import { useTheme } from '@mui/material/styles';
 
 const AdminDashboardStats = ({ 
   dashboardStats = null, 
   loading = false 
 }) => {
-  const theme = useTheme();
-
   // Extract stats from comprehensive dashboard stats
   const safeUserStats = dashboardStats?.users || {
     total: 0,

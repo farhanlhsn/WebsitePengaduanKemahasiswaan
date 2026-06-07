@@ -37,7 +37,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
       });
       getUserDevices();
     }
-  }, [user]);
+  }, [user, getUserDevices]);
 
   const handleInputChange = (field) => (event) => {
     setFormData(prev => ({

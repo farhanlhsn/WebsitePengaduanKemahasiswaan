@@ -10,13 +10,10 @@ import {
   Notifications, Security, Language, ExpandMore, Smartphone, Computer, Tablet,
   Save, Visibility, VisibilityOff, Key, Logout
 } from '@mui/icons-material';
-import { alpha, useTheme } from '@mui/material/styles';
 import useAuthStore from '../stores/authStore';
 import useSettingsStore from '../stores/settingsStore';
-import AdminLayout from '../components/admin/AdminLayout';
 
 const AdminSettingsPage = () => {
-  const theme = useTheme();
   const { user, devices, logoutDevice, getUserDevices } = useAuthStore();
   
   const { settings, updateAllSettings } = useSettingsStore();
@@ -136,17 +133,14 @@ const AdminSettingsPage = () => {
 
   if (!user) {
     return (
-      <AdminLayout>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-          <CircularProgress />
-        </Box>
-      </AdminLayout>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   return (
-    <AdminLayout>
-      <Container maxWidth="xl">
+    <Container maxWidth="xl">
         <Box sx={{ mb: 4 }}>
           <Typography variant="h4" fontWeight="bold" gutterBottom>
             Pengaturan Admin
@@ -411,7 +405,6 @@ const AdminSettingsPage = () => {
           </DialogActions>
         </Dialog>
       </Container>
-    </AdminLayout>
   );
 };
 

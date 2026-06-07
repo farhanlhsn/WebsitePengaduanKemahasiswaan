@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import AdminLayout from '../components/admin/AdminLayout';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -24,7 +23,14 @@ import {
   Snackbar,
   Grid,
   Fade,
-  TablePagination
+  TablePagination,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormControlLabel,
+  Switch,
+  Stack,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import {
@@ -34,7 +40,8 @@ import {
   Restore,
   Refresh,
   Category as CategoryIcon,
-  DeleteOutline
+  DeleteOutline,
+  VisibilityOff,
 } from '@mui/icons-material';
 import {
   getCategories,
@@ -42,10 +49,22 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
-  restoreCategory
+  restoreCategory,
 } from '../services/api';
 import { format } from 'date-fns';
 import StatCard from '../components/ui/StatCard';
+
+const PRIORITY_OPTIONS = [
+  { value: 'LOW', label: 'Rendah', color: 'default' },
+  { value: 'MEDIUM', label: 'Sedang', color: 'info' },
+  { value: 'HIGH', label: 'Tinggi', color: 'warning' },
+  { value: 'URGENT', label: 'Mendesak', color: 'error' },
+];
+
+const PRIORITY_LABEL = Object.fromEntries(PRIORITY_OPTIONS.map((p) => [p.value, p.label]));
+const PRIORITY_COLOR = Object.fromEntries(PRIORITY_OPTIONS.map((p) => [p.value, p.color]));
+
+const EMPTY_FORM = { name: '', defaultPriority: 'MEDIUM', allowAnonymous: false };
 
 const CategoryManagementPage = () => {
   const [categories, setCategories] = useState([]);
@@ -54,7 +73,7 @@ const CategoryManagementPage = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [categoryName, setCategoryName] = useState('');
+  const [form, setForm] = useState(EMPTY_FORM);
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -62,15 +81,10 @@ const CategoryManagementPage = () => {
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
-    severity: 'success'
+    severity: 'success',
   });
 
-  useEffect(() => {
-    loadCategories();
-    loadStats();
-  }, [includeDeleted]);
-
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getCategories(includeDeleted);
@@ -80,84 +94,106 @@ const CategoryManagementPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [includeDeleted]);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const data = await getCategoryStats();
       setStats(data);
     } catch (error) {
       console.error('Failed to load stats:', error);
     }
+  }, []);
+
+  useEffect(() => {
+    loadCategories();
+    loadStats();
+  }, [loadCategories, loadStats]);
+
+  const handleFormChange = (field) => (event) => {
+    const value = field === 'allowAnonymous' ? event.target.checked : event.target.value;
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCreateOpen = () => {
-    setCategoryName('');
+    setForm(EMPTY_FORM);
     setCreateDialogOpen(true);
   };
 
   const handleEditOpen = (category) => {
     setSelectedCategory(category);
-    setCategoryName(category.name);
+    setForm({
+      name: category.name || '',
+      defaultPriority: category.defaultPriority || 'MEDIUM',
+      allowAnonymous: !!category.allowAnonymous,
+    });
     setEditDialogOpen(true);
   };
 
   const handleCreateSubmit = async () => {
-    if (!categoryName.trim()) {
-      showSnackbar('Category name is required', 'error');
+    if (!form.name.trim()) {
+      showSnackbar('Nama kategori wajib diisi', 'error');
       return;
     }
 
     try {
-      await createCategory({ name: categoryName.trim() });
-      showSnackbar('Category created successfully', 'success');
+      await createCategory({
+        name: form.name.trim(),
+        defaultPriority: form.defaultPriority,
+        allowAnonymous: !!form.allowAnonymous,
+      });
+      showSnackbar('Kategori berhasil dibuat', 'success');
       setCreateDialogOpen(false);
       loadCategories();
       loadStats();
     } catch (error) {
-      showSnackbar('Failed to create category: ' + error.message, 'error');
+      showSnackbar('Gagal membuat kategori: ' + error.message, 'error');
     }
   };
 
   const handleEditSubmit = async () => {
-    if (!categoryName.trim()) {
-      showSnackbar('Category name is required', 'error');
+    if (!form.name.trim()) {
+      showSnackbar('Nama kategori wajib diisi', 'error');
       return;
     }
 
     try {
-      await updateCategory(selectedCategory.id, { name: categoryName.trim() });
-      showSnackbar('Category updated successfully', 'success');
+      await updateCategory(selectedCategory.id, {
+        name: form.name.trim(),
+        defaultPriority: form.defaultPriority,
+        allowAnonymous: !!form.allowAnonymous,
+      });
+      showSnackbar('Kategori berhasil diperbarui', 'success');
       setEditDialogOpen(false);
       loadCategories();
     } catch (error) {
-      showSnackbar('Failed to update category: ' + error.message, 'error');
+      showSnackbar('Gagal memperbarui kategori: ' + error.message, 'error');
     }
   };
 
   const handleDelete = async (categoryId) => {
-    if (!window.confirm('Are you sure you want to delete this category?')) {
+    if (!window.confirm('Yakin ingin menghapus kategori ini?')) {
       return;
     }
 
     try {
       await deleteCategory(categoryId);
-      showSnackbar('Category deleted successfully', 'success');
+      showSnackbar('Kategori berhasil dihapus', 'success');
       loadCategories();
       loadStats();
     } catch (error) {
-      showSnackbar('Failed to delete category: ' + error.message, 'error');
+      showSnackbar('Gagal menghapus kategori: ' + error.message, 'error');
     }
   };
 
   const handleRestore = async (categoryId) => {
     try {
       await restoreCategory(categoryId);
-      showSnackbar('Category restored successfully', 'success');
+      showSnackbar('Kategori berhasil dipulihkan', 'success');
       loadCategories();
       loadStats();
     } catch (error) {
-      showSnackbar('Failed to restore category: ' + error.message, 'error');
+      showSnackbar('Gagal memulihkan kategori: ' + error.message, 'error');
     }
   };
 
@@ -184,8 +220,69 @@ const CategoryManagementPage = () => {
     page * rowsPerPage + rowsPerPage
   );
 
+  const renderCategoryFormFields = () => (
+    <Stack spacing={2.5} sx={{ mt: 2 }}>
+      <TextField
+        autoFocus
+        label="Nama Kategori"
+        fullWidth
+        value={form.name}
+        onChange={handleFormChange('name')}
+        placeholder="Contoh: Akademik, Fasilitas"
+      />
+
+      <FormControl fullWidth>
+        <InputLabel id="category-priority-label">Prioritas Default</InputLabel>
+        <Select
+          labelId="category-priority-label"
+          label="Prioritas Default"
+          value={form.defaultPriority}
+          onChange={handleFormChange('defaultPriority')}
+        >
+          {PRIORITY_OPTIONS.map((p) => (
+            <MenuItem key={p.value} value={p.value}>
+              {p.label}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      <Box
+        sx={{
+          p: 2,
+          borderRadius: 2,
+          border: (theme) => `1px solid ${alpha(theme.palette.warning.main, 0.3)}`,
+          bgcolor: (theme) => alpha(theme.palette.warning.main, 0.04),
+        }}
+      >
+        <FormControlLabel
+          control={
+            <Switch
+              checked={!!form.allowAnonymous}
+              onChange={handleFormChange('allowAnonymous')}
+              color="warning"
+            />
+          }
+          label={
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700}>
+                Izinkan laporan anonim
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Mahasiswa dapat menyembunyikan identitas (nama, NIM, email) saat
+                membuat laporan pada kategori ini. Admin tidak melihat identitas
+                asli pelapor.
+              </Typography>
+            </Box>
+          }
+          sx={{ alignItems: 'flex-start', m: 0 }}
+        />
+      </Box>
+    </Stack>
+  );
+
   return (
-    <AdminLayout>
+    <>
       <Container maxWidth="xl" sx={{ py: 4 }}>
         {/* Header */}
         <Box sx={{ mb: 4 }}>
@@ -264,158 +361,152 @@ const CategoryManagementPage = () => {
         </Box>
 
         {/* Categories Table */}
-        <Paper sx={{ 
-          borderRadius: 4, 
-          boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
-          border: '1px solid rgba(0,0,0,0.05)',
-          overflow: 'hidden'
-        }}>
+        <Paper
+          sx={{
+            borderRadius: 4,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+            border: '1px solid rgba(0,0,0,0.05)',
+            overflow: 'hidden',
+          }}
+        >
           <TableContainer sx={{ maxHeight: 600 }}>
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ 
-                    fontWeight: 600, 
-                    bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                    py: 2 
-                  }}>
-                    ID
-                  </TableCell>
-                  <TableCell sx={{ 
-                    fontWeight: 600, 
-                    bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                    py: 2 
-                  }}>
-                    Nama
-                  </TableCell>
-                  <TableCell sx={{ 
-                    fontWeight: 600, 
-                    bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                    py: 2 
-                  }}>
-                    Slug
-                  </TableCell>
-                  <TableCell sx={{ 
-                    fontWeight: 600, 
-                    bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                    py: 2 
-                  }}>
-                    Status
-                  </TableCell>
-                  <TableCell sx={{ 
-                    fontWeight: 600, 
-                    bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                    py: 2 
-                  }}>
-                    Dibuat
-                  </TableCell>
-                  <TableCell sx={{ 
-                    fontWeight: 600, 
-                    bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                    py: 2,
-                    textAlign: 'center'
-                  }}>
-                    Aksi
-                  </TableCell>
+                  <TableCell sx={headerCellSx}>ID</TableCell>
+                  <TableCell sx={headerCellSx}>Nama</TableCell>
+                  <TableCell sx={headerCellSx}>Slug</TableCell>
+                  <TableCell sx={headerCellSx}>Prioritas Default</TableCell>
+                  <TableCell sx={headerCellSx}>Anonim</TableCell>
+                  <TableCell sx={headerCellSx}>Status</TableCell>
+                  <TableCell sx={headerCellSx}>Dibuat</TableCell>
+                  <TableCell sx={{ ...headerCellSx, textAlign: 'center' }}>Aksi</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
-                      <Typography color="text.secondary" fontWeight={600}>Memuat data...</Typography>
+                    <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
+                      <Typography color="text.secondary" fontWeight={600}>
+                        Memuat data...
+                      </Typography>
                     </TableCell>
                   </TableRow>
                 ) : categories.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
-                      <Typography color="text.secondary" fontWeight={600}>Tidak ada kategori</Typography>
+                    <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
+                      <Typography color="text.secondary" fontWeight={600}>
+                        Tidak ada kategori
+                      </Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
                   paginatedCategories.map((category, index) => (
                     <Fade in timeout={200 + index * 50} key={category.id}>
-                      <TableRow 
+                      <TableRow
                         hover
-                        sx={{ 
-                          '&:hover': { 
-                            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02) 
-                          }
+                        sx={{
+                          '&:hover': {
+                            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
+                          },
                         }}
                       >
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={600}>
-                          {category.id}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={700}>
-                          {category.name}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography 
-                          variant="caption" 
-                          sx={{ 
-                            fontFamily: 'monospace', 
-                            bgcolor: 'action.hover', 
-                            px: 1, 
-                            py: 0.5, 
-                            borderRadius: 1,
-                            fontWeight: 600
-                          }}
-                        >
-                          {category.slug}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={category.deletedAt ? 'Dihapus' : 'Aktif'}
-                          color={category.deletedAt ? 'error' : 'success'}
-                          size="small"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={600}>
-                          {format(new Date(category.createdAt), 'dd/MM/yyyy')}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          {!category.deletedAt ? (
-                            <>
-                              <Tooltip title="Edit">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleEditOpen(category)}
-                                  color="primary"
-                                >
-                                  <Edit fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Hapus">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleDelete(category.id)}
-                                  color="error"
-                                >
-                                  <Delete fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            </>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={600}>
+                            {category.id}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={700}>
+                            {category.name}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontFamily: 'monospace',
+                              bgcolor: 'action.hover',
+                              px: 1,
+                              py: 0.5,
+                              borderRadius: 1,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {category.slug}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={PRIORITY_LABEL[category.defaultPriority] || category.defaultPriority || '-'}
+                            color={PRIORITY_COLOR[category.defaultPriority] || 'default'}
+                            size="small"
+                            sx={{ fontWeight: 600 }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {category.allowAnonymous ? (
+                            <Chip
+                              icon={<VisibilityOff sx={{ fontSize: 14 }} />}
+                              label="Diizinkan"
+                              size="small"
+                              color="warning"
+                              sx={{ fontWeight: 600 }}
+                            />
                           ) : (
-                            <Tooltip title="Pulihkan">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleRestore(category.id)}
-                                color="success"
-                              >
-                                <Restore fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
+                            <Typography variant="caption" color="text.secondary">
+                              Tidak
+                            </Typography>
                           )}
-                        </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={category.deletedAt ? 'Dihapus' : 'Aktif'}
+                            color={category.deletedAt ? 'error' : 'success'}
+                            size="small"
+                            sx={{ fontWeight: 600 }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={600}>
+                            {format(new Date(category.createdAt), 'dd/MM/yyyy')}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                            {!category.deletedAt ? (
+                              <>
+                                <Tooltip title="Edit">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleEditOpen(category)}
+                                    color="primary"
+                                  >
+                                    <Edit fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Hapus">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleDelete(category.id)}
+                                    color="error"
+                                  >
+                                    <Delete fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </>
+                            ) : (
+                              <Tooltip title="Pulihkan">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleRestore(category.id)}
+                                  color="success"
+                                >
+                                  <Restore fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </Box>
                         </TableCell>
                       </TableRow>
                     </Fade>
@@ -435,46 +526,35 @@ const CategoryManagementPage = () => {
             onRowsPerPageChange={handleChangeRowsPerPage}
             rowsPerPageOptions={[5, 10, 25, 50]}
             labelRowsPerPage="Baris per halaman:"
-            labelDisplayedRows={({ from, to, count }) => 
+            labelDisplayedRows={({ from, to, count }) =>
               `${from}-${to} dari ${count !== -1 ? count : `lebih dari ${to}`}`
             }
             sx={{
               borderTop: '1px solid rgba(0,0,0,0.06)',
-              bgcolor: (theme) => alpha(theme.palette.background.default, 0.3)
+              bgcolor: (theme) => alpha(theme.palette.background.default, 0.3),
             }}
           />
         </Paper>
 
         {/* Create Dialog */}
-        <Dialog 
-          open={createDialogOpen} 
-          onClose={() => setCreateDialogOpen(false)} 
-          maxWidth="sm" 
+        <Dialog
+          open={createDialogOpen}
+          onClose={() => setCreateDialogOpen(false)}
+          maxWidth="sm"
           fullWidth
           PaperProps={{ sx: { borderRadius: 4 } }}
         >
           <DialogTitle sx={{ fontWeight: 800 }}>Tambah Kategori Baru</DialogTitle>
-          <DialogContent>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Nama Kategori"
-              fullWidth
-              value={categoryName}
-              onChange={(e) => setCategoryName(e.target.value)}
-              placeholder="e.g., Akademik, Fasilitas"
-              sx={{ mt: 2 }}
-            />
-          </DialogContent>
+          <DialogContent>{renderCategoryFormFields()}</DialogContent>
           <DialogActions sx={{ p: 2.5 }}>
-            <Button 
+            <Button
               onClick={() => setCreateDialogOpen(false)}
               sx={{ borderRadius: 2, fontWeight: 600 }}
             >
               Batal
             </Button>
-            <Button 
-              onClick={handleCreateSubmit} 
+            <Button
+              onClick={handleCreateSubmit}
               variant="contained"
               sx={{ borderRadius: 2, fontWeight: 600 }}
             >
@@ -484,34 +564,24 @@ const CategoryManagementPage = () => {
         </Dialog>
 
         {/* Edit Dialog */}
-        <Dialog 
-          open={editDialogOpen} 
-          onClose={() => setEditDialogOpen(false)} 
-          maxWidth="sm" 
+        <Dialog
+          open={editDialogOpen}
+          onClose={() => setEditDialogOpen(false)}
+          maxWidth="sm"
           fullWidth
           PaperProps={{ sx: { borderRadius: 4 } }}
         >
           <DialogTitle sx={{ fontWeight: 800 }}>Edit Kategori</DialogTitle>
-          <DialogContent>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Nama Kategori"
-              fullWidth
-              value={categoryName}
-              onChange={(e) => setCategoryName(e.target.value)}
-              sx={{ mt: 2 }}
-            />
-          </DialogContent>
+          <DialogContent>{renderCategoryFormFields()}</DialogContent>
           <DialogActions sx={{ p: 2.5 }}>
-            <Button 
+            <Button
               onClick={() => setEditDialogOpen(false)}
               sx={{ borderRadius: 2, fontWeight: 600 }}
             >
               Batal
             </Button>
-            <Button 
-              onClick={handleEditSubmit} 
+            <Button
+              onClick={handleEditSubmit}
               variant="contained"
               sx={{ borderRadius: 2, fontWeight: 600 }}
             >
@@ -527,18 +597,23 @@ const CategoryManagementPage = () => {
           onClose={handleCloseSnackbar}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         >
-          <Alert 
-            onClose={handleCloseSnackbar} 
-            severity={snackbar.severity} 
+          <Alert
+            onClose={handleCloseSnackbar}
+            severity={snackbar.severity}
             sx={{ width: '100%', borderRadius: 2 }}
           >
             {snackbar.message}
           </Alert>
         </Snackbar>
       </Container>
-    </AdminLayout>
+    </>
   );
 };
 
-export default CategoryManagementPage;
+const headerCellSx = {
+  fontWeight: 600,
+  bgcolor: (theme) => `${theme.palette.primary.main}0a`,
+  py: 2,
+};
 
+export default CategoryManagementPage;

@@ -151,10 +151,10 @@ const useReportStore = create((set, get) => ({
   },
 
   // Update report status (admin only)
-  updateReportStatus: async (reportId, status) => {
+  updateReportStatus: async (reportId, status, reason = null) => {
     try {
       set({ loading: true, error: null });
-      const updatedReport = await apiUpdateReportStatus(reportId, status);
+      const updatedReport = await apiUpdateReportStatus(reportId, status, reason);
       
       // Update the report in the local state
       set(state => ({

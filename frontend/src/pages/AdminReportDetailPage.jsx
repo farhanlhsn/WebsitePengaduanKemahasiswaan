@@ -8,7 +8,7 @@ import {
 } from '@mui/material';
 import {
   Assignment, AccessTime, Category as CategoryIcon,
-  Delete, Restore, Download, Visibility, AttachFile,
+  Delete, Restore, Download, Visibility, VisibilityOff, AttachFile,
   School, Email, Today, CheckCircle, HourglassEmpty,
   Cancel, Error as ErrorIcon, Pending, Chat, Close as CloseIcon, Edit,
   Home, NavigateNext
@@ -21,7 +21,6 @@ import useAuthStore from '../stores/authStore';
 import { DocViewerPlus } from 'react-doc-viewer-plus';
 import { Document, Page, pdfjs } from 'react-pdf';
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
-import AdminLayout from '../components/admin/AdminLayout';
 import RichTextDisplay from '../components/ui/RichTextDisplay';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
@@ -75,7 +74,7 @@ const AdminReportDetailPage = () => {
   const [actionError, setActionError] = useState(null);
   const [statusMenuAnchor, setStatusMenuAnchor] = useState(null);
 
-  useEffect(() => { if (user && user.role !== 'ADMIN') navigate('/dashboard'); }, [user, navigate]);
+  useEffect(() => { if (user && !['ADMIN', 'SUPERADMIN'].includes(user.role)) navigate('/dashboard'); }, [user, navigate]);
 
   useEffect(() => {
     if (id) { getReportById(id).then(setReport); }
@@ -86,7 +85,14 @@ const AdminReportDetailPage = () => {
   const handleOpenChat = async () => { if (report) { await selectReport(report); navigate('/admin/chat'); } };
   const handleStatusChange = async (s) => {
     setStatusMenuAnchor(null);
-    try { setActionError(null); await updateReportStatus(id, s); setReport(prev => prev ? { ...prev, status: s } : prev); }
+    const reason = ['REJECTED', 'CANCELED'].includes(s)
+      ? window.prompt('Masukkan alasan perubahan status:')
+      : null;
+    if (['REJECTED', 'CANCELED'].includes(s) && !reason?.trim()) {
+      setActionError('Alasan wajib diisi untuk status ditolak atau dibatalkan.');
+      return;
+    }
+    try { setActionError(null); await updateReportStatus(id, s, reason); setReport(prev => prev ? { ...prev, status: s } : prev); }
     catch (e) { setActionError(e?.message || 'Gagal mengubah status'); }
   };
 
@@ -103,17 +109,14 @@ const AdminReportDetailPage = () => {
 
   if (loading && !report) return <LoadingSpinner fullScreen message="Memuat detail laporan..." />;
   if (error && !report) return (
-    <AdminLayout>
-      <Container maxWidth="lg"><Alert severity="error" sx={{ borderRadius: 3, p: 3 }}>{error || 'Laporan tidak ditemukan.'}</Alert></Container>
-    </AdminLayout>
+    <Container maxWidth="lg"><Alert severity="error" sx={{ borderRadius: 3, p: 3 }}>{error || 'Laporan tidak ditemukan.'}</Alert></Container>
   );
 
   const st = STATUS_CONFIG[report?.status] || STATUS_CONFIG.PENDING;
   const hasAttachments = report?.attachments?.length > 0;
 
   return (
-    <AdminLayout>
-      <Container maxWidth="xl" sx={{ py: { xs: 2, md: 3 } }}>
+    <Container maxWidth="xl" sx={{ py: { xs: 2, md: 3 } }}>
 
         {/* Breadcrumb */}
         <Breadcrumbs separator={<NavigateNext fontSize="small" />} sx={{ mb: 1.5 }}>
@@ -168,13 +171,32 @@ const AdminReportDetailPage = () => {
             {report?.user && (
               <Grid item xs={12} sm={6} md={3}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main, width: 38, height: 38, borderRadius: 2, fontWeight: 700 }}>
-                    {report.user.name.charAt(0).toUpperCase()}
+                  <Avatar
+                    sx={{
+                      bgcolor: report.isAnonymous
+                        ? alpha(theme.palette.warning.main, 0.15)
+                        : alpha(theme.palette.primary.main, 0.1),
+                      color: report.isAnonymous ? theme.palette.warning.main : theme.palette.primary.main,
+                      width: 38,
+                      height: 38,
+                      borderRadius: 2,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {report.isAnonymous
+                      ? <VisibilityOff fontSize="small" />
+                      : (report.user.name?.charAt(0).toUpperCase() || '?')}
                   </Avatar>
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="caption" color="text.secondary" fontWeight={600}>Pelapor</Typography>
-                    <Typography variant="body2" fontWeight={600} noWrap>{report.user.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">{report.user.nim}</Typography>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                      {report.isAnonymous ? 'Pelapor (Anonim)' : 'Pelapor'}
+                    </Typography>
+                    <Typography variant="body2" fontWeight={600} noWrap>
+                      {report.isAnonymous ? 'Identitas disembunyikan' : (report.user.name || '-')}
+                    </Typography>
+                    {!report.isAnonymous && report.user.nim && (
+                      <Typography variant="caption" color="text.secondary">{report.user.nim}</Typography>
+                    )}
                   </Box>
                 </Box>
               </Grid>
@@ -185,7 +207,7 @@ const AdminReportDetailPage = () => {
             <Grid item xs={6} sm={3} md={3}>
               <InfoCell icon={<Today />} label="Dibuat" value={fmt(report?.createdAt)} color={theme.palette.text.secondary} />
             </Grid>
-            {report?.user && (
+            {report?.user && !report.isAnonymous && (
               <Grid item xs={12} sm={6} md={2}>
                 <InfoCell icon={<Email />} label="Email" value={report.user.email} color={theme.palette.text.secondary} />
               </Grid>
@@ -292,7 +314,6 @@ const AdminReportDetailPage = () => {
         )}
 
       </Container>
-    </AdminLayout>
   );
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Container,
@@ -13,7 +13,6 @@ import { getAuditLogs, getAuditStats, cleanupOldAuditLogs } from '../services/ap
 import AuditLogFilters from '../components/admin/AuditLogFilters';
 import AuditLogList from '../components/admin/AuditLogList';
 import AuditLogDetailModal from '../components/admin/AuditLogDetailModal';
-import AdminLayout from '../components/admin/AdminLayout';
 import StatCard from '../components/ui/StatCard';
 
 const AuditLogPage = () => {
@@ -44,11 +43,6 @@ const AuditLogPage = () => {
   });
 
   useEffect(() => {
-    loadAuditLogs();
-    loadAuditStats();
-  }, []);
-
-  useEffect(() => {
     // Update offset when page changes
     setFilters(prev => ({
       ...prev,
@@ -56,14 +50,7 @@ const AuditLogPage = () => {
     }));
   }, [page, rowsPerPage]);
 
-  useEffect(() => {
-    // Reload logs when filters change
-    if (filters.offset !== undefined) {
-      loadAuditLogs();
-    }
-  }, [filters]);
-
-  const loadAuditLogs = async () => {
+  const loadAuditLogs = useCallback(async () => {
     try {
       setLoading(true);
       const result = await getAuditLogs(filters);
@@ -74,16 +61,24 @@ const AuditLogPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
-  const loadAuditStats = async () => {
+  const loadAuditStats = useCallback(async () => {
     try {
       const statsData = await getAuditStats();
       setStats(statsData);
     } catch (error) {
       console.error('Failed to load audit stats:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadAuditStats();
+  }, [loadAuditStats]);
+
+  useEffect(() => {
+    loadAuditLogs();
+  }, [loadAuditLogs]);
 
   const handleRefresh = () => {
     loadAuditLogs();
@@ -141,7 +136,7 @@ const AuditLogPage = () => {
   };
 
   return (
-    <AdminLayout>
+    <>
       <Container maxWidth="xl" sx={{ py: 4 }}>
         {/* Header */}
         <Box sx={{ mb: 4 }}>
@@ -262,7 +257,7 @@ const AuditLogPage = () => {
           </Alert>
         </Snackbar>
       </Container>
-    </AdminLayout>
+    </>
   );
 };
 

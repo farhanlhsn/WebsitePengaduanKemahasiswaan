@@ -8,7 +8,7 @@ import {
 import {
   Send, AttachFile, MoreVert, Reply, Delete,
   Check, DoneAll, Schedule, Person, AdminPanelSettings,
-  Close, Image, Description, GetApp
+  Close, Image, Description, GetApp, VisibilityOff
 } from '@mui/icons-material';
 import { styled, alpha, useTheme } from '@mui/material/styles';
 import { formatDistanceToNow } from 'date-fns';
@@ -18,7 +18,8 @@ import useAuthStore from '../../stores/authStore';
 import chatApi from '../../services/chatApi';
 
 const ChatContainer = styled(Paper)(({ theme }) => ({
-  height: '600px',
+  height: '100%',
+  minHeight: 600,
   display: 'flex',
   flexDirection: 'column',
   borderRadius: 16,
@@ -172,13 +173,8 @@ const ChatInterface = ({
       let attachments = [];
       if (selectedFile) {
         // Upload the selected file first
-        const uploaded = await chatApi.uploadFile(selectedFile);
-        // uploaded is an array of attachment objects
-        attachments = uploaded.map(att => ({
-          fileName: att.fileName,
-          fileType: att.fileType,
-          filePath: att.filePath,
-        }));
+        const uploaded = await chatApi.uploadFile(currentReport.id, selectedFile);
+        attachments = uploaded.map((att) => att.token);
       }
 
       await sendMessage(newMessage.trim(), attachments, replyingTo?.id);
@@ -357,13 +353,33 @@ const ChatInterface = ({
       {/* Chat Header */}
       <ChatHeader>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Avatar sx={{ bgcolor: 'primary.main' }}>
-            <Person />
+          <Avatar sx={{
+            bgcolor: currentReport?.isAnonymous ? 'warning.light' : 'primary.main',
+            color: currentReport?.isAnonymous ? 'warning.dark' : 'common.white',
+          }}>
+            {currentReport?.isAnonymous ? <VisibilityOff /> : <Person />}
           </Avatar>
           <Box>
-            <Typography variant="subtitle1" fontWeight={600}>
-              {reportTitle || `Laporan #${reportId}`}
-            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="subtitle1" fontWeight={600}>
+                {reportTitle || `Laporan #${reportId}`}
+              </Typography>
+              {currentReport?.isAnonymous && (
+                <Chip
+                  icon={<VisibilityOff sx={{ fontSize: 14 }} />}
+                  label="Anonim"
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    height: 22,
+                    fontSize: '0.7rem',
+                    color: 'warning.main',
+                    borderColor: 'warning.main',
+                    '& .MuiChip-icon': { color: 'warning.main' },
+                  }}
+                />
+              )}
+            </Stack>
             <Typography variant="caption" color="text.secondary">
               Laporan: {reportId}
             </Typography>

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Typography, Button } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import { sanitizeRichText, richTextToPlainText } from '../../utils/sanitizeHtml';
 
 const StyledRichTextContent = styled(Box)(({ theme }) => ({
   '& h1, & h2, & h3': {
@@ -107,20 +108,14 @@ const RichTextDisplay = ({
 }) => {
   const [showFull, setShowFull] = useState(false);
 
-  // Utility function to strip HTML tags for plain text preview
-  const getPlainText = (html) => {
-    const div = document.createElement('div');
-    div.innerHTML = html;
-    return div.textContent || div.innerText || '';
-  };
+  const sanitizedContent = useMemo(() => sanitizeRichText(content), [content]);
+  const plainText = useMemo(() => richTextToPlainText(content), [content]);
 
-  // Truncate content if maxLines is specified and not showing full
   const shouldTruncate = maxLines && !showFull;
-  const plainText = getPlainText(content);
-  
-  const displayContent = shouldTruncate 
-    ? plainText.substring(0, (maxLines * 50)) + '...'
-    : content;
+
+  const displayContent = shouldTruncate
+    ? plainText.substring(0, maxLines * 50) + '...'
+    : sanitizedContent;
 
   const isContentLong = maxLines ? plainText.length > (maxLines * 50) : false;
 
@@ -142,7 +137,7 @@ const RichTextDisplay = ({
       ) : (
         // Show rich HTML content when not truncated
         <StyledRichTextContent
-          dangerouslySetInnerHTML={{ __html: content }}
+          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
           sx={{ 
             fontSize: variant === 'body2' ? '0.875rem' : '1rem',
             lineHeight: 1.6 

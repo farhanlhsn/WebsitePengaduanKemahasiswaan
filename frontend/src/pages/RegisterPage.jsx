@@ -3,42 +3,34 @@ import {
   Box, 
   Button, 
   Container, 
-  TextField, 
   Typography, 
   Paper, 
-  Grid,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
-  Avatar,
-  Chip,
-  Fade,
-  Slide,
-  IconButton,
-  InputAdornment,
-  useTheme,
-  alpha,
-  Alert,
+  Stepper, 
+  Step, 
+  StepLabel, 
+  StepContent, 
+  Avatar, 
+  Fade, 
+  useTheme, 
+  alpha, 
   CircularProgress
 } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
 import { 
-  AccountCircle, 
-  Email, 
-  Lock, 
-  CloudUpload, 
   ArrowBack,
   ArrowForward,
   CheckCircle,
-  Visibility,
-  VisibilityOff,
   School,
   SecurityOutlined,
   VerifiedUser,
   PersonAdd
 } from '@mui/icons-material';
+
+import RegisterStudentIdentity from '../components/auth/RegisterStudentIdentity';
+import RegisterSecurity from '../components/auth/RegisterSecurity';
+import RegisterKtmUpload from '../components/auth/RegisterKtmUpload';
+import imageCompression from 'browser-image-compression';
 
 const steps = [
   {
@@ -59,7 +51,6 @@ const steps = [
 ];
 
 export default function RegisterPage() {
-  const navigate = useNavigate();
   const theme = useTheme();
   const { registerStudent, loading, error, clearError } = useAuthStore();
   const [activeStep, setActiveStep] = useState(0);
@@ -74,6 +65,7 @@ export default function RegisterPage() {
     ktm: null
   });
   const [validationErrors, setValidationErrors] = useState({});
+  const [isCompressing, setIsCompressing] = useState(false);
 
   const handleNext = () => {
     setActiveStep((prev) => prev + 1);
@@ -99,7 +91,7 @@ export default function RegisterPage() {
     if (error) clearError();
   };
 
-  const handleFileChange = (event) => {
+  const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (file) {
       // Validasi file type
@@ -112,26 +104,58 @@ export default function RegisterPage() {
         return;
       }
       
-      // Validasi file size (max 5MB)
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (file.size > maxSize) {
+      // Validasi file size awal (max 15MB)
+      const maxInitialSize = 15 * 1024 * 1024; // 15MB
+      if (file.size > maxInitialSize) {
         setValidationErrors(prev => ({
           ...prev,
-          ktm: 'Ukuran file maksimal 5MB'
+          ktm: 'Ukuran file asli terlalu besar (maksimal 15MB)'
         }));
         return;
       }
       
-      // Clear validation errors if file is valid
+      setIsCompressing(true);
       setValidationErrors(prev => ({
         ...prev,
         ktm: ''
       }));
       
-      setFormData(prev => ({
-        ...prev,
-        ktm: file
-      }));
+      try {
+        const options = {
+          maxSizeMB: 1,             // Target size < 1MB
+          maxWidthOrHeight: 1200,   // Max width/height 1200px
+          useWebWorker: true        // Background worker
+        };
+
+        const compressedFile = await imageCompression(file, options);
+        
+        // Reconstruct the File object to keep its original name
+        const finalFile = new File([compressedFile], file.name, {
+          type: file.type,
+          lastModified: Date.now()
+        });
+
+        setFormData(prev => ({
+          ...prev,
+          ktm: finalFile
+        }));
+      } catch (err) {
+        console.error('Client-side compression failed, falling back to original file:', err);
+        if (file.size > 5 * 1024 * 1024) {
+          setValidationErrors(prev => ({
+            ...prev,
+            ktm: 'Gagal mengompresi gambar dan file asli melebihi 5MB'
+          }));
+          setIsCompressing(false);
+          return;
+        }
+        setFormData(prev => ({
+          ...prev,
+          ktm: file
+        }));
+      } finally {
+        setIsCompressing(false);
+      }
     }
   };
 
@@ -155,10 +179,14 @@ export default function RegisterPage() {
       case 1:
         if (!formData.password) {
           errors.password = 'Password harus diisi';
-        } else if (formData.password.length < 6) {
-          errors.password = 'Password minimal 6 karakter';
-        } else if (!/^(?=.*[a-zA-Z])(?=.*\d)/.test(formData.password)) {
-          errors.password = 'Password harus mengandung huruf dan angka';
+        } else if (formData.password.length < 8) {
+          errors.password = 'Password minimal 8 karakter';
+        } else if (!/[a-z]/.test(formData.password)) {
+          errors.password = 'Password harus mengandung huruf kecil';
+        } else if (!/[A-Z]/.test(formData.password)) {
+          errors.password = 'Password harus mengandung huruf besar';
+        } else if (!/[0-9]/.test(formData.password)) {
+          errors.password = 'Password harus mengandung angka';
         }
         if (!formData.confirmPassword) {
           errors.confirmPassword = 'Konfirmasi password harus diisi';
@@ -204,9 +232,8 @@ export default function RegisterPage() {
       
       await registerStudent(userData, formData.ktm);
       handleNext(); // Go to success step
-    } catch (error) {
-      console.error('Registration error:', error);
-      // Error handling sudah di handle di authStore
+    } catch (err) {
+      console.error('Registration error:', err);
     }
   };
 
@@ -214,307 +241,40 @@ export default function RegisterPage() {
     switch (step) {
       case 0:
         return (
-          <Fade in timeout={800}>
-            <Box sx={{ mt: 3 }}>
-              {/* Error Alert */}
-              {(error || Object.keys(validationErrors).length > 0) && (
-                <Alert 
-                  severity="error" 
-                  sx={{ mb: 3, borderRadius: 2 }}
-                  onClose={() => {
-                    clearError();
-                    setValidationErrors({});
-                  }}
-                >
-                  {error || Object.values(validationErrors).find(err => err)}
-                </Alert>
-              )}
-              
-              <Box sx={{ mb: 4 }}>
-                <TextField
-                  fullWidth
-                  label="NIM (Nomor Induk Mahasiswa)"
-                  placeholder="Contoh: 2021001234"
-                  value={formData.nim}
-                  onChange={handleInputChange('nim')}
-                  error={!!validationErrors.nim}
-                  helperText={validationErrors.nim}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Avatar sx={{ width: 24, height: 24, bgcolor: 'primary.main' }}>
-                          <Typography variant="caption" sx={{ color: 'white', fontSize: '10px' }}>ID</Typography>
-                        </Avatar>
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      height: 60,
-                      fontSize: '1.1rem',
-                      '&:hover fieldset': {
-                        borderColor: 'primary.main',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
-                />
-              </Box>
-              
-              <Box sx={{ mb: 4 }}>
-                <TextField
-                  fullWidth
-                  label="Nama Lengkap"
-                  placeholder="Sesuai dengan KTM"
-                  value={formData.fullName}
-                  onChange={handleInputChange('fullName')}
-                  error={!!validationErrors.fullName}
-                  helperText={validationErrors.fullName}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <AccountCircle color="primary" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      height: 60,
-                      fontSize: '1.1rem',
-                      '&:hover fieldset': {
-                        borderColor: 'primary.main',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
-                />
-              </Box>
-              
-              <Box sx={{ mb: 2 }}>
-                <TextField
-                  fullWidth
-                  label="Email Kampus"
-                  type="email"
-                  placeholder="nama@mahasiswa.bunghatta.ac.id"
-                  value={formData.email}
-                  onChange={handleInputChange('email')}
-                  error={!!validationErrors.email}
-                  helperText={validationErrors.email}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Email color="primary" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      height: 60,
-                      fontSize: '1.1rem',
-                      '&:hover fieldset': {
-                        borderColor: 'primary.main',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
-                />
-              </Box>
-            </Box>
-          </Fade>
+          <RegisterStudentIdentity
+            formData={formData}
+            handleInputChange={handleInputChange}
+            validationErrors={validationErrors}
+            setValidationErrors={setValidationErrors}
+            error={error}
+            clearError={clearError}
+          />
         );
       case 1:
         return (
-          <Fade in timeout={800}>
-            <Box sx={{ mt: 3 }}>
-              {/* Error Alert */}
-              {(error || Object.keys(validationErrors).length > 0) && (
-                <Alert 
-                  severity="error" 
-                  sx={{ mb: 3, borderRadius: 2 }}
-                  onClose={() => {
-                    clearError();
-                    setValidationErrors({});
-                  }}
-                >
-                  {error || Object.values(validationErrors).find(err => err)}
-                </Alert>
-              )}
-              
-              <Box sx={{ mb: 4 }}>
-                <TextField
-                  fullWidth
-                  label="Password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.password}
-                  onChange={handleInputChange('password')}
-                  error={!!validationErrors.password}
-                  helperText={validationErrors.password}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Lock color="primary" />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                          {showPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      height: 60,
-                      fontSize: '1.1rem',
-                      '&:hover fieldset': {
-                        borderColor: 'primary.main',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
-                />
-              </Box>
-              
-              <Box sx={{ mb: 2 }}>
-                <TextField
-                  fullWidth
-                  label="Konfirmasi Password"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange('confirmPassword')}
-                  error={!!validationErrors.confirmPassword}
-                  helperText={validationErrors.confirmPassword}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Lock color="primary" />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end">
-                          {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      height: 60,
-                      fontSize: '1.1rem',
-                      '&:hover fieldset': {
-                        borderColor: 'primary.main',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
-                />
-              </Box>
-            </Box>
-          </Fade>
+          <RegisterSecurity
+            formData={formData}
+            handleInputChange={handleInputChange}
+            validationErrors={validationErrors}
+            setValidationErrors={setValidationErrors}
+            error={error}
+            clearError={clearError}
+            showPassword={showPassword}
+            setShowPassword={setShowPassword}
+            showConfirmPassword={showConfirmPassword}
+            setShowConfirmPassword={setShowConfirmPassword}
+          />
         );
       case 2:
         return (
-          <Fade in timeout={800}>
-            <Box sx={{ mt: 3 }}>
-              {/* Error Alert */}
-              {(error || Object.keys(validationErrors).length > 0) && (
-                <Alert 
-                  severity="error" 
-                  sx={{ mb: 3, borderRadius: 2 }}
-                  onClose={() => {
-                    clearError();
-                    setValidationErrors({});
-                  }}
-                >
-                  {error || Object.values(validationErrors).find(err => err)}
-                </Alert>
-              )}
-              
-              <Box
-                component="label"
-                sx={{
-                  display: 'block',
-                  border: '3px dashed',
-                  borderColor: formData.ktm ? 'success.main' : alpha(theme.palette.primary.main, 0.5),
-                  borderRadius: 4,
-                  p: 6,
-                  textAlign: 'center',
-                  bgcolor: formData.ktm 
-                    ? alpha(theme.palette.success.main, 0.1) 
-                    : alpha(theme.palette.primary.main, 0.05),
-                  cursor: 'pointer',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  '&:hover': {
-                    borderColor: formData.ktm ? 'success.main' : 'primary.main',
-                    bgcolor: formData.ktm 
-                      ? alpha(theme.palette.success.main, 0.15) 
-                      : alpha(theme.palette.primary.main, 0.1),
-                    transform: 'translateY(-4px)',
-                    boxShadow: theme.shadows[8],
-                  }
-                }}
-              >
-                {formData.ktm ? (
-                  <Slide direction="up" in mountOnEnter unmountOnExit>
-                    <Box>
-                      <CheckCircle 
-                        sx={{ 
-                          fontSize: 80, 
-                          color: 'success.main',
-                          mb: 2,
-                          filter: 'drop-shadow(0 4px 8px rgba(76, 175, 80, 0.3))'
-                        }} 
-                      />
-                      <Typography variant="h5" fontWeight="bold" color="success.main" gutterBottom>
-                        File Berhasil Dipilih!
-                      </Typography>
-                      <Chip 
-                        label={formData.ktm.name} 
-                        color="success" 
-                        variant="outlined"
-                        sx={{ mt: 1, fontSize: '1rem', py: 2 }}
-                      />
-                    </Box>
-                  </Slide>
-                ) : (
-                  <Box>
-                    <CloudUpload 
-                      sx={{ 
-                        fontSize: 80, 
-                        color: 'primary.main',
-                        mb: 2,
-                        filter: 'drop-shadow(0 4px 8px rgba(46, 125, 50, 0.3))'
-                      }} 
-                    />
-                    <Typography variant="h5" fontWeight="bold" color="primary.main" gutterBottom>
-                      Upload KTM Anda
-                    </Typography>
-                    <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-                      Klik di sini atau drag & drop file
-                    </Typography>
-                    <Chip 
-                      label="JPG, PNG, atau PDF (Max 5MB)" 
-                      variant="outlined" 
-                      size="small"
-                    />
-                  </Box>
-                )}
-                <input
-                  type="file"
-                  hidden
-                  accept="image/*,.pdf"
-                  onChange={handleFileChange}
-                />
-              </Box>
-            </Box>
-          </Fade>
+          <RegisterKtmUpload
+            formData={formData}
+            handleFileChange={handleFileChange}
+            validationErrors={validationErrors}
+            setValidationErrors={setValidationErrors}
+            error={error}
+            clearError={clearError}
+          />
         );
       default:
         return null;
@@ -645,11 +405,11 @@ export default function RegisterPage() {
                       <Button
                         onClick={index === steps.length - 1 ? handleSubmit : handleNextStep}
                         endIcon={
-                          loading ? <CircularProgress size={20} color="inherit" /> :
+                          (loading || (index === steps.length - 1 && isCompressing)) ? <CircularProgress size={20} color="inherit" /> :
                           index === steps.length - 1 ? <PersonAdd /> : <ArrowForward />
                         }
                         variant="contained"
-                        disabled={loading}
+                        disabled={loading || (index === steps.length - 1 && isCompressing)}
                         sx={{ 
                           borderRadius: 3,
                           px: 4,
@@ -659,13 +419,15 @@ export default function RegisterPage() {
                           background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
                           boxShadow: `0 8px 20px ${alpha(theme.palette.primary.main, 0.4)}`,
                           '&:hover': {
-                            transform: loading ? 'none' : 'translateY(-3px)',
+                            transform: (loading || isCompressing) ? 'none' : 'translateY(-3px)',
                             boxShadow: `0 12px 24px ${alpha(theme.palette.primary.main, 0.5)}`,
                           },
                           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                         }}
                       >
-                        {loading ? 'Memproses...' : (index === steps.length - 1 ? 'Daftar Sekarang' : 'Lanjutkan')}
+                        {loading ? 'Memproses...' : 
+                         (index === steps.length - 1 && isCompressing) ? 'Mengompresi KTM...' :
+                         (index === steps.length - 1 ? 'Daftar Sekarang' : 'Lanjutkan')}
                       </Button>
                     </Box>
                   </StepContent>

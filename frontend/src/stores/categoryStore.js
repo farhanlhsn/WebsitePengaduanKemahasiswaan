@@ -8,7 +8,7 @@ import {
   getCategoriesWithReports as apiGetCategoriesWithReports
 } from '../services/api';
 
-const useCategoryStore = create((set, get) => ({
+const useCategoryStore = create((set) => ({
   // State
   categories: [],
   category: null,

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import AdminLayout from '../components/admin/AdminLayout';
 import {
   Container,
   Typography,
@@ -77,7 +76,7 @@ const SystemSecurityPage = () => {
   };
 
   return (
-    <AdminLayout>
+    <>
       <Container maxWidth="xl">
         {/* Header */}
         <Box sx={{ mb: 3 }}>
@@ -337,7 +336,7 @@ const SystemSecurityPage = () => {
         </Alert>
       </Snackbar>
       </Container>
-    </AdminLayout>
+    </>
   );
 };
 

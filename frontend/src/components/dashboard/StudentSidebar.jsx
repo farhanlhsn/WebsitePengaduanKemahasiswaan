@@ -33,7 +33,7 @@ import {
   Person,
 } from '@mui/icons-material';
 import { alpha, styled, useTheme } from '@mui/material/styles';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
 import { useTranslation } from '../../stores/settingsStore';
 import useChatStore from '../../stores/chatStore';
@@ -156,7 +156,6 @@ const ProfileStrip = styled(Box)(({ theme }) => ({
 const StudentSidebar = ({
   open,
   onClose,
-  drawerWidth = EXPANDED_WIDTH,
   onCreateReport,
   activeMenu,
   onMenuChange,
@@ -164,7 +163,6 @@ const StudentSidebar = ({
   onSidebarToggle
 }) => {
   const theme = useTheme();
-  const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { t } = useTranslation();
@@ -288,7 +286,7 @@ const StudentSidebar = ({
   // ── Render helpers ─────────────────────────────────────────────────────────
 
   const renderItems = (items) =>
-    items.map((item, idx) => (
+    items.map((item) => (
       <Tooltip
         key={item.id || item.text}
         title={!sidebarOpen ? item.text : ''}

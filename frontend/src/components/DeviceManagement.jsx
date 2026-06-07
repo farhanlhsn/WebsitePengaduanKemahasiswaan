@@ -31,7 +31,7 @@ const DeviceManagement = ({ open, onClose }) => {
     if (open) {
       getUserDevices();
     }
-  }, [open]);
+  }, [open, getUserDevices]);
 
   const getDeviceIcon = (deviceType) => {
     switch (deviceType?.toLowerCase()) {

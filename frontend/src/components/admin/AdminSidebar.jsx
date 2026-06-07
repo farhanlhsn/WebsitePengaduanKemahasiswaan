@@ -1,11 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   Box,
   Drawer,
   List,
   ListItem,
-  ListItemIcon,
-  ListItemText,
   Avatar,
   Typography,
   Badge,
@@ -33,25 +31,25 @@ import {
   AdminPanelSettings,
   ChevronLeft,
   History,
-  PersonAdd
+  PersonAdd,
+  SupervisorAccount
 } from '@mui/icons-material';
 import { alpha, styled, useTheme } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
 import UBHLogo from '../ui/UBHLogo';
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-const EXPANDED_WIDTH = 260;
-const COLLAPSED_WIDTH = 64;
+// Width constants — exported for layout components that need them.
+export const ADMIN_SIDEBAR_EXPANDED_WIDTH = 260;
+export const ADMIN_SIDEBAR_COLLAPSED_WIDTH = 64;
 
-// ─── Styled Components ────────────────────────────────────────────────────────
+/* ── Styled bits ─────────────────────────────────────────────────────── */
 
-/** Single menu item row */
 const NavItem = styled(ListItem)(({ theme, active, collapsed }) => ({
   borderRadius: '0.625rem',
   padding: collapsed ? '0.5rem' : '0.5rem 0.875rem',
   margin: collapsed ? '0.125rem auto' : '0.125rem 0.5rem',
-  width: collapsed ? `${COLLAPSED_WIDTH - 16}px` : 'auto',
+  width: collapsed ? `${ADMIN_SIDEBAR_COLLAPSED_WIDTH - 16}px` : 'auto',
   minHeight: '2.25rem',
   cursor: 'pointer',
   overflow: 'hidden',
@@ -61,9 +59,7 @@ const NavItem = styled(ListItem)(({ theme, active, collapsed }) => ({
   justifyContent: collapsed ? 'center' : 'flex-start',
   gap: collapsed ? 0 : '0.625rem',
   transition: 'all 0.25s ease',
-  backgroundColor: active
-    ? alpha(theme.palette.primary.main, 0.12)
-    : 'transparent',
+  backgroundColor: active ? alpha(theme.palette.primary.main, 0.12) : 'transparent',
   border: `1.5px solid ${active ? alpha(theme.palette.primary.main, 0.3) : 'transparent'}`,
 
   '& .nav-icon': {
@@ -75,7 +71,6 @@ const NavItem = styled(ListItem)(({ theme, active, collapsed }) => ({
     transition: 'color 0.2s ease',
     '& svg': { fontSize: '1.2rem' },
   },
-
   '& .nav-label': {
     opacity: collapsed ? 0 : 1,
     width: collapsed ? 0 : 'auto',
@@ -87,7 +82,6 @@ const NavItem = styled(ListItem)(({ theme, active, collapsed }) => ({
     color: active ? theme.palette.primary.main : theme.palette.text.primary,
     lineHeight: 1.3,
   },
-
   '&:hover': {
     backgroundColor: active
       ? alpha(theme.palette.primary.main, 0.18)
@@ -96,13 +90,10 @@ const NavItem = styled(ListItem)(({ theme, active, collapsed }) => ({
   },
 }));
 
-/** Floating toggle button — attached to the fixed sidebar edge */
 const ToggleBtn = styled(IconButton)(({ theme, open }) => ({
   position: 'fixed',
-  // Center vertically to top of sidebar, near header
   top: '1.5rem',
-  // Position at the right edge of the sidebar
-  left: open ? `${EXPANDED_WIDTH - 14}px` : `${COLLAPSED_WIDTH - 14}px`,
+  left: open ? `${ADMIN_SIDEBAR_EXPANDED_WIDTH - 14}px` : `${ADMIN_SIDEBAR_COLLAPSED_WIDTH - 14}px`,
   zIndex: 1300,
   width: 28,
   height: 28,
@@ -110,12 +101,10 @@ const ToggleBtn = styled(IconButton)(({ theme, open }) => ({
   border: `1.5px solid ${alpha(theme.palette.divider, 0.5)}`,
   boxShadow: `0 2px 12px ${alpha(theme.palette.common.black, 0.12)}`,
   transition: 'left 0.25s ease',
-
   '&:hover': {
     backgroundColor: alpha(theme.palette.primary.main, 0.08),
     borderColor: theme.palette.primary.main,
   },
-
   '& svg': {
     fontSize: '1rem',
     color: theme.palette.text.secondary,
@@ -124,7 +113,6 @@ const ToggleBtn = styled(IconButton)(({ theme, open }) => ({
   },
 }));
 
-/** Profile strip at the bottom */
 const ProfileStrip = styled(Box)(({ theme }) => ({
   flexShrink: 0,
   padding: '0.625rem 0.75rem',
@@ -135,84 +123,72 @@ const ProfileStrip = styled(Box)(({ theme }) => ({
   overflow: 'hidden',
 }));
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+/* ── Menu definitions ────────────────────────────────────────────────── */
+
+const MAIN_MENU = [
+  { id: 'dashboard',        text: 'Dashboard',           icon: <Dashboard />,    path: '/admin' },
+  { id: 'users',            text: 'Manajemen Pengguna',  icon: <People />,       path: '/admin/users' },
+  { id: 'unverified-users', text: 'Unverified Users',    icon: <PersonAdd />,    path: '/admin/unverified-users' },
+  { id: 'reports',          text: 'Semua Laporan',       icon: <Assignment />,   path: '/admin/reports' },
+  { id: 'chat',             text: 'Chat & Komunikasi',   icon: <Chat />,         path: '/admin/chat' },
+  { id: 'analytics',        text: 'Analytics',           icon: <Analytics />,    path: '/admin/analytics' },
+  { id: 'categories',       text: 'Kategori Laporan',    icon: <Category />,     path: '/admin/categories', superAdminOnly: true },
+  { id: 'admin-management', text: 'Kelola Admin',        icon: <SupervisorAccount />, path: '/admin/admins',  superAdminOnly: true },
+  { id: 'audit-logs',       text: 'Audit Logs',          icon: <History />,      path: '/admin/audit-logs', superAdminOnly: true },
+  { id: 'system',           text: 'Sistem & Keamanan',   icon: <Security />,     path: '/admin/system' },
+];
+
+const BOTTOM_MENU = [
+  { id: 'settings', text: 'Pengaturan', icon: <Settings />,    path: '/admin/settings' },
+  { id: 'help',     text: 'Bantuan',    icon: <HelpOutline />, path: '/admin/help' },
+];
+
+/* ── Component ───────────────────────────────────────────────────────── */
 
 const AdminSidebar = ({
   open,
   onClose,
-  drawerWidth = EXPANDED_WIDTH,
-  activeMenu,
-  onMenuChange,
   sidebarOpen,
-  onSidebarToggle
+  onSidebarToggle,
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { logout, user } = useAuthStore();
   const [, setHoveredItem] = useState(null);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
-  const isActive = (id) => activeMenu === id;
+  const isSuperAdmin = user?.role === 'SUPERADMIN';
+
+  // Filter menus by role: SUPERADMIN-only items are hidden from regular ADMINs.
+  const visibleMain = useMemo(
+    () => MAIN_MENU.filter((m) => !m.superAdminOnly || isSuperAdmin),
+    [isSuperAdmin]
+  );
+
+  // Active route detection — match by longest path prefix so /admin/users/123
+  // still highlights the "users" entry.
+  const activeId = useMemo(() => {
+    const candidates = [...MAIN_MENU, ...BOTTOM_MENU]
+      .filter((m) => m.path && location.pathname.startsWith(m.path))
+      .sort((a, b) => b.path.length - a.path.length);
+    if (candidates[0]) return candidates[0].id;
+    // Fallback: exact /admin → dashboard
+    if (location.pathname === '/admin' || location.pathname === '/admin/') return 'dashboard';
+    return null;
+  }, [location.pathname]);
 
   const handleClick = useCallback((item) => {
-    if (item.disabled) return;
-    if (item.syncWithState && item.id && onMenuChange) onMenuChange(item.id);
     if (item.path) navigate(item.path);
     else if (item.action) item.action();
     if (isMobile && onClose) onClose();
-  }, [navigate, onMenuChange, isMobile, onClose]);
-
-  const handleLogoutClick = () => {
-    setLogoutDialogOpen(true);
-  };
+  }, [navigate, isMobile, onClose]);
 
   const confirmLogout = async () => {
     await logout();
     navigate('/login');
   };
-
-  // ── Menu definitions ──────────────────────────────────────────────────────
-
-  const mainMenu = [
-    { id: 'dashboard',        text: 'Dashboard',           icon: <Dashboard />,         path: '/admin',                  syncWithState: true },
-    { id: 'users',            text: 'Manajemen Pengguna',   icon: <People />,            path: '/admin/users',            syncWithState: true },
-    { id: 'unverified-users', text: 'Unverified Users',     icon: <PersonAdd />,         path: '/admin/unverified-users' },
-    { id: 'reports',          text: 'Semua Laporan',        icon: <Assignment />,        path: '/admin/reports',          syncWithState: true },
-    { id: 'chat',             text: 'Chat & Komunikasi',    icon: <Chat />,              path: '/admin/chat',             syncWithState: true },
-    { id: 'analytics',        text: 'Analytics',            icon: <Analytics />,         path: '/admin/analytics' },
-    { id: 'categories',       text: 'Kategori Laporan',     icon: <Category />,          path: '/admin/categories' },
-    { id: 'audit-logs',       text: 'Audit Logs',           icon: <History />,           path: '/admin/audit-logs' },
-    { id: 'system',           text: 'Sistem & Keamanan',    icon: <Security />,          path: '/admin/system' },
-  ];
-
-  const bottomMenu = [
-    { 
-      id: 'settings',
-      text: 'Pengaturan', 
-      icon: <Settings />, 
-      path: '/admin/settings',
-      description: 'Konfigurasi sistem',
-      syncWithState: true
-    },
-    { 
-      id: 'help',
-      text: 'Bantuan', 
-      icon: <HelpOutline />, 
-      path: '/admin/help',
-      description: 'Panduan dan dukungan',
-      syncWithState: true
-    },
-    { 
-      text: 'Logout', 
-      icon: <Logout />, 
-      action: handleLogoutClick, 
-      color: 'error',
-      description: 'Keluar dari sistem'
-    },
-  ];
-
-  // ── Render helpers ─────────────────────────────────────────────────────────
 
   const renderItems = (items) =>
     items.map((item) => (
@@ -224,7 +200,7 @@ const AdminSidebar = ({
         disableHoverListener={!!sidebarOpen}
       >
         <NavItem
-          active={isActive(item.id) ? 1 : 0}
+          active={activeId === item.id ? 1 : 0}
           collapsed={!sidebarOpen ? 1 : 0}
           onClick={() => handleClick(item)}
           onMouseEnter={() => setHoveredItem(item.id || item.text)}
@@ -232,12 +208,9 @@ const AdminSidebar = ({
         >
           <Box className="nav-icon">
             {item.badge ? (
-              <Badge badgeContent={item.badge} color="error">
-                {item.icon}
-              </Badge>
+              <Badge badgeContent={item.badge} color="error">{item.icon}</Badge>
             ) : item.icon}
           </Box>
-
           <Box
             className="nav-label"
             sx={{ color: item.color === 'error' ? 'error.main' : undefined }}
@@ -248,17 +221,8 @@ const AdminSidebar = ({
       </Tooltip>
     ));
 
-  // ── Drawer content ─────────────────────────────────────────────────────────
-
   const content = (
-    <Box sx={{
-      height: '100dvh',
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-    }}>
-
-      {/* ── Header ──────────────────────────────────────────────────── */}
+    <Box sx={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <Box sx={{
         flexShrink: 0,
         display: 'flex',
@@ -272,12 +236,9 @@ const AdminSidebar = ({
         background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.04)} 0%, transparent 100%)`,
         transition: 'padding 0.25s ease',
       }}>
-        {/* Logo — fixed 32×32 in both states */}
         <Box sx={{ flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <UBHLogo size="small" style={{ width: 32, height: 32 }} />
         </Box>
-
-        {/* Title — only visible when expanded */}
         <Box sx={{
           overflow: 'hidden',
           opacity: sidebarOpen ? 1 : 0,
@@ -293,7 +254,7 @@ const AdminSidebar = ({
             fontSize: '0.875rem',
             lineHeight: 1.2,
           }}>
-            Portal Admin
+            {isSuperAdmin ? 'Portal Super Admin' : 'Portal Admin'}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', opacity: 0.8 }}>
             Sistem Pengaduan Mahasiswa
@@ -301,74 +262,51 @@ const AdminSidebar = ({
         </Box>
       </Box>
 
-      {/* ── Scrollable menu area ─────────────────────────────────────── */}
       <Box sx={{
-        flex: 1,
-        minHeight: 0,
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        py: '0.25rem',
+        flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', py: '0.25rem',
         '&::-webkit-scrollbar': { width: 3 },
         '&::-webkit-scrollbar-thumb': { bgcolor: alpha(theme.palette.primary.main, 0.2), borderRadius: 4 },
       }}>
-        {/* Main section label */}
         {sidebarOpen && (
           <Typography variant="overline" sx={{
-            display: 'block',
-            px: '1.25rem',
-            pt: '0.25rem',
-            pb: 0,
-            fontSize: '0.6rem',
-            fontWeight: 700,
-            color: 'text.disabled',
-            letterSpacing: '0.08em',
+            display: 'block', px: '1.25rem', pt: '0.25rem', pb: 0,
+            fontSize: '0.6rem', fontWeight: 700, color: 'text.disabled', letterSpacing: '0.08em',
           }}>
             Menu Utama
           </Typography>
         )}
-
-        <List sx={{ py: 0 }}>
-          {renderItems(mainMenu)}
-        </List>
-
+        <List sx={{ py: 0 }}>{renderItems(visibleMain)}</List>
         <Divider sx={{ mx: sidebarOpen ? '1rem' : '0.5rem', my: '0.25rem', opacity: 0.4 }} />
-
+        <List sx={{ py: 0 }}>{renderItems(BOTTOM_MENU)}</List>
+        <Divider sx={{ mx: sidebarOpen ? '1rem' : '0.5rem', my: '0.25rem', opacity: 0.4 }} />
         <List sx={{ py: 0 }}>
-          {renderItems(bottomMenu)}
+          {renderItems([{ text: 'Logout', icon: <Logout />, action: () => setLogoutDialogOpen(true), color: 'error' }])}
         </List>
       </Box>
 
-      {/* ── User profile strip ───────────────────────────────────────── */}
       <ProfileStrip>
         <Tooltip title={!sidebarOpen ? (user?.name || 'Administrator') : ''} placement="right" arrow>
           <Avatar sx={{
-            bgcolor: 'success.main',
-            width: 30,
-            height: 30,
-            flexShrink: 0,
-            border: `2px solid ${alpha(theme.palette.success.main, 0.3)}`,
+            bgcolor: isSuperAdmin ? 'warning.main' : 'success.main',
+            width: 30, height: 30, flexShrink: 0,
+            border: `2px solid ${alpha(isSuperAdmin ? theme.palette.warning.main : theme.palette.success.main, 0.3)}`,
           }}>
             <AdminPanelSettings sx={{ fontSize: '0.95rem' }} />
           </Avatar>
         </Tooltip>
-
-        {/* Name & email — fade out when collapsed */}
         <Box sx={{
-          flex: 1,
-          overflow: 'hidden',
+          flex: 1, overflow: 'hidden',
           opacity: sidebarOpen ? 1 : 0,
           width: sidebarOpen ? 'auto' : 0,
           transition: 'opacity 0.2s ease, width 0.25s ease',
         }}>
           <Typography variant="body2" fontWeight={700} noWrap sx={{ fontSize: '0.75rem', lineHeight: 1.3 }}>
-            {user?.name || 'Administrator'}
+            {user?.name || (isSuperAdmin ? 'Super Admin' : 'Administrator')}
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: '0.65rem', opacity: 0.8 }}>
             {user?.email}
           </Typography>
         </Box>
-
-        {/* Online dot */}
         {sidebarOpen && (
           <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: 'success.main', flexShrink: 0 }} />
         )}
@@ -376,29 +314,19 @@ const AdminSidebar = ({
     </Box>
   );
 
-  // ── Sidebar paper styles (used for permanent desktop drawer) ────────────────
   const paperSx = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    height: '100dvh',
-    width: sidebarOpen ? `${EXPANDED_WIDTH}px` : `${COLLAPSED_WIDTH}px`,
-    overflowX: 'hidden',
-    overflowY: 'hidden',
+    position: 'fixed', top: 0, left: 0, height: '100dvh',
+    width: sidebarOpen ? `${ADMIN_SIDEBAR_EXPANDED_WIDTH}px` : `${ADMIN_SIDEBAR_COLLAPSED_WIDTH}px`,
+    overflowX: 'hidden', overflowY: 'hidden',
     borderRight: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
     background: `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.98)} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`,
     backdropFilter: 'blur(20px)',
-    zIndex: 1200,
-    borderRadius: 0,
-    transition: theme.transitions.create('width', {
-      easing: theme.transitions.easing.sharp,
-      duration: 250,
-    }),
+    zIndex: 1200, borderRadius: 0,
+    transition: theme.transitions.create('width', { easing: theme.transitions.easing.sharp, duration: 250 }),
   };
 
   return (
     <>
-      {/* ── Mobile: temporary drawer ──────────────────────────────────── */}
       <Drawer
         variant="temporary"
         open={open}
@@ -407,7 +335,7 @@ const AdminSidebar = ({
         sx={{
           display: { xs: 'block', sm: 'none' },
           '& .MuiDrawer-paper': {
-            width: EXPANDED_WIDTH,
+            width: ADMIN_SIDEBAR_EXPANDED_WIDTH,
             height: '100dvh',
             background: paperSx.background,
             backdropFilter: 'blur(20px)',
@@ -418,29 +346,22 @@ const AdminSidebar = ({
         {content}
       </Drawer>
 
-      {/* ── Desktop: permanent drawer + spacer + toggle ───────────────── */}
       <Box sx={{
         display: { xs: 'none', sm: 'block' },
         flexShrink: 0,
-        width: sidebarOpen ? `${EXPANDED_WIDTH}px` : `${COLLAPSED_WIDTH}px`,
+        width: sidebarOpen ? `${ADMIN_SIDEBAR_EXPANDED_WIDTH}px` : `${ADMIN_SIDEBAR_COLLAPSED_WIDTH}px`,
         transition: theme.transitions.create('width', { easing: theme.transitions.easing.sharp, duration: 250 }),
       }}>
-        <Drawer
-          variant="permanent"
-          sx={{ '& .MuiDrawer-paper': paperSx }}
-        >
+        <Drawer variant="permanent" sx={{ '& .MuiDrawer-paper': paperSx }}>
           {content}
         </Drawer>
-
-        {/* Toggle button — position:fixed so it floats correctly over the page */}
         <ToggleBtn open={sidebarOpen} onClick={onSidebarToggle} size="small">
           <ChevronLeft />
         </ToggleBtn>
       </Box>
 
-      {/* Logout Confirmation Dialog */}
-      <Dialog 
-        open={logoutDialogOpen} 
+      <Dialog
+        open={logoutDialogOpen}
         onClose={() => setLogoutDialogOpen(false)}
         PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
       >
@@ -451,18 +372,10 @@ const AdminSidebar = ({
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button 
-            onClick={() => setLogoutDialogOpen(false)}
-            sx={{ borderRadius: 2, fontWeight: 600 }}
-          >
+          <Button onClick={() => setLogoutDialogOpen(false)} sx={{ borderRadius: 2, fontWeight: 600 }}>
             Batal
           </Button>
-          <Button 
-            variant="contained" 
-            color="error" 
-            onClick={confirmLogout}
-            sx={{ borderRadius: 2, fontWeight: 600 }}
-          >
+          <Button variant="contained" color="error" onClick={confirmLogout} sx={{ borderRadius: 2, fontWeight: 600 }}>
             Ya, Keluar
           </Button>
         </DialogActions>

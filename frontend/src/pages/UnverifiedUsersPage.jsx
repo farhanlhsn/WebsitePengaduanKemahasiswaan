@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import AdminLayout from '../components/admin/AdminLayout';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Container,
@@ -62,11 +61,7 @@ const UnverifiedUsersPage = () => {
     severity: 'success'
   });
 
-  useEffect(() => {
-    loadUnverifiedUsers();
-  }, []);
-
-  const loadUnverifiedUsers = async () => {
+  const loadUnverifiedUsers = useCallback(async () => {
     try {
       setLoading(true);
       const result = await getUnverifiedStudents();
@@ -76,7 +71,11 @@ const UnverifiedUsersPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadUnverifiedUsers();
+  }, [loadUnverifiedUsers]);
 
   const handleSelectAll = (event) => {
     if (event.target.checked) {
@@ -159,7 +158,7 @@ const UnverifiedUsersPage = () => {
   );
 
   return (
-    <AdminLayout>
+    <>
       <Container maxWidth="xl" sx={{ py: 4 }}>
         {/* Header */}
         <Box sx={{ mb: 4 }}>
@@ -596,7 +595,7 @@ const UnverifiedUsersPage = () => {
           </Alert>
         </Snackbar>
       </Container>
-    </AdminLayout>
+    </>
   );
 };
 

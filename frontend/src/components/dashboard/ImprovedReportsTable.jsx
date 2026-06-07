@@ -6,7 +6,7 @@ import {
   Skeleton, Fade, Zoom, Tooltip, Stack, useMediaQuery, SwipeableDrawer
 } from '@mui/material';
 import { 
-  Visibility, AddCircle, Assignment, FilterList, ViewModule, ViewList
+  Visibility, AddCircle, Assignment, FilterList, ViewModule, ViewList, VisibilityOff
 } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
@@ -15,14 +15,12 @@ import SearchInput from '../ui/SearchInput';
 import StatusBadge from '../ui/StatusBadge';
 import GlassCard from '../ui/GlassCard';
 import RichTextDisplay from '../ui/RichTextDisplay';
+import { richTextToPlainText } from '../../utils/sanitizeHtml';
 
 const CATEGORY_COLOR = '#2E7D32';
 
-// Utility: strip HTML tags for plain text preview
 function stripHtml(html) {
-  const div = document.createElement('div');
-  div.innerHTML = html;
-  return div.textContent || div.innerText || '';
+  return richTextToPlainText(html);
 }
 
 const ImprovedReportsTable = React.memo(({
@@ -137,9 +135,33 @@ const ImprovedReportsTable = React.memo(({
                   >
                     {report.title}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                    #{report.registrationNumber}
-                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      #{report.registrationNumber}
+                    </Typography>
+                    {report.isAnonymous && (
+                      <Tooltip title="Laporan anonim — identitas Anda disembunyikan dari admin">
+                        <Box
+                          component="span"
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            px: 0.75,
+                            py: 0.25,
+                            borderRadius: 1,
+                            bgcolor: alpha(theme.palette.warning.main, 0.1),
+                            color: 'warning.main',
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <VisibilityOff sx={{ fontSize: 12 }} />
+                          Anonim
+                        </Box>
+                      </Tooltip>
+                    )}
+                  </Stack>
                 </Box>
                 <StatusBadge status={report.status} size="small" />
               </Box>
@@ -271,9 +293,16 @@ const ImprovedReportsTable = React.memo(({
                 }}
               >
                 <TableCell>
-                  <Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.8rem' }}>
-                    {report.registrationNumber}
-                  </Typography>
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.8rem' }}>
+                      {report.registrationNumber}
+                    </Typography>
+                    {report.isAnonymous && (
+                      <Tooltip title="Laporan anonim">
+                        <VisibilityOff sx={{ fontSize: 14, color: 'warning.main' }} />
+                      </Tooltip>
+                    )}
+                  </Stack>
                 </TableCell>
                 <TableCell sx={{ maxWidth: 200 }}>
                   <Typography 
@@ -386,9 +415,16 @@ const ImprovedReportsTable = React.memo(({
                 }}
               >
                 <TableCell sx={{ py: 3 }}>
-                  <Typography variant="body1" fontWeight={600}>
-                    {report.registrationNumber}
-                  </Typography>
+                  <Stack direction="row" spacing={0.75} alignItems="center">
+                    <Typography variant="body1" fontWeight={600}>
+                      {report.registrationNumber}
+                    </Typography>
+                    {report.isAnonymous && (
+                      <Tooltip title="Laporan anonim — identitas Anda disembunyikan dari admin">
+                        <VisibilityOff sx={{ fontSize: 16, color: 'warning.main' }} />
+                      </Tooltip>
+                    )}
+                  </Stack>
                 </TableCell>
                 <TableCell sx={{ py: 3, maxWidth: 400 }}>
                   <Typography variant="body1" fontWeight={500} sx={{ mb: 0.5 }}>

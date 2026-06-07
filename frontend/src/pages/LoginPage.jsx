@@ -53,11 +53,18 @@ export default function LoginPage() {
     try {
       const response = await login(formData.email, formData.password);
       
-      // Redirect based on user role
-      if (response?.data?.role === 'ADMIN') {
-        navigate('/admin');
+      // Check if redirectUrl exists in sessionStorage
+      const redirectUrl = sessionStorage.getItem('redirectUrl');
+      if (redirectUrl) {
+        sessionStorage.removeItem('redirectUrl');
+        navigate(redirectUrl);
       } else {
-        navigate('/dashboard');
+        // Redirect based on user role
+        if (['ADMIN', 'SUPERADMIN'].includes(response?.data?.role)) {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
       }
     } catch (error) {
       // Error is already handled by the store
@@ -126,8 +133,9 @@ export default function LoginPage() {
                   mb: 3,
                   boxShadow: `0 8px 20px ${alpha(theme.palette.primary.main, 0.3)}`
                 }}
+                aria-label="Login"
               >
-                <AccountCircle sx={{ fontSize: 40 }} />
+                <AccountCircle sx={{ fontSize: 40 }} aria-hidden="true" />
               </Avatar>
               
               <Typography variant="h5" fontWeight="bold" color="primary.main" gutterBottom>
@@ -144,6 +152,8 @@ export default function LoginPage() {
                 {error && (
                   <Alert 
                     severity="error" 
+                    role="alert"
+                    aria-live="assertive"
                     sx={{ mb: 3, borderRadius: 2 }}
                     onClose={clearError}
                   >
@@ -155,13 +165,16 @@ export default function LoginPage() {
                     fullWidth
                     label="Email Kampus"
                     type="email"
+                    autoComplete="email"
+                    required
                     placeholder="nama@mahasiswa.bunghatta.ac.id"
                     value={formData.email}
                     onChange={handleInputChange('email')}
+                    inputProps={{ 'aria-label': 'Email kampus' }}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <Email color="primary" />
+                          <Email color="primary" aria-hidden="true" />
                         </InputAdornment>
                       ),
                     }}
@@ -184,17 +197,24 @@ export default function LoginPage() {
                     fullWidth
                     label="Password"
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    required
                     value={formData.password}
                     onChange={handleInputChange('password')}
+                    inputProps={{ 'aria-label': 'Password' }}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <Lock color="primary" />
+                          <Lock color="primary" aria-hidden="true" />
                         </InputAdornment>
                       ),
                       endAdornment: (
                         <InputAdornment position="end">
-                          <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                          <IconButton
+                            onClick={() => setShowPassword(!showPassword)}
+                            edge="end"
+                            aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                          >
                             {showPassword ? <VisibilityOff /> : <Visibility />}
                           </IconButton>
                         </InputAdornment>
@@ -243,6 +263,8 @@ export default function LoginPage() {
                 {/* Forgot Password Link */}
                 <Box sx={{ textAlign: 'center', mb: 3 }}>
                   <Button 
+                    component={Link}
+                    to="/forgot-password"
                     variant="text"
                     sx={{ 
                       fontWeight: 'bold',

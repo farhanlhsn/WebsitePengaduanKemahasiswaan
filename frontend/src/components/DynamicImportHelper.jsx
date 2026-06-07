@@ -113,7 +113,7 @@ export const getDynamicIcons = () => ({
 // Utility functions for reducing bundle size
 export const optimizeForProduction = () => {
   // Remove development-only code
-  if (process.env.NODE_ENV === 'production') {
+  if (import.meta.env.PROD) {
     // Disable React DevTools
     if (typeof window !== 'undefined' && window.__REACT_DEVTOOLS_GLOBAL_HOOK__) {
       window.__REACT_DEVTOOLS_GLOBAL_HOOK__.onCommitFiberRoot = null;
@@ -172,7 +172,7 @@ export const createIntersectionObserver = (callback, options = {}) => {
 
 // Performance monitoring utilities
 export const measurePerformance = (name, fn) => {
-  if ('performance' in window && process.env.NODE_ENV === 'development') {
+  if ('performance' in window && import.meta.env.DEV) {
     performance.mark(`${name}-start`);
     const result = fn();
     performance.mark(`${name}-end`);

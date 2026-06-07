@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 /**
  * OptimizedImage component that automatically serves the best image format
@@ -18,29 +18,12 @@ const OptimizedImage = ({
 }) => {
   const [imageSrc, setImageSrc] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const [, setHasError] = useState(false);
 
   // Get base filename without extension
   const getBaseFilename = (path) => {
     const filename = path.split('/').pop();
     return filename.substring(0, filename.lastIndexOf('.')) || filename;
-  };
-
-  // Get file extension
-  const getExtension = (path) => {
-    return path.split('.').pop().toLowerCase();
-  };
-
-  // Generate optimized image sources
-  const generateSources = (originalSrc) => {
-    const filename = getBaseFilename(originalSrc);
-    
-    // For manually optimized images, they'll be in /optimized/ folder
-    return {
-      avif: `/optimized/${filename}.avif`,
-      webp: `/optimized/${filename}.webp`,
-      original: originalSrc
-    };
   };
 
   // Check if browser supports format
@@ -65,8 +48,13 @@ const OptimizedImage = ({
   };
 
   // Determine best image source
-  const determineBestSource = async () => {
-    const sources = generateSources(src);
+  const determineBestSource = useCallback(async () => {
+    const filename = getBaseFilename(src);
+    const sources = {
+      avif: `/optimized/${filename}.avif`,
+      webp: `/optimized/${filename}.webp`,
+      original: src
+    };
     
     // Check AVIF support first (best compression)
     const supportsAvif = await checkFormatSupport('avif');
@@ -84,7 +72,7 @@ const OptimizedImage = ({
     
     // Fallback to original
     return sources.original;
-  };
+  }, [src]);
 
   // Load optimal image source
   useEffect(() => {
@@ -112,7 +100,7 @@ const OptimizedImage = ({
     return () => {
       isMounted = false;
     };
-  }, [src, debug]);
+  }, [src, debug, determineBestSource]);
 
   const handleLoad = (event) => {
     setIsLoaded(true);
@@ -154,4 +142,4 @@ const OptimizedImage = ({
   );
 };
 
-export default OptimizedImage; 
+export default OptimizedImage;

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * Optimized Material-UI Imports
  * Reduces bundle size through efficient tree shaking and selective imports
@@ -112,7 +113,6 @@ export {
   Edit, 
   Delete, 
   Search, 
-  Menu, 
   Close, 
   Check, 
   ArrowBack, 
@@ -252,7 +252,7 @@ export const measureComponentLoad = (componentName, loader) => {
     const component = await loader();
     const end = performance.now();
     
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.log(`${componentName} loaded in ${end - start}ms`);
     }
     
@@ -272,24 +272,3 @@ export const getCachedComponent = async (componentName, loader) => {
   componentCache.set(componentName, component);
   return component;
 };
-
-export default {
-  // Core exports
-  Box, Typography, Button, IconButton, Container, Paper, Stack,
-  
-  // Utilities
-  useTheme, useMediaQuery, alpha, styled, createTheme,
-  
-  // Helper functions
-  loadComponent,
-  loadComponents,
-  measureComponentLoad,
-  getCachedComponent,
-  
-  // Pre-configured sets
-  getFormComponents,
-  getTableComponents,
-  getDialogComponents,
-  getLayoutComponents,
-  getNavigationComponents
-}; 

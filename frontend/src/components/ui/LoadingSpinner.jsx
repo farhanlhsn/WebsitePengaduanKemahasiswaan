@@ -31,7 +31,7 @@ const StyledLoadingContainer = styled(Box)(({ theme }) => ({
   },
 }));
 
-const CustomSpinner = styled(CircularProgress)(({ theme }) => ({
+const CustomSpinner = styled(CircularProgress)(() => ({
   '& .MuiCircularProgress-circle': {
     strokeLinecap: 'round',
     stroke: `url(#gradient-${Math.random().toString(36).substr(2, 9)})`,
@@ -41,7 +41,6 @@ const CustomSpinner = styled(CircularProgress)(({ theme }) => ({
 const LoadingSpinner = React.memo(({ 
   message = 'Memuat...', 
   size = 40, 
-  variant = 'default',
   fullScreen = false 
 }) => {
   const gradientId = `gradient-${Math.random().toString(36).substr(2, 9)}`;

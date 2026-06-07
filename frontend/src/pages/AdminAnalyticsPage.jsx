@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminLayout from '../components/admin/AdminLayout';
 import {
   Container, Typography, Grid, Box, Paper, Stack,
   Avatar, useTheme, IconButton, Button, Breadcrumbs,
@@ -22,7 +21,6 @@ import GlassCard from '../components/ui/GlassCard';
 
 // ─── Stat Card ─────────────────────────────────────────────────────────────────
 const StatCard = ({ title, value, icon, color, subtitle }) => {
-  const theme = useTheme();
   return (
     <GlassCard variant="glass" sx={{
       p: { xs: 2.5, md: 3 },
@@ -158,14 +156,12 @@ const AdminAnalyticsPage = () => {
   
   const [loading, setLoading]           = useState(true);
   const [dashboardStats, setDashboardStats] = useState(null);
-  const [reportStats, setReportStats]   = useState(null);
+  const [, setReportStats] = useState(null);
   const [timeRange, setTimeRange]       = useState('all');
 
   const { reports, getAllReports } = useReportStore();
 
-  useEffect(() => { loadAnalytics(); }, []);
-
-  const loadAnalytics = async () => {
+  const loadAnalytics = useCallback(async () => {
     try {
       setLoading(true);
       // Fetch core dashboard and account stats
@@ -175,7 +171,8 @@ const AdminAnalyticsPage = () => {
       
       // Ensure reports are loaded in the store for trend/status calculations
       // Admin should see ALL reports
-      if (!reports || reports.length === 0) {
+      const { reports: storeReports } = useReportStore.getState();
+      if (!storeReports || storeReports.length === 0) {
         await getAllReports();
       }
     } catch (e) {
@@ -183,7 +180,9 @@ const AdminAnalyticsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getAllReports]);
+
+  useEffect(() => { loadAnalytics(); }, [loadAnalytics]);
 
   // Filtered reports for time-range aware stats
   const filteredReports = useMemo(() => filterByRange(reports, timeRange), [reports, timeRange]);
@@ -224,7 +223,7 @@ const AdminAnalyticsPage = () => {
   if (loading) return <LoadingSpinner fullScreen message="Menganalisis data sistem..." />;
 
   return (
-    <AdminLayout>
+    <>
       <Container maxWidth={false} sx={{ py: { xs: 2, md: 3 }, px: { xs: 2, md: 4 } }}>
 
         {/* ── Breadcrumb & Actions ── */}
@@ -483,7 +482,7 @@ const AdminAnalyticsPage = () => {
         </GlassCard>
 
       </Container>
-    </AdminLayout>
+    </>
   );
 };
 

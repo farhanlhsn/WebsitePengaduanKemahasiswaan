@@ -210,7 +210,7 @@ const HelpPage = ({ isEmbedded = false }) => {
                   <Book color="primary" sx={{ mr: 1.5 }} /> Panduan Cepat
                 </Typography>
                 <Grid container spacing={2}>
-                  {quickGuide.map((guide, idx) => (
+                  {quickGuide.map((guide) => (
                     <Grid item xs={6} sm={3} key={guide.step}>
                       <Box sx={{ 
                         textAlign: 'center', p: 2, borderRadius: 3, 

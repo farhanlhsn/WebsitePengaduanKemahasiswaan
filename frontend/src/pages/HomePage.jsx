@@ -412,7 +412,7 @@ export default function HomePage() {
             gridTemplateColumns: { xs: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
             gap: 3
           }}>
-            {statistics.map((stat, index) => (
+            {statistics.map((stat) => (
               <Paper
                 key={stat.label}
                 elevation={0}
@@ -576,7 +576,7 @@ export default function HomePage() {
             gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
             gap: 4
           }}>
-            {features.map((feature, index) => (
+            {features.map((feature) => (
               <Paper
                 key={feature.title}
                 elevation={0}
@@ -656,7 +656,7 @@ export default function HomePage() {
             gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
             gap: 4
           }}>
-            {testimonials.map((testimonial, index) => (
+            {testimonials.map((testimonial) => (
               <Card 
                 key={testimonial.name}
                 elevation={0}

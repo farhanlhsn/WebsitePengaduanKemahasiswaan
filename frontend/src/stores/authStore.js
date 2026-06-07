@@ -9,6 +9,10 @@ import {
   logoutDevice as apiLogoutDevice,
   logoutAllOtherDevices as apiLogoutAllOtherDevices
 } from '../services/api';
+import { setAccessToken, clearAccessToken, getAccessToken } from '../services/authToken';
+import { purgeSensitiveCaches } from '../utils/cachePurge';
+
+let refreshInFlight = null;
 
 const useAuthStore = create(
   persist(
@@ -32,8 +36,9 @@ const useAuthStore = create(
         try {
           set({ loading: true, error: null });
           
-          // Clear any existing auth state before login attempt
-          localStorage.removeItem('token');
+          // Clear any existing auth state and cached API data before login attempt
+          clearAccessToken();
+          await purgeSensitiveCaches();
           set({
             user: null,
             token: null,
@@ -45,8 +50,7 @@ const useAuthStore = create(
           // Extract data from backend response: { accessToken, data: user }
           const { accessToken, data: user } = response;
           
-          // Store access token in localStorage (refresh token is in httpOnly cookie)
-          localStorage.setItem('token', accessToken);
+          setAccessToken(accessToken);
           
           set({
             user,
@@ -62,7 +66,7 @@ const useAuthStore = create(
           const errorMessage = error.response?.error || error.response?.data?.message || 'Login failed';
           
           // Ensure complete cleanup on login failure
-          localStorage.removeItem('token');
+          clearAccessToken();
           set({ 
             loading: false, 
             error: errorMessage,
@@ -98,44 +102,58 @@ const useAuthStore = create(
           console.error('Logout error:', error);
         } finally {
           // Clear state regardless of API call success
-          localStorage.removeItem('token');
+          clearAccessToken();
+          await purgeSensitiveCaches();
           set({
             user: null,
             token: null,
             isLoggedIn: false,
             loading: false,
             error: null,
-            devices: []
+            devices: [],
+            role: null,
           });
         }
       },
 
       // Refresh Token (uses httpOnly cookie automatically)
       refreshAuthToken: async () => {
-        try {
-          // Call refresh endpoint - it uses httpOnly cookie automatically
-          const response = await apiRefreshToken();
-          const { accessToken } = response;
+        if (refreshInFlight) return refreshInFlight;
 
-          // Store new access token
-          localStorage.setItem('token', accessToken);
-          set({ token: accessToken });
-          
-          return response;
-        } catch (error) {
-          // If refresh fails, clear everything and logout user
-          console.log('Token refresh failed, logging out...');
-          localStorage.removeItem('token');
-          set({
-            user: null,
-            token: null,
-            isLoggedIn: false,
-            loading: false,
-            error: null,
-            devices: []
-          });
-          throw error;
-        }
+        refreshInFlight = (async () => {
+          try {
+            const response = await apiRefreshToken();
+            const { accessToken } = response;
+
+            setAccessToken(accessToken);
+            set({
+              token: accessToken,
+              user: response.data || get().user,
+              role: response.data?.role || get().role,
+              isLoggedIn: true,
+            });
+
+            return response;
+          } catch (error) {
+            console.log('Token refresh failed, logging out...');
+            clearAccessToken();
+            await purgeSensitiveCaches();
+            set({
+              user: null,
+              token: null,
+              isLoggedIn: false,
+              loading: false,
+              error: null,
+              devices: [],
+              role: null,
+            });
+            throw error;
+          } finally {
+            refreshInFlight = null;
+          }
+        })();
+
+        return refreshInFlight;
       },
 
       // Get User Devices
@@ -183,15 +201,11 @@ const useAuthStore = create(
         }
       },
 
-      // Initialize auth from localStorage
+      // Initialize auth from persisted, non-sensitive user snapshot only.
       initializeAuth: () => {
-        const token = localStorage.getItem('token');
-        
-        if (token) {
-          set({
-            token,
-            isLoggedIn: true
-          });
+        if (!getAccessToken()) {
+          clearAccessToken();
+          set({ token: null, isLoggedIn: false });
         }
       },
 
@@ -205,7 +219,7 @@ const useAuthStore = create(
       name: 'auth-storage',
       partialize: (state) => ({
         user: state.user,
-        isLoggedIn: state.isLoggedIn
+        role: state.role,
       })
     }
   )

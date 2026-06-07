@@ -26,7 +26,7 @@ const PerformanceOptimizer = () => {
       };
       
       // Handle beforeunload for bfcache compatibility
-      const handleBeforeUnload = (event) => {
+      const handleBeforeUnload = () => {
         // Don't prevent default unless absolutely necessary
         // Avoiding event.preventDefault() to allow bfcache
         

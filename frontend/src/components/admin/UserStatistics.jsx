@@ -35,11 +35,6 @@ const UserStatistics = ({ users = [], loading = false }) => {
     admins: users.filter(u => u.role === 'ADMIN').length
   };
 
-  const recentUsers = users
-    .filter(u => u.status === 'ACTIVE')
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 5);
-
   const StatCard = ({ title, value, icon, color, subtitle, trend }) => (
     <Paper sx={{ 
       p: 3, 

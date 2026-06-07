@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 // CRITICAL: Import React FIRST before anything else
 import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -16,29 +17,25 @@ import AppThemeProvider from './AppThemeProvider';
 
 // Import other dependencies
 import { router } from './pages/routes';
-import axios from "axios";
 import './index.css';
-import { v4 as uuidv4 } from 'uuid';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 
 // CRITICAL: Import fonts synchronously to prevent FOUC
 import '@fontsource/inter/400.css';
 
 // Lazy load PerformanceOptimizer only in production
-const PerformanceOptimizer = process.env.NODE_ENV === 'production' 
+const PerformanceOptimizer = import.meta.env.PROD 
   ? React.lazy(() => import('./components/PerformanceOptimizer'))
   : () => null;
 
-// Load additional fonts during idle time
+// Load only the heading weights (600, 700) during idle.
+// Dropped 300/500/800 — used <1% in current UI and add ~60KB.
 const loadAdditionalFonts = () => {
   if ('requestIdleCallback' in window) {
     requestIdleCallback(() => {
       Promise.all([
-        import('@fontsource/inter/300.css'),
-        import('@fontsource/inter/500.css'),
         import('@fontsource/inter/600.css'),
         import('@fontsource/inter/700.css'),
-        import('@fontsource/inter/800.css')
       ]).catch(err => {
         console.warn('Failed to load additional fonts:', err);
       });
@@ -46,25 +43,11 @@ const loadAdditionalFonts = () => {
   }
 };
 
-// Axios configuration
-axios.defaults.baseURL = "http://localhost:6060";
-axios.defaults.headers.common['Content-Type'] = 'application/json';
-axios.defaults.headers.common['Accept'] = 'application/json';
-axios.defaults.withCredentials = true;
-
-const FINGERPRINT_KEY = 'device_fingerprint';
-
-export const getOrCreateDeviceFingerprint = () => {
-  let fingerprint = localStorage.getItem(FINGERPRINT_KEY);
-  if (!fingerprint) {
-    fingerprint = uuidv4(); 
-    localStorage.setItem(FINGERPRINT_KEY, fingerprint);
-  }
-  return fingerprint;
-};
+import { getOrCreateDeviceFingerprint } from './utils/fingerprint';
+export { getOrCreateDeviceFingerprint };
 
 // Production optimizations
-if (process.env.NODE_ENV === 'production') {
+if (import.meta.env.PROD) {
   setTimeout(loadAdditionalFonts, 100);
 }
 
@@ -143,7 +126,7 @@ class ErrorBoundary extends React.Component {
             }
           }, 'Refresh Halaman'),
           
-          process.env.NODE_ENV === 'development' && this.state.error && React.createElement('details', {
+          import.meta.env.DEV && this.state.error && React.createElement('details', {
             key: 'error-details',
             style: { 
               marginTop: '24px', 
@@ -193,7 +176,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 // CRITICAL: Ensure proper initialization order with React.createElement
 const AppContent = () => React.createElement(ErrorBoundary, null,
   React.createElement(AppThemeProvider, null,
-    process.env.NODE_ENV === 'production' && React.createElement(Suspense, {
+    import.meta.env.PROD && React.createElement(Suspense, {
       fallback: React.createElement(LoadingSpinner, {
         fullScreen: true,
         message: "Mengoptimalkan performa..."
@@ -205,7 +188,7 @@ const AppContent = () => React.createElement(ErrorBoundary, null,
 
 // CRITICAL: Render with proper error handling and React.createElement
 try {
-  if (process.env.NODE_ENV === 'production') {
+  if (import.meta.env.PROD) {
     root.render(React.createElement(AppContent));
   } else {
     root.render(

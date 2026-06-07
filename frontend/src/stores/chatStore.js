@@ -48,23 +48,37 @@ const useChatStore = create(
 
         try {
           // Connect to socket
-          socketService.connect(userId);
+          socketService.connect();
           
-          // Setup socket event listeners
           socketService.on('connected', () => {
             set({ isConnected: true });
-            // Re-join room if a report is selected
             const { currentReport } = get();
             if (currentReport) {
-              socketService.joinRoom(currentReport.id, currentReport.userId);
+              socketService.joinRoom(currentReport.id).catch((err) => {
+                set({ error: err.message || 'Gagal bergabung ke room chat.' });
+              });
             }
           });
           
           socketService.on('disconnected', () => {
             set({ isConnected: false });
           });
+
+          socketService.on('roomJoinFailed', (err) => {
+            set({ error: err.message || 'Akses chat ditolak.', currentReport: null });
+          });
+
+          socketService.on('chat:error', (err) => {
+            if (err?.code === 'ACCESS_DENIED' || err?.code === 'ROOM_NOT_JOINED') {
+              set({ error: err.message || 'Akses chat ditolak.' });
+            }
+          });
+
+          socketService.on('chat:list:update', () => {
+            get().getReportsWithMessages();
+          });
           
-          socketService.on('newMessage', (message) => {
+          socketService.on('chat:message', (message) => {
             // Ignore duplicates from multiple broadcasts
             if (processedNewMessageIds.has(message.id)) return;
             processedNewMessageIds.add(message.id);
@@ -99,11 +113,10 @@ const useChatStore = create(
             }
           });
           
-          socketService.on('messagesRead', ({ reportId, userId }) => {
+          socketService.on('chat:read', ({ reportId }) => {
             const { messages, currentReport } = get();
             if (!messages || !Array.isArray(messages) || currentReport?.id !== reportId) return;
             
-            // Mark messages sent by the current user as read by the other party
             const updatedMessages = messages.map(msg => 
               msg.senderId === useAuthStore.getState().user.id 
                 ? { ...msg, status: 'read', isRead: true } 
@@ -112,8 +125,7 @@ const useChatStore = create(
             set({ messages: updatedMessages });
           });
           
-          // **FIXED**: This listener now works because initialize is called
-          socketService.on('messageDeleted', ({ messageId }) => {
+          socketService.on('chat:message:deleted', ({ messageId }) => {
             const { messages } = get();
             if (!messages || !Array.isArray(messages)) return;
             
@@ -161,24 +173,21 @@ const useChatStore = create(
 
         try {
           // Use a specific loading state for the message panel
-          set({ isMessagesLoading: true, error: null, currentReport: report, messages: [] });
-          
-          // Leave old room and join new one
-          if (currentReport) {
-            socketService.leaveRoom(currentReport.id, currentReport.userId);
-          }
-          await chatApi.joinRoom(report.id);
-          socketService.joinRoom(report.id, report.userId);
-          
-          // Fetch messages for the new report
+          set({ isMessagesLoading: true, error: null, messages: [] });
+
+          await socketService.joinRoom(report.id);
+          set({ currentReport: report });
+
           await get().getMessages(report.id);
-          
-          // Mark messages as read and update the report list
           await get().markMessagesAsRead(report.id);
           get().updateReportInList(report.id, { unreadCount: 0 });
 
         } catch (error) {
-          set({ error: error.message });
+          set({
+            error: error.message || 'Gagal bergabung ke chat laporan ini.',
+            currentReport: null,
+            messages: [],
+          });
         } finally {
           set({ isMessagesLoading: false });
         }
@@ -219,13 +228,13 @@ const useChatStore = create(
         }
       },
       
-      sendMessage: async (content, attachments = [], replyToId = null) => {
-        const { currentReport, messages } = get();
+      sendMessage: async (content, attachmentTokens = [], replyToId = null) => {
+        const { currentReport } = get();
         if (!currentReport) throw new Error('No report selected');
 
         try {
           set({ error: null });
-          const result = await chatApi.sendMessage(currentReport.id, content, attachments, replyToId);
+          const result = await chatApi.sendMessage(currentReport.id, content, attachmentTokens, replyToId);
           
           // Use the API response directly to add the message with full replyTo data
           if (result.status === 'success' && result.data) {
@@ -301,7 +310,7 @@ const useChatStore = create(
         try {
           // Make the API call
           await chatApi.deleteMessage(messageId);
-          // If successful, the backend should emit a 'messageDeleted' event
+          // If successful, the backend emits 'chat:message:deleted' for other clients
           // which will confirm the state for other users. Our state is already correct.
         } catch (error) {
           // If the API call fails, revert the state and show an error
@@ -331,7 +340,7 @@ const useChatStore = create(
         if (!currentReport || !userId) return;
 
         try {
-          socketService.sendTypingIndicator(currentReport.id, userId, isTyping);
+          socketService.sendTypingIndicator(currentReport.id, isTyping);
         } catch (err) {
           console.error('Failed to send typing indicator:', err);
         }

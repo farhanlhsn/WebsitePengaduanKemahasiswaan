@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import {
   Search, Person, AdminPanelSettings, Circle, 
-  Message, Schedule, CheckCircle, Cancel, Refresh
+  Message, Schedule, CheckCircle, Cancel, Refresh, VisibilityOff
 } from '@mui/icons-material';
 import { styled, alpha, useTheme } from '@mui/material/styles';
 import { formatDistanceToNow } from 'date-fns';
@@ -15,8 +15,9 @@ import useChatStore from '../../stores/chatStore';
 import useAuthStore from '../../stores/authStore';
 
 const ChatListContainer = styled(Box)(({ theme }) => ({
-  height: '600px',
-  width: '350px',
+  height: '100%',
+  minHeight: 600,
+  width: '100%',
   backgroundColor: theme.palette.background.paper,
   borderRadius: 16,
   overflow: 'hidden',
@@ -202,8 +203,12 @@ const ChatList = ({ onReportSelect }) => {
       >
         <ListItemAvatar>
           <Badge badgeContent={report.unreadCount} color="error" overlap="circular" invisible={!hasUnread}>
-            <Avatar sx={{ bgcolor: isFromUser ? 'primary.light' : 'secondary.main', width: 40, height: 40 }}>
-              {isFromUser ? <Person /> : <AdminPanelSettings />}
+            <Avatar sx={{
+              bgcolor: report.isAnonymous ? 'warning.light' : (isFromUser ? 'primary.light' : 'secondary.main'),
+              width: 40,
+              height: 40
+            }}>
+              {report.isAnonymous ? <VisibilityOff fontSize="small" /> : (isFromUser ? <Person /> : <AdminPanelSettings />)}
             </Avatar>
           </Badge>
         </ListItemAvatar>

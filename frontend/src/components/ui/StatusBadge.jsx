@@ -56,7 +56,7 @@ const STATUS_CONFIG = {
   },
 };
 
-const StyledStatusBadge = styled(Chip)(({ theme, statuscolor }) => ({
+const StyledStatusBadge = styled(Chip)(({ statuscolor }) => ({
   borderRadius: 20,
   fontWeight: 600,
   fontSize: '0.875rem',

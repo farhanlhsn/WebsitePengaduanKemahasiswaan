@@ -115,7 +115,7 @@ const StatusChart = ({ data }) => {
                     animationDuration={1500}
                     stroke="none"
                   >
-                    {dataWithTotal.map((entry, idx) => (
+                    {dataWithTotal.map((entry) => (
                       <Cell 
                         key={entry.name} 
                         fill={entry.color}

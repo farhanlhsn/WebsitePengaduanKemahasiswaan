@@ -17,12 +17,13 @@ import useAuthStore from '../stores/authStore';
 import useUserStore from '../stores/userStore';
 import useSettingsStore from '../stores/settingsStore';
 import { useNavigate } from 'react-router-dom';
+import { changePassword } from '../services/api';
 
 const SettingsPage = ({ isEmbedded = false }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { user, devices, logout, logoutDevice, getUserDevices } = useAuthStore();
-  const { updateUser, loading, error, clearError } = useUserStore();
+  const { error, clearError } = useUserStore();
 
   const { settings, updateAllSettings } = useSettingsStore();
   const [localSettings, setLocalSettings] = useState(settings);
@@ -118,19 +119,31 @@ const SettingsPage = ({ isEmbedded = false }) => {
       alert('Password konfirmasi tidak cocok');
       return;
     }
-    
+
     try {
-      // Implementasi change password API
-      // await changePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      const result = await changePassword(
+        passwordForm.currentPassword,
+        passwordForm.newPassword
+      );
+
       setPasswordDialog(false);
       setPasswordForm({
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
-        showPasswords: false
+        showPasswords: false,
       });
-      alert('Password berhasil diubah');
+
+      if (result?.data?.requireReLogin) {
+        await logout();
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      alert(result?.message || 'Password berhasil diubah');
     } catch (error) {
+      const message = error.response?.data?.message || 'Gagal mengubah password';
+      alert(message);
       console.error('Failed to change password:', error);
     }
   };

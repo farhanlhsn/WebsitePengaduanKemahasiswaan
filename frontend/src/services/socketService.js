@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import { getAccessToken } from './authToken';
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 const socketBaseUrl = import.meta.env.VITE_SOCKET_URL
@@ -12,72 +13,76 @@ class SocketService {
     this.eventListeners = new Map();
   }
 
-  // Initialize socket connection
-  connect(userId) {
+  connect() {
     if (this.socket && this.isConnected) {
       return this.socket;
     }
+
+    const token = getAccessToken();
 
     this.socket = io(socketBaseUrl, {
       withCredentials: true,
       autoConnect: true,
       transports: ['websocket', 'polling'],
       timeout: 5000,
-      forceNew: false
+      forceNew: false,
+      auth: { token },
     });
 
-    // Connection event handlers
     this.socket.on('connect', () => {
-      console.log('Connected to Socket.IO server:', this.socket.id);
       this.isConnected = true;
       this.emit('connected', { socketId: this.socket.id });
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('Disconnected from Socket.IO server:', reason);
       this.isConnected = false;
       this.currentRoom = null;
       this.emit('disconnected', { reason });
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-      this.emit('connectionError', { error });
+      const code = error.data?.code ?? 'AUTH_INVALID';
+      this.emit('connectionError', { code, message: error.message });
     });
 
-    // Chat event handlers
-    this.socket.on('newMessage', (message) => {
-      this.emit('newMessage', message);
+    this.socket.on('chat:message', (message) => {
+      this.emit('chat:message', message);
     });
 
-    this.socket.on('messagesRead', (data) => {
-      this.emit('messagesRead', data);
+    this.socket.on('chat:read', (data) => {
+      this.emit('chat:read', data);
     });
 
-    this.socket.on('messageDeleted', (data) => {
-      this.emit('messageDeleted', data);
+    this.socket.on('chat:message:deleted', (data) => {
+      this.emit('chat:message:deleted', data);
     });
 
-    this.socket.on('userJoined', (data) => {
-      this.emit('userJoined', data);
+    this.socket.on('chat:list:update', (data) => {
+      this.emit('chat:list:update', data);
     });
 
-    this.socket.on('userLeft', (data) => {
-      this.emit('userLeft', data);
+    this.socket.on('room:joined', (data) => {
+      this.emit('room:joined', data);
     });
 
-    this.socket.on('userTyping', (data) => {
-      this.emit('userTyping', data);
+    this.socket.on('room:left', (data) => {
+      this.emit('room:left', data);
     });
 
-    this.socket.on('messageReadReceipt', (data) => {
-      this.emit('messageReadReceipt', data);
+    this.socket.on('chat:typing', (data) => {
+      this.emit('chat:typing', data);
+    });
+
+    this.socket.on('chat:error', (data) => {
+      this.emit('chat:error', data);
+      if (['AUTH_REVOKED', 'USER_DELETED', 'AUTH_INVALID'].includes(data?.code)) {
+        this.disconnect();
+      }
     });
 
     return this.socket;
   }
 
-  // Disconnect socket
   disconnect() {
     if (this.socket) {
       this.socket.disconnect();
@@ -88,53 +93,48 @@ class SocketService {
     }
   }
 
-  // Join a chat room
-  joinRoom(reportId, userId) {
-    if (!this.socket || !this.isConnected) {
-      console.error('Socket not connected');
-      return;
-    }
+  joinRoom(reportId) {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.isConnected) {
+        return reject({ code: 'NOT_CONNECTED', message: 'Socket not connected' });
+      }
 
-    const roomData = { reportId, userId };
-    this.socket.emit('joinRoom', roomData);
-    this.currentRoom = `report_${reportId}`;
-    
-    console.log(`Joining room: report_${reportId}`);
+      this.socket.timeout(5000).emit('joinRoom', { reportId }, (err, result) => {
+        if (err) {
+          this.currentRoom = null;
+          return reject({ code: 'TIMEOUT', message: 'Join room timeout' });
+        }
+        if (result?.ok) {
+          this.currentRoom = result.roomId;
+          resolve(result);
+        } else {
+          this.currentRoom = null;
+          this.emit('roomJoinFailed', result);
+          reject(result);
+        }
+      });
+    });
   }
 
-  // Leave current room
-  leaveRoom(reportId, userId) {
-    if (!this.socket || !this.isConnected) {
-      console.error('Socket not connected');
-      return;
-    }
+  leaveRoom(reportId) {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.isConnected) {
+        return reject({ code: 'NOT_CONNECTED', message: 'Socket not connected' });
+      }
 
-    const roomData = { reportId, userId };
-    this.socket.emit('leaveRoom', roomData);
-    this.currentRoom = null;
-    
-    console.log(`Leaving room: report_${reportId}`);
+      this.socket.timeout(5000).emit('leaveRoom', { reportId }, (err, result) => {
+        if (err) return reject({ code: 'TIMEOUT', message: 'Leave room timeout' });
+        this.currentRoom = null;
+        resolve(result);
+      });
+    });
   }
 
-  // Send typing indicator
-  sendTypingIndicator(reportId, userId, isTyping) {
-    if (!this.socket || !this.isConnected) {
-      return;
-    }
-
-    this.socket.emit('typing', { reportId, userId, isTyping });
+  sendTypingIndicator(reportId, isTyping) {
+    if (!this.socket || !this.isConnected) return;
+    this.socket.emit('chat:typing', { reportId, isTyping });
   }
 
-  // Send message read receipt
-  sendMessageReadReceipt(reportId, messageId, userId) {
-    if (!this.socket || !this.isConnected) {
-      return;
-    }
-
-    this.socket.emit('messageRead', { reportId, messageId, userId });
-  }
-
-  // Event listener management
   on(event, callback) {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, new Set());
@@ -148,10 +148,9 @@ class SocketService {
     }
   }
 
-  // Emit custom events to registered listeners
   emit(event, data) {
     if (this.eventListeners.has(event)) {
-      this.eventListeners.get(event).forEach(callback => {
+      this.eventListeners.get(event).forEach((callback) => {
         try {
           callback(data);
         } catch (error) {
@@ -161,23 +160,19 @@ class SocketService {
     }
   }
 
-  // Check connection status
   isSocketConnected() {
     return this.socket && this.isConnected;
   }
 
-  // Get current room
   getCurrentRoom() {
     return this.currentRoom;
   }
 
-  // Get socket ID
   getSocketId() {
     return this.socket?.id || null;
   }
 }
 
-// Create singleton instance
 const socketService = new SocketService();
 
-export default socketService; 
+export default socketService;

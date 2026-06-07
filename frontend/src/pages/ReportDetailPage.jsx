@@ -29,6 +29,7 @@ import {
   IconButton,
   AppBar,
   Toolbar,
+  LinearProgress,
 } from "@mui/material";
 import {
   ArrowBack,
@@ -40,6 +41,7 @@ import {
   Restore,
   Download,
   Visibility,
+  VisibilityOff,
   AttachFile,
   School,
   Email,
@@ -59,12 +61,17 @@ import { useParams, useNavigate } from "react-router-dom";
 import { alpha } from "@mui/material/styles";
 import useReportStore from "../stores/reportStore";
 import useChatStore from "../stores/chatStore";
+import { uploadAttachments } from "../services/api";
 import { DocViewerPlus } from "react-doc-viewer-plus";
 import { Document, Page, pdfjs } from "react-pdf";
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 import DashboardSidebar from "../components/dashboard/StudentSidebar";
 import RichTextDisplay from "../components/ui/RichTextDisplay";
 import ChatInterface from "../components/chat/ChatInterface";
+import ReportStatusTimeline from "../components/dashboard/ReportStatusTimeline";
+import ReportAttachmentCard from "../components/report/ReportAttachmentCard";
+import ReportReporterInfo from "../components/report/ReportReporterInfo";
+import ReportInfoSidebar from "../components/report/ReportInfoSidebar";
 
 const THEME_COLORS = {
   primary: "#43A047",
@@ -188,7 +195,7 @@ const ReportDetailPage = () => {
   const theme = useTheme();
   const { getReportById, deleteReport, restoreReport, loading, error } =
     useReportStore();
-  const { selectReport, currentReport } = useChatStore();
+  const { selectReport } = useChatStore();
   const [report, setReport] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [restoreDialog, setRestoreDialog] = useState(false);
@@ -199,6 +206,8 @@ const ReportDetailPage = () => {
   const [pdfPreviewAttachment, setPdfPreviewAttachment] = useState(null);
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
   const [numPages, setNumPages] = useState(null);
+  const [uploadingAttachments, setUploadingAttachments] = useState(false);
+  const [attachmentFeedback, setAttachmentFeedback] = useState(null);
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -244,11 +253,28 @@ const ReportDetailPage = () => {
       minute: "2-digit",
     });
   };
-  const getFileTypeIcon = (fileType) => {
-    if (fileType?.startsWith("image/")) return "🖼️";
-    if (fileType?.startsWith("video/")) return "🎥";
-    if (fileType?.includes("pdf")) return "📄";
-    return "📁";
+
+  const handleRetryAttachmentUpload = async (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!files.length || !report?.id) return;
+
+    setUploadingAttachments(true);
+    setAttachmentFeedback(null);
+    try {
+      await uploadAttachments(report.id, files);
+      const updatedReport = await getReportById(id);
+      setReport(updatedReport);
+      setAttachmentFeedback({ severity: 'success', message: 'Lampiran berhasil diunggah.' });
+    } catch (uploadError) {
+      console.error('Attachment upload failed:', uploadError);
+      setAttachmentFeedback({
+        severity: 'error',
+        message: uploadError.response?.data?.message || uploadError.response?.data?.error || 'Lampiran gagal diunggah.',
+      });
+    } finally {
+      setUploadingAttachments(false);
+    }
   };
 
   const handleAttachmentPreview = (attachment) => {
@@ -372,8 +398,36 @@ const ReportDetailPage = () => {
               gap: theme.spacing(4),
             }}
           >
+            {report.isAnonymous && (
+              <Alert
+                severity="info"
+                icon={<VisibilityOff />}
+                sx={{
+                  borderRadius: 3,
+                  bgcolor: alpha(theme.palette.warning.main, 0.08),
+                  color: 'text.primary',
+                  border: `1px solid ${alpha(theme.palette.warning.main, 0.3)}`,
+                  '& .MuiAlert-icon': { color: theme.palette.warning.main },
+                }}
+              >
+                <Typography variant="body2" fontWeight={600}>
+                  Laporan ini dikirim secara anonim
+                </Typography>
+                <Typography variant="caption" color="text.secondary" component="div">
+                  Identitas Anda (nama, NIM, email) disembunyikan dari admin.
+                  Pesan chat Anda tampil sebagai &ldquo;Anonim&rdquo;.
+                </Typography>
+              </Alert>
+            )}
             <Box sx={{ width: "100%" }}>
               <Stack spacing={4}>
+                <Paper sx={{ ...cardStyle, width: "100%", p: { xs: 2, md: 3 } }}>
+                  <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2 }}>
+                    Status Laporan
+                  </Typography>
+                  <ReportStatusTimeline status={report.status} />
+                </Paper>
+
                 <Paper sx={{ ...cardStyle, width: "100%" }}>
                   <Box
                     sx={{
@@ -447,27 +501,51 @@ const ReportDetailPage = () => {
                         showFullButton={true}
                       />
                     </Box>
+                    {attachmentFeedback && (
+                      <Alert
+                        severity={attachmentFeedback.severity}
+                        role="alert"
+                        aria-live="polite"
+                        sx={{ mb: 2, borderRadius: 2 }}
+                      >
+                        {attachmentFeedback.message}
+                      </Alert>
+                    )}
+                    {uploadingAttachments && <LinearProgress sx={{ mb: 2, borderRadius: 1 }} />}
+                    <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 3 }}>
+                      <AttachFile sx={{ color: THEME_COLORS.primary }} />
+                      <Typography variant="h6" fontWeight={600}>
+                        Lampiran
+                      </Typography>
+                      <Chip
+                        label={`${report.attachments?.length || 0} file`}
+                        size="small"
+                        sx={{
+                          bgcolor: alpha(THEME_COLORS.primary, 0.1),
+                          color: THEME_COLORS.primary,
+                        }}
+                      />
+                      {report.status === 'PENDING' && (
+                        <Button
+                          component="label"
+                          size="small"
+                          variant="outlined"
+                          startIcon={<AttachFile />}
+                          disabled={uploadingAttachments}
+                        >
+                          Tambah Lampiran
+                          <input
+                            type="file"
+                            hidden
+                            multiple
+                            accept="image/*,.pdf,.doc,.docx"
+                            onChange={handleRetryAttachmentUpload}
+                          />
+                        </Button>
+                      )}
+                    </Stack>
                     {report.attachments && report.attachments.length > 0 && (
                       <Box>
-                        <Stack
-                          direction="row"
-                          alignItems="center"
-                          spacing={1.5}
-                          sx={{ mb: 3 }}
-                        >
-                          <AttachFile sx={{ color: THEME_COLORS.primary }} />
-                          <Typography variant="h6" fontWeight={600}>
-                            Lampiran
-                          </Typography>
-                          <Chip
-                            label={`${report.attachments.length} file`}
-                            size="small"
-                            sx={{
-                              bgcolor: alpha(THEME_COLORS.primary, 0.1),
-                              color: THEME_COLORS.primary,
-                            }}
-                          />
-                        </Stack>
                         <Grid container spacing={2} sx={{ minWidth: 0 }}>
                           {report.attachments.map((attachment) => (
                             <Grid
@@ -478,92 +556,11 @@ const ReportDetailPage = () => {
                               key={attachment.id}
                               sx={{ minWidth: 0 }}
                             >
-                              <Card
-                                variant="outlined"
-                                sx={{
-                                  borderRadius: 2,
-                                  borderColor: "grey.200",
-                                  minWidth: 0,
-                                  height: "100%",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                }}
-                              >
-                                <CardContent sx={{ minWidth: 0, flex: 1 }}>
-                                  <Stack
-                                    direction="row"
-                                    alignItems="center"
-                                    spacing={2}
-                                    sx={{ mb: 1, minWidth: 0 }}
-                                  >
-                                    <Typography
-                                      sx={{ fontSize: "2rem", flexShrink: 0 }}
-                                    >
-                                      {getFileTypeIcon(attachment.fileType)}
-                                    </Typography>
-                                    <Box
-                                      sx={{
-                                        minWidth: 0,
-                                        flex: 1,
-                                        overflow: "hidden",
-                                      }}
-                                    >
-                                      <Tooltip
-                                        title={
-                                          attachment.fileName || "Unknown file"
-                                        }
-                                      >
-                                        <Typography
-                                          variant="subtitle1"
-                                          fontWeight={600}
-                                          noWrap
-                                          sx={{
-                                            overflow: "hidden",
-                                            textOverflow: "ellipsis",
-                                          }}
-                                        >
-                                          {attachment.fileName ||
-                                            "Unknown file"}
-                                        </Typography>
-                                      </Tooltip>
-                                    </Box>
-                                  </Stack>
-                                </CardContent>
-                                <CardActions
-                                  sx={{
-                                    px: 2,
-                                    pb: 2,
-                                    justifyContent: "space-between",
-                                  }}
-                                >
-                                  <Button
-                                    size="small"
-                                    startIcon={<Visibility />}
-                                    onClick={() =>
-                                      handleAttachmentPreview(attachment)
-                                    }
-                                    variant="text"
-                                    sx={{ color: "text.secondary" }}
-                                  >
-                                    Lihat
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    startIcon={<Download />}
-                                    component="a"
-                                    href={`${BACKEND_UPLOAD_URL}${attachment.filePath}`}
-                                    download={attachment.fileName}
-                                    variant="contained"
-                                    sx={{
-                                      ml: "auto",
-                                      bgcolor: THEME_COLORS.primary,
-                                      "&:hover": { bgcolor: "#388E3C" },
-                                    }}
-                                  >
-                                    Unduh
-                                  </Button>
-                                </CardActions>
-                              </Card>
+                              <ReportAttachmentCard
+                                attachment={attachment}
+                                onPreview={handleAttachmentPreview}
+                                downloadUrl={`${BACKEND_UPLOAD_URL}${attachment.filePath}`}
+                              />
                             </Grid>
                           ))}
                         </Grid>
@@ -576,152 +573,15 @@ const ReportDetailPage = () => {
 
             <Box sx={{ width: "100%" }}>
               <Stack spacing={4}>
-                {report.user && (
-                  <Paper sx={{ ...cardStyle, p: 3 }}>
-                    <Typography
-                      variant="h6"
-                      fontWeight={600}
-                      gutterBottom
-                      sx={{ mb: 3 }}
-                    >
-                      Informasi Pelapor
-                    </Typography>
-                    <Stack
-                      direction="row"
-                      alignItems="center"
-                      spacing={2}
-                      sx={{ mb: 3 }}
-                    >
-                      <Avatar
-                        sx={{
-                          bgcolor: alpha(THEME_COLORS.primary, 0.1),
-                          color: THEME_COLORS.primary,
-                          width: 56,
-                          height: 56,
-                        }}
-                      >
-                        {report.user.name.charAt(0).toUpperCase()}
-                      </Avatar>
-                      <Typography variant="h6" fontWeight={700}>
-                        {report.user.name}
-                      </Typography>
-                    </Stack>
-                    <Stack spacing={2.5}>
-                      <InfoItem
-                        icon={<School />}
-                        label="NIM"
-                        value={report.user.nim}
-                        color={THEME_COLORS.textSecondary}
-                      />
-                      <InfoItem
-                        icon={<Email />}
-                        label="Email"
-                        value={report.user.email}
-                        color={THEME_COLORS.textSecondary}
-                      />
-                    </Stack>
-                  </Paper>
-                )}
-                <Paper sx={{ ...cardStyle, p: 3 }}>
-                  <Typography
-                    variant="h6"
-                    fontWeight={600}
-                    gutterBottom
-                    sx={{ mb: 2 }}
-                  >
-                    Informasi Laporan
-                  </Typography>
-                  <Stack spacing={2.5} sx={{ mb: 3 }}>
-                    <InfoItem
-                      icon={<Category />}
-                      label="Kategori"
-                      value={report.category?.name}
-                      color={THEME_COLORS.primary}
-                    />
-                    <InfoItem
-                      icon={<Today />}
-                      label="Tanggal Dibuat"
-                      value={formatDate(report.createdAt)}
-                      color={THEME_COLORS.textSecondary}
-                    />
-                    {report.updatedAt !== report.createdAt && (
-                      <InfoItem
-                        icon={<AccessTime />}
-                        label="Terakhir Diupdate"
-                        value={formatDate(report.updatedAt)}
-                        color={THEME_COLORS.pending}
-                      />
-                    )}
-                    {report.closedAt && (
-                      <InfoItem
-                        icon={<CheckCircle />}
-                        label="Tanggal Ditutup"
-                        value={formatDate(report.closedAt)}
-                        color={THEME_COLORS.resolved}
-                      />
-                    )}
-                    <InfoItem
-                      icon={<CheckCircle />}
-                      label="Status"
-                      value={currentStatus.label}
-                      color={currentStatus.color}
-                    />
-                  </Stack>
-                  <Divider sx={{ my: 1 }} />
-                  <Typography
-                    variant="h6"
-                    fontWeight={600}
-                    gutterBottom
-                    sx={{ mb: 2 }}
-                  >
-                    Aksi
-                  </Typography>
-                  <Stack spacing={2}>
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      startIcon={<Chat />}
-                      onClick={handleOpenChat}
-                      sx={{
-                        py: 1.5,
-                        borderRadius: 2,
-                        fontWeight: 600,
-                        bgcolor: THEME_COLORS.primary,
-                        "&:hover": { bgcolor: "#388E3C" },
-                      }}
-                    >
-                      Chat dengan Admin
-                    </Button>
-                    {report.deletedAt ? (
-                      <Button
-                        fullWidth
-                        variant="contained"
-                        startIcon={<Restore />}
-                        onClick={() => setRestoreDialog(true)}
-                        sx={{
-                          py: 1.5,
-                          borderRadius: 2,
-                          fontWeight: 600,
-                          bgcolor: THEME_COLORS.primary,
-                          "&:hover": { bgcolor: "#388E3C" },
-                        }}
-                      >
-                        Pulihkan Laporan
-                      </Button>
-                    ) : (
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        color="error"
-                        startIcon={<Delete />}
-                        onClick={() => setDeleteDialog(true)}
-                        sx={{ py: 1.5, borderRadius: 2, fontWeight: 600 }}
-                      >
-                        Hapus Laporan
-                      </Button>
-                    )}
-                  </Stack>
-                </Paper>
+                <ReportReporterInfo user={report.user} />
+                <ReportInfoSidebar
+                  report={report}
+                  currentStatus={currentStatus}
+                  formatDate={formatDate}
+                  onOpenChat={handleOpenChat}
+                  onDeleteClick={() => setDeleteDialog(true)}
+                  onRestoreClick={() => setRestoreDialog(true)}
+                />
               </Stack>
             </Box>
           </Box>

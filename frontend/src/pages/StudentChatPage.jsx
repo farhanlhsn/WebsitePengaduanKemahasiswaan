@@ -19,11 +19,10 @@ export default function StudentChatPage() {
   const { user } = useAuthStore(); // Get user state
   // Select individual pieces from the zustand store to keep their references
   // stable between renders and avoid triggering effects on every update.
-  const reports = useChatStore((state) => state.reports) || [];
+  const reports = useChatStore((state) => state.reports);
   const getReportsWithMessages = useChatStore((state) => state.getReportsWithMessages);
   const selectReport = useChatStore((state) => state.selectReport);
   const initialize = useChatStore((state) => state.initialize);
-  const cleanup = useChatStore((state) => state.cleanup);
   const { getReportById } = useReportStore();
 
   // Establish socket connection once when the user ID is available.
@@ -40,7 +39,7 @@ export default function StudentChatPage() {
   // Auto-select report based on route param
   useEffect(() => {
     // Make sure we have reports loaded before trying to select one
-    if (!reports.length) {
+    if (!reports?.length) {
         getReportsWithMessages();
         return; // The effect will re-run when reports are populated
     }

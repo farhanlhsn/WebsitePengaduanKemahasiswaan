@@ -109,7 +109,7 @@ const AuditLogDetailModal = ({ open, onClose, log }) => {
           ))}
         </Paper>
       );
-    } catch (e) {
+    } catch {
       return <Typography variant="body2" color="error">Invalid metadata format</Typography>;
     }
   };

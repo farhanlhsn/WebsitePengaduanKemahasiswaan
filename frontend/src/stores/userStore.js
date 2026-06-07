@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import {
   getUserByEmail as apiGetUserByEmail,
   getUserById as apiGetUserById,
-  getUserStats as apiGetUserStats,
   getUserStatsById as apiGetUserStatsById,
   updateUser as apiUpdateUser,
   getAllUsers as apiGetAllUsers,

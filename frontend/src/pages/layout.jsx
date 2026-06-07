@@ -1,12 +1,10 @@
 import React from "react";
-import { Box, useTheme } from "@mui/material";
+import { Box } from "@mui/material";
 import Footer from "../components/footer"; 
 import Header from "../components/header";
 import { Outlet } from "react-router-dom";
 
 export default function Layout() {
-  const theme = useTheme();
-  
   return (
     <Box 
       sx={{ 

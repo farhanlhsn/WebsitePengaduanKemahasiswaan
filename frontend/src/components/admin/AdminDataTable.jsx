@@ -4,11 +4,11 @@ import {
   TableRow, TablePagination, TableSortLabel, Checkbox, IconButton,
   Chip, Avatar, Typography, Menu, MenuItem, Tooltip, Fade, Skeleton,
   TextField, InputAdornment, FormControl, InputLabel, Select,
-  Stack, useMediaQuery
+  Stack
 } from '@mui/material';
 import {
   MoreVert, Visibility, Edit, Delete, Restore, Search, FilterList,
-  GetApp, Refresh
+  GetApp, Refresh, VisibilityOff
 } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
 import StatusBadge from '../ui/StatusBadge';
@@ -40,7 +40,6 @@ const AdminDataTable = ({
   onRefresh
 }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [selected, setSelected] = useState([]);
   const [orderBy, setOrderBy] = useState('');
@@ -238,6 +237,29 @@ const AdminDataTable = ({
             {value?.charAt(0)?.toUpperCase() || '?'}
           </Avatar>
         );
+      
+      case 'reporter': {
+        // Special-cased renderer for the "Pelapor" column.
+        // When the row represents an anonymous report, show a warning chip
+        // so admins know identity has been masked. Otherwise show plain name.
+        const isAnonymous = !!row.isAnonymous;
+        if (isAnonymous) {
+          return (
+            <Chip
+              icon={<VisibilityOff sx={{ fontSize: 14 }} />}
+              label="Anonim"
+              size="small"
+              variant="outlined"
+              sx={{
+                color: 'warning.main',
+                borderColor: 'warning.main',
+                '& .MuiChip-icon': { color: 'warning.main' }
+              }}
+            />
+          );
+        }
+        return value ?? '-';
+      }
       
       case 'status':
         return <StatusBadge status={value} />;

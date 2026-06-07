@@ -7,7 +7,6 @@ import {
   Assignment, CheckCircle, HourglassEmpty, PendingActions, 
   Menu as MenuIcon, Notifications 
 } from '@mui/icons-material';
-import { useTheme } from '@mui/material/styles';
 import useReportStore from '../stores/reportStore';
 import useCategoryStore from '../stores/categoryStore';
 import useUserStore from '../stores/userStore';
@@ -30,8 +29,6 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 const drawerWidth = 300;
 
 export default React.memo(function ImprovedStudentDashboard() {
-  // ... (semua hooks dan state tetap sama) ...
-  const theme = useTheme();
   const { reports, loading, error, getUserReports, pagination, reset, createReport } = useReportStore();
   const { categories, getCategories } = useCategoryStore();
   const { userStats, getUserStatsById } = useUserStore();
@@ -60,7 +57,7 @@ export default React.memo(function ImprovedStudentDashboard() {
 
   const memoizedStats = useMemo(() => ({
     totalReports, completedReports, inProgressReports, pendingReports, completionRate
-  }), [safeUserStats, totalReports, completedReports, inProgressReports, pendingReports, completionRate]);
+  }), [totalReports, completedReports, inProgressReports, pendingReports, completionRate]);
 
   const searchTimeoutRef = useRef(null);
 
