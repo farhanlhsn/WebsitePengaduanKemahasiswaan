@@ -12,7 +12,7 @@ Website ini dirancang sebagai solusi digital untuk menjembatani komunikasi antar
 |---|---|
 | **Frontend** | React 19 (Vite), Material UI 7, Zustand, Socket.IO Client, Recharts |
 | **Backend** | Node.js, Express.js 4, Prisma ORM 6, Socket.IO |
-| **Database** | MySQL |
+| **Database** | PostgreSQL 16+ |
 | **Auth** | JWT (Access Token + Refresh Token), bcryptjs |
 | **File Upload** | Multer, Sharp (kompresi gambar) |
 | **Logging** | Winston, Morgan |
@@ -39,7 +39,7 @@ WebsitePengaduanKemahasiswaan/
 │   ├── uploads/             # File lampiran yang diunggah
 │   └── logs/                # Log file (Winston)
 │
-├── frontend/WebsitePengaduanKemahasiswaan/
+├── frontend/
 │   ├── public/              # Aset statis
 │   ├── src/
 │   │   ├── main.jsx         # Entry point React
@@ -62,8 +62,9 @@ WebsitePengaduanKemahasiswaan/
 
 | Peran | Deskripsi |
 |---|---|
-| **Mahasiswa** | Pengguna utama yang mendaftar, mengajukan pengaduan, memantau status, dan berdiskusi dengan admin |
-| **Admin** | Petugas kampus yang memverifikasi akun, mengelola pengaduan, mengubah status laporan, dan memantau analitik |
+| **Mahasiswa** | Mendaftar, mengajukan pengaduan (termasuk anonim), memantau status, dan berdiskusi dengan admin |
+| **Admin** | Scoped per kategori via assignment; verifikasi akun, kelola pengaduan, chat, dan analitik |
+| **SuperAdmin** | Akses penuh; kelola admin, kategori, assignment, audit log, dan governance |
 
 ## ✨ Fitur
 
@@ -82,9 +83,13 @@ WebsitePengaduanKemahasiswaan/
 - **Bulk Operations** — Aksi massal terhadap beberapa laporan sekaligus
 - **Verifikasi Pengguna** — Verifikasi akun mahasiswa baru berdasarkan KTM
 - **Manajemen Kategori** — CRUD kategori pengaduan
-- **Audit Log** — Jejak audit untuk semua aksi penting (delete, restore, update status, verifikasi)
+- **Admin Governance** — Promote/demote admin, grant/revoke assignment kategori (SuperAdmin)
+- **Laporan Anonim** — Identitas pelapor disembunyikan dari semua pihak termasuk admin
+- **Export CSV** — Export data laporan dan pengguna
+- **Audit Log** — Jejak audit untuk semua aksi penting
 - **Analitik** — Statistik mendalam tentang tren pengaduan
 - **Keamanan Sistem** — Manajemen sesi, device tracking, monitoring keamanan
+- **Password Reset** — Reset password via email
 
 ### Kategori Pengaduan
 Sistem menyediakan 23 kategori bawaan, antara lain: Kekerasan Seksual, Sarana dan Prasarana, Pelanggaran Kode Etik, Akademik, Administrasi, Keuangan, Diskriminasi, Penyalahgunaan Wewenang Dosen/Staff, Keamanan Kampus, dan lainnya.
@@ -101,13 +106,81 @@ Sistem menyediakan 23 kategori bawaan, antara lain: Kekerasan Seksual, Sarana da
 | `/v1/api/audit-logs` | Log audit |
 | `/v1/api/admin` | Dashboard admin |
 | `/v1/api/bulk-operations` | Operasi massal |
-| `/api/health` | Health check database |
+| `/api/health/live` | Liveness probe |
+| `/api/health/ready` | Readiness probe (DB + Redis reachable) |
+| `/api/docs` | Swagger API documentation (non-production) |
+
+## 🐳 Deployment (Docker)
+
+### Local development
+
+```bash
+docker compose up --build
+```
+
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:8080 |
+| Backend API | http://localhost:6060/v1/api |
+| PostgreSQL | localhost:5432 |
+| Redis | localhost:6379 |
+
+Frontend mem-proxy `/v1/api`, `/api`, dan `/socket.io` ke backend via nginx (same-origin).
+
+### Production
+
+```bash
+export POSTGRES_PASSWORD='<strong-password>'
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+Hanya reverse proxy/frontend (`PUBLIC_HTTP_PORT`, default `8080`) yang diekspos. Backend, PostgreSQL, dan Redis berada pada jaringan internal Docker.
+
+## 🧪 Testing & Quality Gates
+
+Semua gate berikut harus lulus sebelum merge/deploy:
+
+```bash
+cd backend && npm test -- --runInBand
+cd backend && npm run test:integration
+cd frontend && npm run lint -- --max-warnings=0
+cd frontend && npm run test:run          # alias test:component
+cd frontend && npm run build
+cd frontend && npm run test:e2e
+docker compose config
+docker compose build
+docker compose -f docker-compose.prod.yml config
+```
+
+Integration test membutuhkan Docker (Postgres test container) atau `TEST_DATABASE_URL`. E2E bootstrap otomatis via `frontend/tests/e2e/global-setup.js`.
+
+## 📤 Aturan Upload
+
+| Konteks | Format diizinkan | Batas |
+|---|---|---|
+| **KTM** (registrasi) | JPEG, PNG, WebP | 5 MB |
+| **Lampiran laporan & chat** | JPEG, PNG, WebP, PDF, DOC, DOCX | 5 MB/file |
+
+Validasi MIME, ekstensi, dan magic bytes. Nama file disimpan acak; nama asli disanitasi sebagai metadata. Path `/uploads/chat-pending` tidak dapat diakses langsung — file dipromosikan ke `/uploads/chat/attachments/` saat pesan terkirim. Path upload tidak dikenal ditolak (404).
+
+## 🛡️ Governance & Scoping
+
+| Aksi | Mahasiswa | Admin | SuperAdmin |
+|---|---|---|---|
+| Kelola mahasiswa (verify/reject/delete) | — | ✅ | ✅ |
+| Kelola admin tier | — | ❌ | ✅ |
+| Cleanup / permanent delete user | — | ❌ | ✅ |
+| CRUD kategori | — | ❌ | ✅ |
+| Lihat laporan | Milik sendiri | Kategori assignment | Semua |
+| Dashboard statistik | Milik sendiri | Scoped kategori + metadata `scope` | Global |
+
+Admin tanpa assignment kategori melihat daftar kosong. Superadmin terakhir tidak dapat dihapus/didemosi.
 
 ## ⚙️ Instalasi & Menjalankan
 
 ### Prasyarat
-- Node.js (v18+)
-- MySQL
+- Node.js (v18+, disarankan v20+)
+- PostgreSQL (v15+, disarankan v16)
 - npm atau yarn
 
 ### Backend
@@ -142,7 +215,7 @@ Backend berjalan di `http://localhost:6060` (default).
 
 ```bash
 # Masuk ke direktori frontend
-cd frontend/WebsitePengaduanKemahasiswaan
+cd frontend
 
 # Install dependencies
 npm install
@@ -158,22 +231,38 @@ Frontend berjalan di `http://localhost:5173` (default Vite).
 | Variable | Deskripsi |
 |---|---|
 | `PORT` | Port server backend (default: `6060`) |
-| `DATABASE_URL` | Connection string MySQL |
+| `DATABASE_URL` | Connection string PostgreSQL |
 | `JWT_SECRET` | Secret key untuk access token |
 | `JWT_REFRESH_SECRET` | Secret key untuk refresh token |
-| `JWT_EXPIRES_IN` | Durasi expired access token (default: `1d`) |
-| `UPLOAD_DIR` | Direktori penyimpanan file upload |
-| `FILE_SIZE_LIMIT` | Batas ukuran file upload dalam MB |
+| `FRONTEND_URL` | URL frontend yang diizinkan CORS |
+| `REDIS_URL` | URL Redis untuk rate limit store (wajib production; override `ALLOW_IN_MEMORY_RATE_LIMIT=true` untuk dev) |
+| `TRUST_PROXY` | Hop count / CIDR proxy untuk `X-Forwarded-For` (production: `1`) |
+| `ALLOW_IN_MEMORY_RATE_LIMIT` | Set `true` untuk dev/test tanpa Redis |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Konfigurasi email notifikasi/reset password |
+| `SEED_SUPERADMIN_EMAIL`, `SEED_SUPERADMIN_NAME`, `SEED_SUPERADMIN_PASSWORD` | Bootstrap akun superadmin saat seed |
+
+### Environment Variables (Frontend)
+
+| Variable | Deskripsi |
+|---|---|
+| `VITE_API_URL` | Base URL API, contoh `http://localhost:6060/v1/api` |
+| `VITE_SOCKET_URL` | Base URL Socket.IO jika berbeda dari API |
 
 ## 🔒 Keamanan
 
-- Autentikasi berbasis JWT dengan mekanisme refresh token
+- Autentikasi berbasis JWT dengan mekanisme refresh token + `tokenVersion` revocation
+- RBAC 3-tier (Mahasiswa / Admin / SuperAdmin) dengan category assignment
+- Chat access policy: `canAccessReport()` di REST dan Socket.IO
+- Upload chat scoped ke report (`ChatPendingUpload` + token binding)
 - Device fingerprinting & tracking untuk keamanan sesi
+- Rate limiting global + granular (Redis-backed)
 - Password hashing menggunakan bcryptjs
-- Middleware validasi input (express-validator)
 - CORS dikonfigurasi secara ketat
 - Kompresi gambar otomatis saat upload (Sharp)
 - Audit logging untuk akuntabilitas
+- Anonimitas pelapor: identitas disembunyikan bahkan dari SuperAdmin
+
+> **Catatan:** Read receipt chat menggunakan flag `isRead` tunggal per pesan (bukan per-user).
 
 ## 🚀 Scripts
 
@@ -183,6 +272,10 @@ Frontend berjalan di `http://localhost:5173` (default Vite).
 | `npm run dev` | Jalankan server dengan hot-reload (nodemon) |
 | `npm start` | Jalankan server production |
 | `npm run seed` | Seed data kategori ke database |
+| `npm test` | Jalankan unit test backend |
+| `npm run test:integration` | Jalankan integration test backend (butuh Docker) |
+| `npm run test:integration:up` | Start Postgres test container |
+| `npm run test:integration:down` | Stop Postgres test container |
 | `npm run prisma:studio` | Buka Prisma Studio (GUI database) |
 | `npm run prisma:migrate` | Jalankan migrasi database |
 
@@ -192,7 +285,10 @@ Frontend berjalan di `http://localhost:5173` (default Vite).
 | `npm run dev` | Jalankan dev server Vite |
 | `npm run build` | Build untuk production |
 | `npm run preview` | Preview build production |
-| `npm run lint` | Jalankan ESLint |
+| `npm run lint` | Jalankan ESLint (`--max-warnings=0` di CI) |
+| `npm run test:run` | Alias component tests (Vitest) |
+| `npm run test:component` | Jalankan component tests (Vitest Browser) |
+| `npm run test:e2e` | Jalankan Playwright E2E (bootstrap otomatis) |
 
 ## 📄 Lisensi
 
