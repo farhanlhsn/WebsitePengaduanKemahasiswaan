@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
-  Container,
+  Fade,
   Typography,
   Button,
   Alert,
@@ -136,8 +136,8 @@ const AuditLogPage = () => {
   };
 
   return (
-    <>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Fade in timeout={300}>
+      <Box>
         {/* Header */}
         <Box sx={{ mb: 4 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
@@ -174,7 +174,7 @@ const AuditLogPage = () => {
         {/* Stats Cards */}
         {stats && (
           <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} lg={3}>
+            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
                 title="Total Logs"
                 value={stats.total?.toLocaleString() || 0}
@@ -183,7 +183,7 @@ const AuditLogPage = () => {
                 subtitle="Semua Aktivitas"
               />
             </Grid>
-            <Grid item xs={12} sm={6} lg={3}>
+            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
                 title="User Actions"
                 value={stats.byEntityType?.USER || 0}
@@ -192,7 +192,7 @@ const AuditLogPage = () => {
                 subtitle="Aktivitas User"
               />
             </Grid>
-            <Grid item xs={12} sm={6} lg={3}>
+            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
                 title="Report Actions"
                 value={stats.byEntityType?.REPORT || 0}
@@ -201,7 +201,7 @@ const AuditLogPage = () => {
                 subtitle="Aktivitas Laporan"
               />
             </Grid>
-            <Grid item xs={12} sm={6} lg={3}>
+            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
                 title="Verifications"
                 value={stats.byAction?.VERIFY_MAHASISWA || 0}
@@ -256,8 +256,8 @@ const AuditLogPage = () => {
             {snackbar.message}
           </Alert>
         </Snackbar>
-      </Container>
-    </>
+      </Box>
+    </Fade>
   );
 };
 

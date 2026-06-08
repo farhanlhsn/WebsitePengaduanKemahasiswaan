@@ -161,8 +161,8 @@ const UnverifiedUsersPage = () => {
   );
 
   return (
-    <>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Fade in timeout={300}>
+      <Box>
         {/* Header */}
         <AdminSectionHeader
           title="Verifikasi Pengguna"
@@ -174,7 +174,7 @@ const UnverifiedUsersPage = () => {
 
         {/* Stats */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={6}>
+          <Grid size={{ xs: 12, sm: 6, md: 6 }}>
             <StatCard
               title="Menunggu Verifikasi"
               value={users.length}
@@ -183,7 +183,7 @@ const UnverifiedUsersPage = () => {
               subtitle="Perlu Ditinjau"
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={6}>
+          <Grid size={{ xs: 12, sm: 6, md: 6 }}>
             <StatCard
               title="Terpilih"
               value={selectedUsers.length}
@@ -487,7 +487,7 @@ const UnverifiedUsersPage = () => {
           <DialogContent dividers>
             {selectedUser && (
               <Grid container spacing={3}>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <Typography variant="caption" color="text.secondary" fontWeight={600}>
                     Nama
                   </Typography>
@@ -495,7 +495,7 @@ const UnverifiedUsersPage = () => {
                     {selectedUser.name}
                   </Typography>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <Typography variant="caption" color="text.secondary" fontWeight={600}>
                     Email
                   </Typography>
@@ -503,7 +503,7 @@ const UnverifiedUsersPage = () => {
                     {selectedUser.email}
                   </Typography>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <Typography variant="caption" color="text.secondary" fontWeight={600}>
                     NIM
                   </Typography>
@@ -522,7 +522,7 @@ const UnverifiedUsersPage = () => {
                     {selectedUser.nim}
                   </Typography>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <Typography variant="caption" color="text.secondary" fontWeight={600}>
                     Role
                   </Typography>
@@ -534,7 +534,7 @@ const UnverifiedUsersPage = () => {
                     />
                   </Box>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <Typography variant="caption" color="text.secondary" fontWeight={600}>
                     Tanggal Daftar
                   </Typography>
@@ -584,8 +584,8 @@ const UnverifiedUsersPage = () => {
             {snackbar.message}
           </Alert>
         </Snackbar>
-      </Container>
-    </>
+      </Box>
+    </Fade>
   );
 };
 

@@ -382,9 +382,10 @@ const AdminDataTable = ({
         <Stack 
           direction={{ xs: 'column', md: 'row' }} 
           spacing={2} 
-          alignItems="center"
+          alignItems={{ xs: 'stretch', md: 'center' }}
+          sx={{ mt: 2 }}
         >
-          <Box sx={{ flex: 1, minWidth: 250 }}>
+          <Box sx={{ flex: 1, minWidth: { xs: '100%', md: 250 } }}>
             <SearchInput
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
@@ -393,7 +394,7 @@ const AdminDataTable = ({
           </Box>
           
           {filters.map((filter) => (
-            <FormControl key={filter.field} size="small" sx={{ minWidth: 150 }}>
+            <FormControl key={filter.field} size="small" sx={{ minWidth: { xs: '100%', md: 150 } }}>
               <InputLabel>{filter.label}</InputLabel>
               <Select
                 value={filterValues[filter.field] || ''}

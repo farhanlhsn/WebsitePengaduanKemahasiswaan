@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
-  Container, Typography, Grid, Box, Paper, Stack,
+  Fade, Typography, Grid, Box, Paper, Stack,
   Avatar, useTheme, IconButton, Button, Breadcrumbs,
   Link, Tooltip as MuiTooltip, LinearProgress, Chip
 } from '@mui/material';
@@ -225,8 +225,8 @@ const AdminAnalyticsPage = () => {
   if (loading) return <LoadingSpinner fullScreen message="Menganalisis data sistem..." />;
 
   return (
-    <>
-      <Container maxWidth={false} sx={{ py: { xs: 2, md: 3 }, px: { xs: 2, md: 4 } }}>
+    <Fade in timeout={300}>
+      <Box>
 
         <AdminSectionHeader
           title="Analitik & Wawasan"
@@ -466,8 +466,8 @@ const AdminAnalyticsPage = () => {
           </Box>
         </GlassCard>
 
-      </Container>
-    </>
+      </Box>
+    </Fade>
   );
 };
 

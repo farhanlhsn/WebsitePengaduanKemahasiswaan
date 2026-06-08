@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Container,
+  Fade,
   Typography,
   Paper,
   Box,
@@ -79,8 +79,8 @@ const SystemSecurityPage = () => {
   };
 
   return (
-    <>
-      <Container maxWidth="xl">
+    <Fade in timeout={300}>
+      <Box>
         {/* Header */}
         <AdminSectionHeader
           title="System & Security"
@@ -92,7 +92,7 @@ const SystemSecurityPage = () => {
 
       <Grid container spacing={3}>
         {/* System Info */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <Info color="primary" />
@@ -132,7 +132,7 @@ const SystemSecurityPage = () => {
         </Grid>
 
         {/* Security Features */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <Security color="primary" />
@@ -181,7 +181,7 @@ const SystemSecurityPage = () => {
         </Grid>
 
         {/* Database Cleanup */}
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <CleaningServices color="warning" />
@@ -199,7 +199,7 @@ const SystemSecurityPage = () => {
             </Alert>
 
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Card variant="outlined">
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -223,7 +223,7 @@ const SystemSecurityPage = () => {
                 </Card>
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Card variant="outlined">
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -251,7 +251,7 @@ const SystemSecurityPage = () => {
         </Grid>
 
         {/* Best Practices */}
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <Warning color="info" />
@@ -337,10 +337,9 @@ const SystemSecurityPage = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-      </Container>
-    </>
+      </Box>
+    </Fade>
   );
 };
 
 export default SystemSecurityPage;
-

@@ -282,8 +282,8 @@ const CategoryManagementPage = () => {
   );
 
   return (
-    <>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Fade in timeout={300}>
+      <Box>
         {/* Header */}
         <Box sx={{ mb: 4 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
@@ -319,7 +319,7 @@ const CategoryManagementPage = () => {
         {/* Stats */}
         {stats && (
           <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={4}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <StatCard
                 title="Total Kategori"
                 value={stats.total || 0}
@@ -328,7 +328,7 @@ const CategoryManagementPage = () => {
                 subtitle="Semua Kategori"
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={4}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <StatCard
                 title="Kategori Aktif"
                 value={stats.active || 0}
@@ -337,7 +337,7 @@ const CategoryManagementPage = () => {
                 subtitle="Dapat Digunakan"
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={4}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <StatCard
                 title="Kategori Dihapus"
                 value={stats.deleted || 0}
@@ -605,8 +605,8 @@ const CategoryManagementPage = () => {
             {snackbar.message}
           </Alert>
         </Snackbar>
-      </Container>
-    </>
+      </Box>
+    </Fade>
   );
 };
 

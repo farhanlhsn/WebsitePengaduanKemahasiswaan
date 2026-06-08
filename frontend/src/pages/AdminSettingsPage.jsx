@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import AdminSectionHeader from './admin/AdminSectionHeader';
 import {
-  Box, Container, Typography, Button, Grid, Switch,
+  Box, Fade, Typography, Button, Grid, Switch,
   TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   Alert, CircularProgress, Card, CardContent, FormControlLabel,
   Select, MenuItem, FormControl, InputLabel, Accordion, AccordionSummary,
@@ -143,7 +143,8 @@ const AdminSettingsPage = () => {
   }
 
   return (
-    <Container maxWidth="xl">
+    <Fade in timeout={300}>
+      <Box>
         <AdminSectionHeader
           title="Pengaturan Admin"
           subtitle="Kelola preferensi akun admin dan antarmuka aplikasi Anda"
@@ -153,7 +154,7 @@ const AdminSettingsPage = () => {
         />
 
         <Grid container spacing={3}>
-          <Grid item xs={12} md={8}>
+          <Grid size={{ xs: 12, md: 8 }}>
             {/* Notification Settings */}
             <Accordion defaultExpanded sx={{ mb: 2, borderRadius: 2 }}>
               <AccordionSummary expandIcon={<ExpandMore />}>
@@ -166,7 +167,7 @@ const AdminSettingsPage = () => {
               </AccordionSummary>
               <AccordionDetails>
                 <Grid container spacing={3}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <FormControlLabel
                       control={
                         <Switch
@@ -177,7 +178,7 @@ const AdminSettingsPage = () => {
                       label="Email Peringatan Sistem"
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <FormControlLabel
                       control={
                         <Switch
@@ -204,7 +205,7 @@ const AdminSettingsPage = () => {
               </AccordionSummary>
               <AccordionDetails>
                 <Grid container spacing={3}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <FormControl fullWidth>
                       <InputLabel>Bahasa</InputLabel>
                       <Select
@@ -217,7 +218,7 @@ const AdminSettingsPage = () => {
                       </Select>
                     </FormControl>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <FormControl fullWidth>
                       <InputLabel>Tema Admin</InputLabel>
                       <Select
@@ -263,7 +264,7 @@ const AdminSettingsPage = () => {
             </Accordion>
           </Grid>
 
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             {/* Device Management */}
             <Card sx={{ borderRadius: 2, mb: 3 }}>
               <CardContent>
@@ -406,7 +407,8 @@ const AdminSettingsPage = () => {
             <Button onClick={handleChangePassword} variant="contained">Simpan</Button>
           </DialogActions>
         </Dialog>
-      </Container>
+      </Box>
+    </Fade>
   );
 };
 
