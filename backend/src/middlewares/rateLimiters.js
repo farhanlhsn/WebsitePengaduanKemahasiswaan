@@ -40,18 +40,18 @@ function createLimiter({ windowMs, max, message, skipSuccessfulRequests = false,
   return rateLimit(options);
 }
 
-// Login: 5 failed attempts per IP per 15 minutes (uses default IP key)
+// Login: 20 failed attempts per IP per 15 minutes (uses default IP key)
 const loginLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 20,
   message: 'Terlalu banyak percobaan login. Coba lagi dalam 15 menit.',
   skipSuccessfulRequests: true,
 });
 
-// Register: 3 per IP per hour (uses default IP key)
+// Register: 20 per IP per hour (uses default IP key)
 const registerLimiter = createLimiter({
   windowMs: 60 * 60 * 1000,
-  max: 3,
+  max: 20,
   message: 'Terlalu banyak percobaan registrasi dari IP ini. Coba lagi nanti.',
 });
 

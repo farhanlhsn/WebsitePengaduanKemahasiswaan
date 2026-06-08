@@ -23,6 +23,8 @@ const app = express();
 const trustProxy = process.env.TRUST_PROXY;
 if (trustProxy === 'false' || trustProxy === '0') {
   app.set('trust proxy', false);
+} else if (trustProxy === 'true') {
+  app.set('trust proxy', true);
 } else if (trustProxy) {
   const hopCount = Number(trustProxy);
   app.set('trust proxy', Number.isFinite(hopCount) ? hopCount : trustProxy);
@@ -117,7 +119,7 @@ app.use(cors({
       'http://localhost:4173',  // Preview/Production
       'http://127.0.0.1:5173',  // Alternative localhost
       'http://127.0.0.1:4173',  // Alternative localhost
-      process.env.FRONTEND_URL  // Environment variable
+      ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(url => url.trim()) : [])
     ].filter(Boolean); // Remove undefined values
     
     if (allowedOrigins.indexOf(origin) !== -1) {

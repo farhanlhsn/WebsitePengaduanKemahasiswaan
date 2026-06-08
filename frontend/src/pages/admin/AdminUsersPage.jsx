@@ -3,6 +3,8 @@ import { Box, Fade, Alert } from '@mui/material';
 import { Visibility, Edit, CheckCircle, Delete, Restore } from '@mui/icons-material';
 import { useOutletContext } from 'react-router-dom';
 import useUserStore from '../../stores/userStore';
+import useAuthStore from '../../stores/authStore';
+import { promoteToAdmin } from '../../services/adminGovernanceApi';
 import AdminDataTable from '../../components/admin/AdminDataTable';
 import UserDetailModal from '../../components/admin/UserDetailModal';
 import UserStatistics from '../../components/admin/UserStatistics';
@@ -12,6 +14,8 @@ import { exportUsersToExcel } from '../../utils/exportUtils';
 const AdminUsersPage = () => {
   const { onMobileMenuClick } = useOutletContext() ?? {};
   const { users, loading, error, getAllUsers, verifyStudent, deleteUser, restoreUser } = useUserStore();
+  const { user: currentUser } = useAuthStore();
+  const isSuperAdmin = currentUser?.role === 'SUPERADMIN';
 
   const [selectedUser, setSelectedUser] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -81,11 +85,15 @@ const AdminUsersPage = () => {
           case 'delete':  await deleteUser(user.id); break;
           case 'restore': await restoreUser(user.id); break;
           case 'view':    setSelectedUser(user); setDetailOpen(true); break;
+          case 'promote-admin':
+            await promoteToAdmin(user.id);
+            await getAllUsers(true);
+            break;
           default: console.log('Unknown user action', action);
         }
       } catch (e) { console.error(e); }
     },
-    [verifyStudent, deleteUser, restoreUser]
+    [verifyStudent, deleteUser, restoreUser, getAllUsers]
   );
 
   const onBulkAction = useCallback(
@@ -134,6 +142,7 @@ const AdminUsersPage = () => {
           onClose={() => { setDetailOpen(false); setSelectedUser(null); }}
           user={selectedUser}
           onAction={onRowAction}
+          isSuperAdmin={isSuperAdmin}
         />
       </Box>
     </Fade>

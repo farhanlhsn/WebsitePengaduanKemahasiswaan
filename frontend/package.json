@@ -72,5 +72,8 @@
     "vite": "^6.3.5",
     "vite-plugin-compression": "^0.5.1",
     "vitest": "^4.1.7"
+  },
+  "overrides": {
+    "rollup": "4.59.0"
   }
 }

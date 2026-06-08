@@ -26,7 +26,7 @@ const BACKEND_UPLOAD_URL = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL.replace(/\/v1\/api\/?$/, '')
   : 'http://localhost:6060';
 
-const UserDetailModal = ({ open, onClose, user, onAction }) => {
+const UserDetailModal = ({ open, onClose, user, onAction, isSuperAdmin }) => {
   const theme = useTheme();
   const [isKtmOpen, setIsKtmOpen] = useState(false);
 
@@ -43,7 +43,9 @@ const UserDetailModal = ({ open, onClose, user, onAction }) => {
     switch (role) {
       case 'ADMIN':
         return 'error';
-      case 'STUDENT':
+      case 'SUPERADMIN':
+        return 'warning';
+      case 'MAHASISWA':
         return 'primary';
       default:
         return 'default';
@@ -252,6 +254,11 @@ const UserDetailModal = ({ open, onClose, user, onAction }) => {
           <Button onClick={onClose} color="inherit" variant="outlined">
             Tutup
           </Button>
+          {isSuperAdmin && user.status === 'ACTIVE' && user.role === 'MAHASISWA' && (
+            <Button onClick={() => handleAction('promote-admin')} variant="contained" color="warning">
+              Jadikan Admin
+            </Button>
+          )}
           {!user.isVerified && user.status === 'ACTIVE' && (
             <Button onClick={() => handleAction('verify')} variant="contained" color="success">
               Verifikasi
