@@ -263,24 +263,24 @@ const AdminAnalyticsPage = () => {
         />
 
         {/* ── KPI Cards (Responsive Grid: 4 Desktop, 2 Tablet, 1 Mobile) ── */}
-        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 2, md: 3 } }}>
+        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 2, md: 3 } }} alignItems="stretch">
           {[
             { title: 'Total Laporan',       value: filteredStats.total,      icon: <Assignment />,  color: '#2196F3', subtitle: 'Laporan Masuk' },
             { title: 'Tingkat Selesai',     value: `${resolutionRate}%`,    icon: <CheckCircle />, color: '#4CAF50', subtitle: `${filteredStats.resolved} Berhasil` },
             { title: 'Menunggu Review',     value: filteredStats.pending,    icon: <Warning />,     color: '#FFA726', subtitle: 'Butuh Tindakan' },
             { title: 'Total Mahasiswa',     value: dashboardStats?.users?.total || 0, icon: <People />, color: '#9C27B0', subtitle: 'Mahasiswa Aktif' },
           ].map((card, i) => (
-            <Grid item xs={12} sm={6} lg={3} key={i}>
+            <Grid size={{ xs: 12, sm: 6, lg: 3 }} key={i}>
               <StatCard {...card} />
             </Grid>
           ))}
         </Grid>
 
         {/* ── Row 2: Status (Donut) | Kategori (Progress Bars) | User Verification (Bar) ── */}
-        <Grid container spacing={{ xs: 2, md: 3 }} wrap={{ xs: 'wrap', sm: 'nowrap' }} sx={{ mb: { xs: 2, md: 3 }, overflowX: 'hidden' }}>
+        <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mb: { xs: 2, md: 3 }, overflowX: 'hidden' }}>
 
           {/* Distribusi Status */}
-          <Grid item xs={12} sm={4} sx={{ minWidth: 0, flexShrink: 1 }}>
+          <Grid size={{ xs: 12, md: 4 }} sx={{ minWidth: 0 }}>
             <GlassCard variant="glass" sx={{ 
               p: { xs: 2, md: 2.5 }, 
               height: '100%',
@@ -338,7 +338,7 @@ const AdminAnalyticsPage = () => {
           </Grid>
 
           {/* Kategori Terpopuler */}
-          <Grid item xs={12} sm={4} sx={{ minWidth: 0, flexShrink: 1 }}>
+          <Grid size={{ xs: 12, md: 4 }} sx={{ minWidth: 0 }}>
             <GlassCard variant="glass" sx={{ 
               p: { xs: 2, md: 2.5 }, 
               height: '100%',
@@ -374,7 +374,7 @@ const AdminAnalyticsPage = () => {
           </Grid>
 
           {/* Status Verifikasi Mahasiswa */}
-          <Grid item xs={12} sm={4} sx={{ minWidth: 0, flexShrink: 1 }}>
+          <Grid size={{ xs: 12, md: 4 }} sx={{ minWidth: 0 }}>
             <GlassCard variant="glass" sx={{ 
               p: { xs: 2, md: 2.5 }, 
               height: '100%',
