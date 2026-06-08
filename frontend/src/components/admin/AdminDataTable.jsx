@@ -31,6 +31,7 @@ const AdminDataTable = ({
   onBulkAction,
   selectable = false,
   actions = [],
+  bulkActions = [],
   title = '',
   searchPlaceholder = 'Cari data...',
   filters = [],
@@ -571,7 +572,10 @@ const AdminDataTable = ({
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        {actions.filter(action => ['verify', 'delete', 'restore'].includes(action.id)).map((action) => (
+        {(bulkActions && bulkActions.length > 0
+          ? bulkActions
+          : actions.filter(action => ['verify', 'delete', 'restore'].includes(action.id))
+        ).map((action) => (
           <MenuItem
             key={action.id}
             onClick={() => handleBulkAction(action.id)}

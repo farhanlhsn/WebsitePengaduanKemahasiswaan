@@ -7,7 +7,8 @@ import {
   getReportById as apiGetReportById,
   updateReportStatus as apiUpdateReportStatus,
   deleteReport as apiDeleteReport,
-  restoreReport as apiRestoreReport
+  restoreReport as apiRestoreReport,
+  bulkUpdateReportStatus as apiBulkUpdateReportStatus
 } from '../services/api';
 
 const useReportStore = create((set, get) => ({
@@ -167,6 +168,27 @@ const useReportStore = create((set, get) => ({
       return updatedReport;
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to update report status';
+      set({ loading: false, error: errorMessage });
+      throw error;
+    }
+  },
+
+  // Bulk update report status (admin only)
+  bulkUpdateReportStatus: async (reportIds, status) => {
+    try {
+      set({ loading: true, error: null });
+      const result = await apiBulkUpdateReportStatus(reportIds, status);
+      
+      // Update reports in local state
+      set(state => ({
+        reports: state.reports.map(report => 
+          reportIds.includes(report.id) ? { ...report, status } : report
+        ),
+        loading: false
+      }));
+      return result;
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to bulk update report status';
       set({ loading: false, error: errorMessage });
       throw error;
     }
