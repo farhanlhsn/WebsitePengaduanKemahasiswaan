@@ -7,7 +7,9 @@ import {
   refreshToken as apiRefreshToken,
   getUserDevices as apiGetUserDevices,
   logoutDevice as apiLogoutDevice,
-  logoutAllOtherDevices as apiLogoutAllOtherDevices
+  logoutAllOtherDevices as apiLogoutAllOtherDevices,
+  forgotPassword as apiForgotPassword,
+  resetPassword as apiResetPassword
 } from '../services/api';
 import { setAccessToken, clearAccessToken, getAccessToken } from '../services/authToken';
 import { purgeSensitiveCaches } from '../utils/cachePurge';
@@ -113,6 +115,34 @@ const useAuthStore = create(
             devices: [],
             role: null,
           });
+        }
+      },
+
+      // Forgot Password
+      forgotPassword: async (email) => {
+        try {
+          set({ loading: true, error: null });
+          const response = await apiForgotPassword(email);
+          set({ loading: false });
+          return response;
+        } catch (error) {
+          const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Gagal mengirim email reset';
+          set({ loading: false, error: errorMessage });
+          throw error;
+        }
+      },
+
+      // Reset Password
+      resetPassword: async (token, newPassword) => {
+        try {
+          set({ loading: true, error: null });
+          const response = await apiResetPassword(token, newPassword);
+          set({ loading: false });
+          return response;
+        } catch (error) {
+          const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Gagal mereset password';
+          set({ loading: false, error: errorMessage });
+          throw error;
         }
       },
 

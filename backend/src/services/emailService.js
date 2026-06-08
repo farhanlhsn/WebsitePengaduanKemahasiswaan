@@ -38,6 +38,12 @@ class EmailService {
   async sendEmail(to, subject, html) {
     if (!this.isConfigured) {
       log.warn('Email not sent — service not configured', { to, subject });
+      // Log for local testing fallback
+      log.info('============== MOCK EMAIL FALLBACK ==============');
+      log.info(`To: ${to}`);
+      log.info(`Subject: ${subject}`);
+      log.info(`Content preview: ${html.substring(0, 500)}...`);
+      log.info('=================================================');
       return null;
     }
 
