@@ -109,6 +109,7 @@ const InputContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'flex-end',
   gap: theme.spacing(1),
+  position: 'relative',
 }));
 
 const StatusIcon = ({ status }) => {
@@ -177,7 +178,8 @@ const ChatInterface = ({
         attachments = uploaded.map((att) => att.token);
       }
 
-      await sendMessage(newMessage.trim(), attachments, replyingTo?.id);
+      const contentToSend = newMessage.trim() || '📁 File terlampir';
+      await sendMessage(contentToSend, attachments, replyingTo?.id);
       setNewMessage('');
       setSelectedFile(null);
       setReplyingTo(null);
@@ -236,6 +238,7 @@ const ChatInterface = ({
     if (file) {
       setSelectedFile(file);
     }
+    e.target.value = null;
   };
 
   const handleMenuOpen = (event, message) => {
@@ -258,8 +261,67 @@ const ChatInterface = ({
   const renderFileAttachment = (attachment) => {
     const isImage = attachment.fileType?.startsWith('image/');
     
+    if (isImage) {
+      return (
+        <Box
+          key={attachment.id || attachment.token}
+          sx={{
+            mt: 1,
+            mb: 0.5,
+            borderRadius: 2,
+            overflow: 'hidden',
+            border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+            cursor: 'pointer',
+            maxWidth: '100%',
+            position: 'relative',
+            '&:hover': {
+              '& .download-overlay': {
+                opacity: 1,
+              }
+            }
+          }}
+          onClick={() => {
+            setPreviewFile(attachment);
+            setFilePreviewOpen(true);
+          }}
+        >
+          <Box
+            component="img"
+            src={`${BACKEND_UPLOAD_URL}${attachment.filePath}`} 
+            alt={attachment.fileName}
+            sx={{
+              display: 'block',
+              maxWidth: '100%',
+              maxHeight: '250px',
+              objectFit: 'cover'
+            }}
+          />
+          <Box 
+            className="download-overlay"
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              bgcolor: 'rgba(0,0,0,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: 0,
+              transition: 'opacity 0.2s',
+              color: 'white'
+            }}
+          >
+            <GetApp fontSize="large" />
+          </Box>
+        </Box>
+      );
+    }
+
     return (
       <Box
+        key={attachment.id || attachment.token}
         sx={{
           mt: 1,
           p: 1.5,
@@ -277,7 +339,7 @@ const ChatInterface = ({
         }}
       >
         <Stack direction="row" alignItems="center" spacing={1}>
-          {isImage ? <Image fontSize="small" /> : <Description fontSize="small" />}
+          <Description fontSize="small" />
           <Typography variant="body2" sx={{ flex: 1 }}>
             {attachment.fileName}
           </Typography>
