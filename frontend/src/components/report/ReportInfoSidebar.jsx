@@ -1,6 +1,6 @@
 import React from "react";
 import { Paper, Typography, Stack, Avatar, Box, Divider, Button } from "@mui/material";
-import { Category, Today, AccessTime, CheckCircle, Chat, Restore, Delete } from "@mui/icons-material";
+import { Category, Today, AccessTime, CheckCircle, Chat, Restore, Delete, Cancel } from "@mui/icons-material";
 import { alpha } from "@mui/material/styles";
 
 const THEME_COLORS = {
@@ -126,16 +126,18 @@ const ReportInfoSidebar = ({
             Pulihkan Laporan
           </Button>
         ) : (
-          <Button
-            fullWidth
-            variant="outlined"
-            color="error"
-            startIcon={<Delete />}
-            onClick={onDeleteClick}
-            sx={{ py: 1.5, borderRadius: 2, fontWeight: 600 }}
-          >
-            Hapus Laporan
-          </Button>
+          report.status === 'PENDING' && (
+            <Button
+              fullWidth
+              variant="outlined"
+              color="error"
+              startIcon={<Cancel />}
+              onClick={onDeleteClick}
+              sx={{ py: 1.5, borderRadius: 2, fontWeight: 600 }}
+            >
+              Batalkan Laporan
+            </Button>
+          )
         )}
       </Stack>
     </Paper>

@@ -504,30 +504,80 @@ exports.deleteReport = async (req, res) => {
       );
     }
     
-    const result = await ReportServices.deleteReport(id);
-    
-    // Create audit log
-    try {
-      await auditLogServices.createAuditLog({
-        entityType: 'REPORT',
-        action: 'SOFT_DELETE',
-        entityId: id,
-        actorId: req.user.userId,
-        actorName: req.user.name,
-        actorRole: req.user.role,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-        metadata: {
-          reportTitle: report.title,
-          registrationNumber: report.registrationNumber,
-          status: report.status
-        }
-      });
-    } catch (auditError) {
-      log.error('Failed to create audit log for delete report', { error: auditError.message });
+    let result;
+    if (!isAdmin(req.user)) {
+      // Bagi mahasiswa, menghapus laporan PENDING berarti membatalkannya
+      result = await ReportServices.updateReportStatus(id, 'CANCELED');
+      
+      // Create audit log for cancellation
+      try {
+        await auditLogServices.createAuditLog({
+          entityType: 'REPORT',
+          action: 'UPDATE_STATUS',
+          entityId: id,
+          actorId: req.user.userId,
+          actorName: req.user.name,
+          actorRole: req.user.role,
+          ip: req.ip,
+          userAgent: req.headers['user-agent'],
+          metadata: {
+            reportTitle: report.title,
+            registrationNumber: report.registrationNumber,
+            oldStatus: report.status,
+            newStatus: 'CANCELED',
+            reason: 'Dibatalkan oleh mahasiswa'
+          }
+        });
+      } catch (auditError) {
+        log.error('Failed to create audit log for cancel report', { error: auditError.message });
+      }
+
+      // Kirim email notifikasi kepada pemilik laporan
+      if (result.userId) {
+        prisma.user.findUnique({
+          where: { id: result.userId },
+          select: { email: true, name: true }
+        }).then(reportOwner => {
+          if (reportOwner) {
+            emailService.notifyStatusChange(
+              reportOwner.email,
+              reportOwner.name,
+              result.title,
+              result.registrationNumber,
+              report.status,
+              'CANCELED'
+            ).catch(err => log.error('Status change email failed', { error: err.message }));
+          }
+        }).catch(err => log.error('Failed to fetch report owner for email', { error: err.message }));
+      }
+      
+      res.status(200).json(ResponseFormatter.success(result, 'Laporan berhasil dibatalkan'));
+    } else {
+      result = await ReportServices.deleteReport(id);
+      
+      // Create audit log
+      try {
+        await auditLogServices.createAuditLog({
+          entityType: 'REPORT',
+          action: 'SOFT_DELETE',
+          entityId: id,
+          actorId: req.user.userId,
+          actorName: req.user.name,
+          actorRole: req.user.role,
+          ip: req.ip,
+          userAgent: req.headers['user-agent'],
+          metadata: {
+            reportTitle: report.title,
+            registrationNumber: report.registrationNumber,
+            status: report.status
+          }
+        });
+      } catch (auditError) {
+        log.error('Failed to create audit log for delete report', { error: auditError.message });
+      }
+      
+      res.status(200).json(ResponseFormatter.success(result, 'Report deleted'));
     }
-    
-    res.status(200).json(ResponseFormatter.success(result, 'Report deleted'));
   } catch (err) {
     log.warn('deleteReport error', { error: err.message });
     res.status(400).json(ResponseFormatter.error(err.message));

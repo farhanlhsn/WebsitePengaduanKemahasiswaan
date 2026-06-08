@@ -590,17 +590,16 @@ const ReportDetailPage = () => {
             open={deleteDialog}
             onClose={() => setDeleteDialog(false)}
             onConfirm={handleDelete}
-            title="Hapus Laporan"
-            icon={<Delete />}
+            title="Batalkan Laporan"
+            icon={<Cancel />}
             color="error"
-            confirmText="Ya, Hapus"
+            confirmText="Ya, Batalkan"
           >
             <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
-              Apakah Anda yakin ingin menghapus laporan ini?
+              Apakah Anda yakin ingin membatalkan laporan ini?
             </Alert>
             <Typography color="text.secondary">
-              Aksi ini akan memindahkan laporan ke arsip (soft delete) dan dapat
-              dipulihkan nanti.
+              Laporan Anda akan dibatalkan, tetapi tetap dapat dilihat oleh admin.
             </Typography>
           </ActionDialog>
           <ActionDialog
