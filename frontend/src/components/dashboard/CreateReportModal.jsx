@@ -120,10 +120,30 @@ const CreateReportModal = React.memo(({ open, onClose, categories, onSubmit }) =
     const selectedFiles = Array.from(event.target.files);
     if (selectedFiles.length === 0) return;
 
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    const oversizedFiles = selectedFiles.filter(file => file.size > MAX_SIZE);
+    
+    if (oversizedFiles.length > 0) {
+      setErrors(prev => ({ 
+        ...prev, 
+        files: `Ukuran file maksimal 5MB. File berikut melebihi batas: ${oversizedFiles.map(f => f.name).join(', ')}` 
+      }));
+      // Filter out oversized files
+      const validFiles = selectedFiles.filter(file => file.size <= MAX_SIZE);
+      if (validFiles.length === 0) return;
+    } else {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next.files;
+        return next;
+      });
+    }
+
+    const validFiles = selectedFiles.filter(file => file.size <= MAX_SIZE);
     setIsCompressing(true);
     try {
       const processedFiles = await Promise.all(
-        selectedFiles.map(async (file) => {
+        validFiles.map(async (file) => {
           // Only compress image files, leave PDF/DOC as-is
           if (file.type.startsWith('image/')) {
             try {
@@ -359,6 +379,12 @@ const CreateReportModal = React.memo(({ open, onClose, categories, onSubmit }) =
                 onChange={handleFileChange}
               />
             </UploadArea>
+            
+            {errors.files && (
+              <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>
+                {errors.files}
+              </Alert>
+            )}
           
             {formData.files.length > 0 && (
               <Box sx={{ mt: 2 }}>
