@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import AdminSectionHeader from './admin/AdminSectionHeader';
 import {
   Box, Container, Typography, Button, Grid, Switch,
   TextField, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -18,6 +20,7 @@ const AdminSettingsPage = () => {
   
   const { settings, updateAllSettings } = useSettingsStore();
   const [localSettings, setLocalSettings] = useState(settings);
+  const { onMobileMenuClick } = useOutletContext() ?? {};
 
   useEffect(() => {
     setLocalSettings(settings);
@@ -141,14 +144,13 @@ const AdminSettingsPage = () => {
 
   return (
     <Container maxWidth="xl">
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" fontWeight="bold" gutterBottom>
-            Pengaturan Admin
-          </Typography>
-          <Typography variant="body2" color="textSecondary">
-            Kelola preferensi akun admin dan antarmuka aplikasi Anda
-          </Typography>
-        </Box>
+        <AdminSectionHeader
+          title="Pengaturan Admin"
+          subtitle="Kelola preferensi akun admin dan antarmuka aplikasi Anda"
+          onMobileMenuClick={onMobileMenuClick}
+          showRefresh={false}
+          showNotifications={false}
+        />
 
         <Grid container spacing={3}>
           <Grid item xs={12} md={8}>

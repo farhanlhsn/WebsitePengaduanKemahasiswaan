@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -42,6 +43,7 @@ import {
 } from '../services/api';
 import BulkOperationsToolbar from '../components/admin/BulkOperationsToolbar';
 import StatCard from '../components/ui/StatCard';
+import AdminSectionHeader from './admin/AdminSectionHeader';
 import { format } from 'date-fns';
 
 const UnverifiedUsersPage = () => {
@@ -54,6 +56,7 @@ const UnverifiedUsersPage = () => {
   const [ktmImage, setKtmImage] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const { onMobileMenuClick } = useOutletContext() ?? {};
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -161,26 +164,13 @@ const UnverifiedUsersPage = () => {
     <>
       <Container maxWidth="xl" sx={{ py: 4 }}>
         {/* Header */}
-        <Box sx={{ mb: 4 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-            <Box>
-              <Typography variant="h4" fontWeight={800} gutterBottom>
-                Verifikasi Pengguna
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Kelola dan verifikasi pengguna baru yang mendaftar
-              </Typography>
-            </Box>
-            <Button
-              variant="outlined"
-              startIcon={<Refresh />}
-              onClick={loadUnverifiedUsers}
-              sx={{ borderRadius: 2, fontWeight: 600 }}
-            >
-              Refresh
-            </Button>
-          </Box>
-        </Box>
+        <AdminSectionHeader
+          title="Verifikasi Pengguna"
+          subtitle="Kelola dan verifikasi pengguna baru yang mendaftar"
+          onMobileMenuClick={onMobileMenuClick}
+          onRefresh={loadUnverifiedUsers}
+          showNotifications={false}
+        />
 
         {/* Stats */}
         <Grid container spacing={3} sx={{ mb: 4 }}>

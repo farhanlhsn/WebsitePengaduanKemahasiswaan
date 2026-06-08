@@ -13,9 +13,10 @@ const AdminSectionHeader = ({
   onRefresh,
   showRefresh = true,
   showNotifications = true,
+  action,
 }) => (
   <Box sx={{ mb: 4 }}>
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 1, gap: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
         {onMobileMenuClick && (
           <IconButton
@@ -36,6 +37,7 @@ const AdminSectionHeader = ({
         </Box>
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        {action}
         {showRefresh && onRefresh && (
           <IconButton onClick={onRefresh} aria-label="Segarkan data">
             <Refresh />

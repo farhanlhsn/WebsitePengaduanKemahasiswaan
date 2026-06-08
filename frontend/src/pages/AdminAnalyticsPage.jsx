@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   Container, Typography, Grid, Box, Paper, Stack,
   Avatar, useTheme, IconButton, Button, Breadcrumbs,
@@ -18,6 +18,7 @@ import { getAdminDashboardStats, getReportStats } from '../services/api';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import useReportStore from '../stores/reportStore';
 import GlassCard from '../components/ui/GlassCard';
+import AdminSectionHeader from './admin/AdminSectionHeader';
 
 // ─── Stat Card ─────────────────────────────────────────────────────────────────
 const StatCard = ({ title, value, icon, color, subtitle }) => {
@@ -153,6 +154,7 @@ const buildTrendData = (reports, rangeKey) => {
 const AdminAnalyticsPage = () => {
   const navigate = useNavigate();
   const theme = useTheme();
+  const { onMobileMenuClick } = useOutletContext() ?? {};
   
   const [loading, setLoading]           = useState(true);
   const [dashboardStats, setDashboardStats] = useState(null);
@@ -226,56 +228,39 @@ const AdminAnalyticsPage = () => {
     <>
       <Container maxWidth={false} sx={{ py: { xs: 2, md: 3 }, px: { xs: 2, md: 4 } }}>
 
-        {/* ── Breadcrumb & Actions ── */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
-          <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
-            <Link underline="hover" color="inherit" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', fontSize: '0.82rem' }} onClick={() => navigate('/admin')}>
-              <Home sx={{ fontSize: 16 }} /> Dashboard
-            </Link>
-            <Typography color="text.primary" sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Analytics</Typography>
-          </Breadcrumbs>
-          <Stack direction="row" spacing={1}>
-            <MuiTooltip title="Refresh">
-              <IconButton onClick={loadAnalytics} size="small" sx={{ bgcolor: 'background.paper', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', borderRadius: 2 }}>
-                <Refresh fontSize="small" />
-              </IconButton>
-            </MuiTooltip>
-          </Stack>
-        </Box>
-
-        {/* ── Page Title & Time Filter ── */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 2, mb: 3 }}>
-          <Box>
-            <Typography variant="h5" fontWeight={900} sx={{ letterSpacing: -0.5 }}>Analitik & Wawasan</Typography>
-            <Typography variant="body2" color="text.secondary" fontWeight={500}>Pantau performa sistem secara real-time</Typography>
-          </Box>
-
-          {/* Working Time Range Filter */}
-          <GlassCard variant="glass" sx={{ p: 0.5, display: 'flex', gap: 0.5, alignSelf: { xs: 'flex-start', sm: 'center' } }}>
-            {TIME_RANGES.map(r => (
-              <Button
-                key={r.key}
-                onClick={() => setTimeRange(r.key)}
-                size="small"
-                sx={{
-                  minWidth: { xs: 48, sm: 56 },
-                  borderRadius: 2.5,
-                  textTransform: 'none',
-                  fontSize: { xs: '0.72rem', sm: '0.78rem' },
-                  fontWeight: 700,
-                  px: { xs: 1.5, sm: 2 },
-                  py: 0.8,
-                  bgcolor: timeRange === r.key ? 'background.paper' : 'transparent',
-                  color: timeRange === r.key ? 'primary.main' : 'text.secondary',
-                  boxShadow: timeRange === r.key ? '0 4px 12px rgba(0,0,0,0.08)' : 'none',
-                  '&:hover': { bgcolor: timeRange === r.key ? 'background.paper' : alpha(theme.palette.primary.main, 0.06) }
-                }}
-              >
-                {r.label}
-              </Button>
-            ))}
-          </GlassCard>
-        </Box>
+        <AdminSectionHeader
+          title="Analitik & Wawasan"
+          subtitle="Pantau performa sistem secara real-time"
+          onMobileMenuClick={onMobileMenuClick}
+          onRefresh={loadAnalytics}
+          showNotifications={false}
+          action={
+            <GlassCard variant="glass" sx={{ p: 0.5, display: 'flex', gap: 0.5 }}>
+              {TIME_RANGES.map(r => (
+                <Button
+                  key={r.key}
+                  onClick={() => setTimeRange(r.key)}
+                  size="small"
+                  sx={{
+                    minWidth: { xs: 48, sm: 56 },
+                    borderRadius: 2.5,
+                    textTransform: 'none',
+                    fontSize: { xs: '0.72rem', sm: '0.78rem' },
+                    fontWeight: 700,
+                    px: { xs: 1.5, sm: 2 },
+                    py: 0.8,
+                    bgcolor: timeRange === r.key ? 'background.paper' : 'transparent',
+                    color: timeRange === r.key ? 'primary.main' : 'text.secondary',
+                    boxShadow: timeRange === r.key ? '0 4px 12px rgba(0,0,0,0.08)' : 'none',
+                    '&:hover': { bgcolor: timeRange === r.key ? 'background.paper' : alpha(theme.palette.primary.main, 0.06) }
+                  }}
+                >
+                  {r.label}
+                </Button>
+              ))}
+            </GlassCard>
+          }
+        />
 
         {/* ── KPI Cards (Responsive Grid: 4 Desktop, 2 Tablet, 1 Mobile) ── */}
         <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 2, md: 3 } }}>

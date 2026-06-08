@@ -21,6 +21,8 @@ import {
   ListItemText,
   ListItemIcon
 } from '@mui/material';
+import { useOutletContext } from 'react-router-dom';
+import AdminSectionHeader from './admin/AdminSectionHeader';
 import {
   Security,
   Delete,
@@ -44,6 +46,7 @@ const SystemSecurityPage = () => {
     message: '',
     severity: 'success'
   });
+  const { onMobileMenuClick } = useOutletContext() ?? {};
 
   const handleCleanupOpen = (type) => {
     setCleanupType(type);
@@ -79,14 +82,13 @@ const SystemSecurityPage = () => {
     <>
       <Container maxWidth="xl">
         {/* Header */}
-        <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
-          System & Security
-        </Typography>
-        <Typography variant="body2" color="textSecondary">
-          System maintenance and security settings
-        </Typography>
-      </Box>
+        <AdminSectionHeader
+          title="System & Security"
+          subtitle="System maintenance and security settings"
+          onMobileMenuClick={onMobileMenuClick}
+          showRefresh={false}
+          showNotifications={false}
+        />
 
       <Grid container spacing={3}>
         {/* System Info */}
