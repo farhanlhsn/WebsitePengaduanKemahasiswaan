@@ -25,7 +25,9 @@ import {
   DialogActions,
   Grid,
   Fade,
-  TablePagination
+  TablePagination,
+  TextField,
+  CircularProgress
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { 
@@ -33,13 +35,15 @@ import {
   Visibility, 
   Refresh,
   PersonAdd,
-  HowToReg
+  HowToReg,
+  Cancel
 } from '@mui/icons-material';
 import { 
   getUnverifiedStudents, 
   verifyStudent, 
   bulkVerifyUsers,
-  getUserById 
+  getUserById,
+  rejectStudent
 } from '../services/api';
 import BulkOperationsToolbar from '../components/admin/BulkOperationsToolbar';
 import StatCard from '../components/ui/StatCard';
@@ -56,6 +60,10 @@ const UnverifiedUsersPage = () => {
   const [ktmImage, setKtmImage] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [userToReject, setUserToReject] = useState(null);
+  const [rejectLoading, setRejectLoading] = useState(false);
   const { onMobileMenuClick } = useOutletContext() ?? {};
 
   const [snackbar, setSnackbar] = useState({
@@ -127,6 +135,37 @@ const UnverifiedUsersPage = () => {
       setViewUserDialog(true);
     } catch (error) {
       showSnackbar('Failed to load user details: ' + error.message, 'error');
+    }
+  };
+
+  const handleRejectClick = (user) => {
+    setUserToReject(user);
+    setRejectReason('');
+    setRejectDialogOpen(true);
+  };
+
+  const handleRejectSubmit = async () => {
+    if (!rejectReason || rejectReason.trim().length < 5) {
+      showSnackbar('Alasan penolakan minimal 5 karakter', 'error');
+      return;
+    }
+    
+    try {
+      setRejectLoading(true);
+      await rejectStudent(userToReject.id, rejectReason.trim());
+      showSnackbar(`Pendaftaran ${userToReject.name} berhasil ditolak`, 'success');
+      setRejectDialogOpen(false);
+      setViewUserDialog(false); // Close user detail dialog if open
+      loadUnverifiedUsers();
+      
+      // Remove from selected if it was selected
+      if (selectedUsers.includes(userToReject.id)) {
+        setSelectedUsers(prev => prev.filter(id => id !== userToReject.id));
+      }
+    } catch (error) {
+      showSnackbar('Gagal menolak pendaftaran: ' + error.message, 'error');
+    } finally {
+      setRejectLoading(false);
     }
   };
 
@@ -390,6 +429,15 @@ const UnverifiedUsersPage = () => {
                               <Visibility fontSize="small" />
                             </IconButton>
                           </Tooltip>
+                          <Tooltip title="Tolak">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleRejectClick(user)}
+                              color="error"
+                            >
+                              <Cancel fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                           <Tooltip title="Verifikasi">
                             <IconButton 
                               size="small" 
@@ -553,19 +601,83 @@ const UnverifiedUsersPage = () => {
               Tutup
             </Button>
             {selectedUser && (
-              <Button 
-                variant="contained" 
-                color="success"
-                startIcon={<CheckCircle />}
-                onClick={() => {
-                  handleVerifyOne(selectedUser.id);
-                  setViewUserDialog(false);
-                }}
-                sx={{ borderRadius: 2, fontWeight: 600 }}
-              >
-                Verifikasi
-              </Button>
+              <>
+                <Button 
+                  variant="outlined" 
+                  color="error"
+                  startIcon={<Cancel />}
+                  onClick={() => handleRejectClick(selectedUser)}
+                  sx={{ borderRadius: 2, fontWeight: 600, ml: 'auto', mr: 1 }}
+                >
+                  Tolak
+                </Button>
+                <Button 
+                  variant="contained" 
+                  color="success"
+                  startIcon={<CheckCircle />}
+                  onClick={() => {
+                    handleVerifyOne(selectedUser.id);
+                    setViewUserDialog(false);
+                  }}
+                  sx={{ borderRadius: 2, fontWeight: 600 }}
+                >
+                  Verifikasi
+                </Button>
+              </>
             )}
+          </DialogActions>
+        </Dialog>
+
+        {/* Reject User Dialog */}
+        <Dialog
+          open={rejectDialogOpen}
+          onClose={() => !rejectLoading && setRejectDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 4 } }}
+        >
+          <DialogTitle sx={{ fontWeight: 800, color: 'error.main' }}>
+            Tolak Pendaftaran
+          </DialogTitle>
+          <DialogContent dividers>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              Anda akan menolak pendaftaran untuk mahasiswa <strong>{userToReject?.name}</strong> ({userToReject?.nim}).
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Mahasiswa ini tidak akan bisa login ke sistem dan harus mendaftar ulang. Email penolakan akan dikirimkan otomatis.
+            </Typography>
+            
+            <TextField
+              fullWidth
+              multiline
+              rows={3}
+              label="Alasan Penolakan"
+              placeholder="Contoh: Foto KTM blur dan tidak terbaca jelas."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              required
+              error={rejectReason.length > 0 && rejectReason.trim().length < 5}
+              helperText={rejectReason.length > 0 && rejectReason.trim().length < 5 ? "Alasan minimal 5 karakter" : "Alasan ini akan dikirimkan ke email mahasiswa"}
+            />
+          </DialogContent>
+          <DialogActions sx={{ p: 2.5 }}>
+            <Button 
+              onClick={() => setRejectDialogOpen(false)}
+              disabled={rejectLoading}
+              sx={{ borderRadius: 2, fontWeight: 600 }}
+            >
+              Batal
+            </Button>
+            <Button 
+              variant="contained" 
+              color="error"
+              onClick={handleRejectSubmit}
+              disabled={rejectLoading || rejectReason.trim().length < 5}
+              sx={{ borderRadius: 2, fontWeight: 600 }}
+              startIcon={rejectLoading && <CircularProgress size={20} color="inherit" />}
+            >
+              {rejectLoading ? 'Memproses...' : 'Tolak Pendaftaran'}
+            </Button>
           </DialogActions>
         </Dialog>
 
