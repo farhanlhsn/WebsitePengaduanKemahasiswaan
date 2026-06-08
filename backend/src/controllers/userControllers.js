@@ -59,6 +59,30 @@ exports.getUserById = async (req, res) => {
   }
 };
 
+exports.updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    log.info('Update profile', { userId });
+    
+    // Only allow updating allowed fields
+    const { name, email, nim } = req.body;
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    if (nim) updateData.nim = nim;
+
+    const updatedUser = await userServices.updateUser(userId, updateData);
+    
+    // Remove password from response
+    const { password, ...userWithoutPassword } = updatedUser;
+    
+    res.status(200).json(ResponseFormatter.success(userWithoutPassword, 'Profile updated successfully'));
+  } catch (error) {
+    log.warn('updateProfile error', { error: error.message });
+    res.status(400).json(ResponseFormatter.error('Profile update failed', 400));
+  }
+};
+
 exports.updateUser = async (req, res) => {
   try {
     const userId = parseInt(req.params.id);

@@ -239,6 +239,13 @@ const useAuthStore = create(
         }
       },
 
+      // Update local profile data
+      updateProfile: (userData) => {
+        set(state => ({
+          user: state.user ? { ...state.user, ...userData } : null
+        }));
+      },
+
       // Check if user is authenticated
       isAuthenticated: () => {
         const { token, isLoggedIn } = get();

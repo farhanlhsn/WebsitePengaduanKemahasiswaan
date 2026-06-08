@@ -4,6 +4,7 @@ import {
   getUserById as apiGetUserById,
   getUserStatsById as apiGetUserStatsById,
   updateUser as apiUpdateUser,
+  updateProfile as apiUpdateProfile,
   getAllUsers as apiGetAllUsers,
   verifyStudent as apiVerifyStudent,
   deleteUser as apiDeleteUser,
@@ -104,6 +105,30 @@ const useUserStore = create((set, get) => ({
       return updatedUser;
     } catch (error) {
       set({ loading: false, error: error.response?.data?.error || 'Failed to update user' });
+      throw error;
+    }
+  },
+
+  // Update own profile
+  updateProfile: async (userData) => {
+    try {
+      set({ loading: true, error: null });
+      const updatedUser = await apiUpdateProfile(userData);
+      
+      // Update current user
+      set({ currentUser: updatedUser });
+
+      // Update in users list if present
+      set(state => ({
+        users: state.users.map(user => 
+          user.id === updatedUser.id ? updatedUser : user
+        ),
+        user: updatedUser, 
+        loading: false 
+      }));
+      return updatedUser;
+    } catch (error) {
+      set({ loading: false, error: error.response?.data?.error || 'Failed to update profile' });
       throw error;
     }
   },

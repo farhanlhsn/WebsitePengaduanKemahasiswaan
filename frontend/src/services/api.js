@@ -235,6 +235,11 @@ export const getUserStats = async () => {
   return response.data.data;
 };
 
+export const updateProfile = async (userData) => {
+  const response = await apiClient.put(`/users/profile/me`, userData);
+  return response.data.data;
+};
+
 export const updateUser = async (userId, userData) => {
   const response = await apiClient.put(`/users/${userId}`, userData);
   return response.data.data;

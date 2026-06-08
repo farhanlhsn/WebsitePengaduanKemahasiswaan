@@ -14,7 +14,9 @@ module.exports = (req, res, next) => {
     value: err.value,
   }));
 
-  return res.status(400).json(ResponseFormatter.validation(formattedErrors));
+  const mainMessage = formattedErrors.length > 0 ? formattedErrors[0].message : 'Validation Error';
+
+  return res.status(400).json(ResponseFormatter.validation(formattedErrors, mainMessage));
 };
 
 

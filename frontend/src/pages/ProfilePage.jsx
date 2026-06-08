@@ -17,8 +17,8 @@ import GlassCard from '../components/ui/GlassCard';
 
 const ProfilePage = ({ isEmbedded = false }) => {
   const theme = useTheme();
-  const { user, devices, getUserDevices } = useAuthStore();
-  const { updateUser, loading, error, clearError } = useUserStore();
+  const { user, devices, getUserDevices, updateProfile } = useAuthStore();
+  const { loading, error, clearError, updateProfile: storeUpdateProfile } = useUserStore();
   const currentDevice = devices.find(device => device.isCurrent);
   const navigate = useNavigate();
   const [editMode, setEditMode] = useState(false);
@@ -49,7 +49,9 @@ const ProfilePage = ({ isEmbedded = false }) => {
 
   const handleSave = async () => {
     try {
-      await updateUser(user.id, formData);
+      await storeUpdateProfile(formData);
+      // Update auth store user as well to reflect changes immediately in header/sidebar
+      updateProfile(formData);
       setEditMode(false);
     } catch (error) {
       console.error('Failed to update profile:', error);
