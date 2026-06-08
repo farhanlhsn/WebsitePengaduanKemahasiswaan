@@ -76,17 +76,6 @@ class AdminDashboardServices {
    */
   async getUsersStats(user, scope) {
     try {
-      if (!isSuperAdmin(user)) {
-        return {
-          total: 0,
-          deleted: 0,
-          active: 0,
-          verified: 0,
-          unverified: 0,
-          byRole: { mahasiswa: 0, admin: 0 },
-        };
-      }
-
       const [total, deleted, verified, mahasiswa, admin] = await Promise.all([
         SoftDeleteHelper.count(prisma.user),
         SoftDeleteHelper.count(prisma.user, {}, true),
