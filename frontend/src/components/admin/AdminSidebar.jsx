@@ -160,6 +160,7 @@ const AdminSidebar = ({
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const isExpanded = isMobile || sidebarOpen;
 
   // Filter menus by role: SUPERADMIN-only items are hidden from regular ADMINs.
   const visibleMain = useMemo(
@@ -194,14 +195,14 @@ const AdminSidebar = ({
     items.map((item) => (
       <Tooltip
         key={item.id || item.text}
-        title={!sidebarOpen ? item.text : ''}
+        title={!isExpanded ? item.text : ''}
         placement="right"
         arrow
-        disableHoverListener={!!sidebarOpen}
+        disableHoverListener={!!isExpanded}
       >
         <NavItem
           active={activeId === item.id ? 1 : 0}
-          collapsed={!sidebarOpen ? 1 : 0}
+          collapsed={!isExpanded ? 1 : 0}
           onClick={() => handleClick(item)}
           onMouseEnter={() => setHoveredItem(item.id || item.text)}
           onMouseLeave={() => setHoveredItem(null)}
@@ -227,9 +228,9 @@ const AdminSidebar = ({
         flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: sidebarOpen ? 'flex-start' : 'center',
-        gap: sidebarOpen ? '0.75rem' : 0,
-        px: sidebarOpen ? '1rem' : 0,
+        justifyContent: isExpanded ? 'flex-start' : 'center',
+        gap: isExpanded ? '0.75rem' : 0,
+        px: isExpanded ? '1rem' : 0,
         py: '0.875rem',
         overflow: 'hidden',
         borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
@@ -241,8 +242,8 @@ const AdminSidebar = ({
         </Box>
         <Box sx={{
           overflow: 'hidden',
-          opacity: sidebarOpen ? 1 : 0,
-          width: sidebarOpen ? 'auto' : 0,
+          opacity: isExpanded ? 1 : 0,
+          width: isExpanded ? 'auto' : 0,
           transition: 'opacity 0.2s ease, width 0.25s ease',
           whiteSpace: 'nowrap',
         }}>
@@ -267,7 +268,7 @@ const AdminSidebar = ({
         '&::-webkit-scrollbar': { width: 3 },
         '&::-webkit-scrollbar-thumb': { bgcolor: alpha(theme.palette.primary.main, 0.2), borderRadius: 4 },
       }}>
-        {sidebarOpen && (
+        {isExpanded && (
           <Typography variant="overline" sx={{
             display: 'block', px: '1.25rem', pt: '0.25rem', pb: 0,
             fontSize: '0.6rem', fontWeight: 700, color: 'text.disabled', letterSpacing: '0.08em',
@@ -276,16 +277,16 @@ const AdminSidebar = ({
           </Typography>
         )}
         <List sx={{ py: 0 }}>{renderItems(visibleMain)}</List>
-        <Divider sx={{ mx: sidebarOpen ? '1rem' : '0.5rem', my: '0.25rem', opacity: 0.4 }} />
+        <Divider sx={{ mx: isExpanded ? '1rem' : '0.5rem', my: '0.25rem', opacity: 0.4 }} />
         <List sx={{ py: 0 }}>{renderItems(BOTTOM_MENU)}</List>
-        <Divider sx={{ mx: sidebarOpen ? '1rem' : '0.5rem', my: '0.25rem', opacity: 0.4 }} />
+        <Divider sx={{ mx: isExpanded ? '1rem' : '0.5rem', my: '0.25rem', opacity: 0.4 }} />
         <List sx={{ py: 0 }}>
           {renderItems([{ text: 'Logout', icon: <Logout />, action: () => setLogoutDialogOpen(true), color: 'error' }])}
         </List>
       </Box>
 
       <ProfileStrip>
-        <Tooltip title={!sidebarOpen ? (user?.name || 'Administrator') : ''} placement="right" arrow>
+        <Tooltip title={!isExpanded ? (user?.name || 'Administrator') : ''} placement="right" arrow>
           <Avatar sx={{
             bgcolor: isSuperAdmin ? 'warning.main' : 'success.main',
             width: 30, height: 30, flexShrink: 0,
@@ -296,8 +297,8 @@ const AdminSidebar = ({
         </Tooltip>
         <Box sx={{
           flex: 1, overflow: 'hidden',
-          opacity: sidebarOpen ? 1 : 0,
-          width: sidebarOpen ? 'auto' : 0,
+          opacity: isExpanded ? 1 : 0,
+          width: isExpanded ? 'auto' : 0,
           transition: 'opacity 0.2s ease, width 0.25s ease',
         }}>
           <Typography variant="body2" fontWeight={700} noWrap sx={{ fontSize: '0.75rem', lineHeight: 1.3 }}>
@@ -307,7 +308,7 @@ const AdminSidebar = ({
             {user?.email}
           </Typography>
         </Box>
-        {sidebarOpen && (
+        {isExpanded && (
           <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: 'success.main', flexShrink: 0 }} />
         )}
       </ProfileStrip>
