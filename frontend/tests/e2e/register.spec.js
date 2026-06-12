@@ -17,14 +17,14 @@ test.describe('Registration stepper smoke', () => {
     await page.getByLabel(/NIM/i).fill('2021001234');
     await page.getByLabel(/Nama Lengkap/i).fill('Budi Santoso');
     await page.getByLabel(/Email Kampus/i).fill('budi@mahasiswa.bunghatta.ac.id');
-    await page.getByRole('button', { name: /Lanjutkan/i }).first().click();
+    await page.getByTestId('next-step-0').click();
 
     await expect(page.getByLabel(/^Password$/i)).toBeVisible();
     await expect(page.getByLabel(/Konfirmasi Password/i)).toBeVisible();
 
     await page.getByLabel(/^Password$/i).fill('P@ssword123');
     await page.getByLabel(/Konfirmasi Password/i).fill('P@ssword123');
-    await page.getByRole('button', { name: /Lanjutkan/i }).nth(1).click();
+    await page.getByTestId('next-step-1').click();
 
     await expect(page.getByText('Upload KTM Anda')).toBeVisible();
   });
