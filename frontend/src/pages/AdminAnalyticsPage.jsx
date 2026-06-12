@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import {
   Fade, Typography, Grid, Box, Paper, Stack,
   Avatar, useTheme, IconButton, Button, Breadcrumbs,
@@ -152,7 +152,6 @@ const buildTrendData = (reports, rangeKey) => {
 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 const AdminAnalyticsPage = () => {
-  const navigate = useNavigate();
   const theme = useTheme();
   const { onMobileMenuClick } = useOutletContext() ?? {};
   
