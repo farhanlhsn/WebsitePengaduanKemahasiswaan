@@ -71,7 +71,7 @@ test("renders registration stepper and allows stepping through form steps", asyn
   await userEvent.fill(emailInput, "budi@mahasiswa.bunghatta.ac.id");
 
   // Click Lanjutkan
-  const nextButton1 = screen.getAllByRole("button", { name: /Lanjutkan/i })[0];
+  const nextButton1 = screen.getByTestId("next-step-0");
   expect(nextButton1).toBeInTheDocument();
   await userEvent.click(nextButton1);
 
@@ -86,7 +86,7 @@ test("renders registration stepper and allows stepping through form steps", asyn
   await userEvent.fill(confirmPasswordInput, "P@ssword123");
 
   // Click Lanjutkan
-  const nextButton2 = screen.getAllByRole("button", { name: /Lanjutkan/i })[1];
+  const nextButton2 = screen.getByTestId("next-step-1");
   expect(nextButton2).toBeInTheDocument();
   await userEvent.click(nextButton2);
 
@@ -108,12 +108,12 @@ test("shows validation error on invalid KTM file upload in step 3", async () => 
   await userEvent.fill(screen.getByLabelText(/NIM/i), "2021001234");
   await userEvent.fill(screen.getByLabelText(/Nama Lengkap/i), "Budi Santoso");
   await userEvent.fill(screen.getByLabelText(/Email Kampus/i), "budi@mahasiswa.bunghatta.ac.id");
-  await userEvent.click(screen.getAllByRole("button", { name: /Lanjutkan/i })[0]);
+  await userEvent.click(screen.getByTestId("next-step-0"));
 
   // Step 2: Keamanan Akun
   await userEvent.fill(screen.getByLabelText(/^Password$/i), "P@ssword123");
   await userEvent.fill(screen.getByLabelText(/Konfirmasi Password/i), "P@ssword123");
-  await userEvent.click(screen.getAllByRole("button", { name: /Lanjutkan/i })[1]);
+  await userEvent.click(screen.getByTestId("next-step-1"));
 
   // Step 3: Upload KTM
   const fileInput = document.querySelector('input[type="file"]');

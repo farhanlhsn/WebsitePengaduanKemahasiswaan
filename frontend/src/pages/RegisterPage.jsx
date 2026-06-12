@@ -403,6 +403,7 @@ export default function RegisterPage() {
                       )}
                       
                       <Button
+                        data-testid={`next-step-${index}`}
                         onClick={index === steps.length - 1 ? handleSubmit : handleNextStep}
                         endIcon={
                           (loading || (index === steps.length - 1 && isCompressing)) ? <CircularProgress size={20} color="inherit" /> :
