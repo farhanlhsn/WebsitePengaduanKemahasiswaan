@@ -132,6 +132,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Create dummy env file
+        run: touch backend/.env
+
       - name: Validate compose files
         run: |
           docker compose config
