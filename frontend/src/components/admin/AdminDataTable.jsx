@@ -420,7 +420,7 @@ const AdminDataTable = ({
           <TableHead>
             <TableRow>
               {selectable && (
-                <TableCell padding="checkbox">
+                <TableCell padding="checkbox" sx={{ backgroundColor: 'background.paper' }}>
                   <Checkbox
                     indeterminate={selected.length > 0 && selected.length < data.length}
                     checked={data.length > 0 && selected.length === data.length}
@@ -435,7 +435,7 @@ const AdminDataTable = ({
                   sortDirection={orderBy === column.field ? order : false}
                   sx={{ 
                     fontWeight: 600,
-                    backgroundColor: alpha(theme.palette.primary.main, 0.02)
+                    backgroundColor: 'background.paper'
                   }}
                 >
                   {column.sortable ? (
@@ -453,7 +453,7 @@ const AdminDataTable = ({
               ))}
               
               {actions.length > 0 && (
-                <TableCell align="center" sx={{ fontWeight: 600 }}>
+                <TableCell align="center" sx={{ fontWeight: 600, backgroundColor: 'background.paper' }}>
                   Aksi
                 </TableCell>
               )}

@@ -612,7 +612,7 @@ const CategoryManagementPage = () => {
 
 const headerCellSx = {
   fontWeight: 600,
-  bgcolor: (theme) => `${theme.palette.primary.main}0a`,
+  bgcolor: 'background.paper',
   py: 2,
 };
 
