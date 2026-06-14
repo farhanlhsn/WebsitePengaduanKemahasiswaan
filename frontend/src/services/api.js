@@ -116,8 +116,9 @@ export const getAllReports = async (filters = {}, lastItemId = null, limit = 10)
   return response.data.data;
 };
 
-export const getReportById = async (reportId) => {
-  const response = await apiClient.get(`/reports/${reportId}`);
+export const getReportById = async (reportId, includeDeleted = false) => {
+  const params = includeDeleted ? '?includeDeleted=true' : '';
+  const response = await apiClient.get(`/reports/${reportId}${params}`);
   return response.data.data;
 };
 

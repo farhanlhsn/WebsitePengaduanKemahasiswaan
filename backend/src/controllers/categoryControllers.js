@@ -1,4 +1,5 @@
 const categoryServices = require('../services/categoryServices');
+const auditLogServices = require('../services/auditLogServices');
 const ResponseFormatter = require('../utils/responseFormatter');
 const { isSuperAdmin } = require('../utils/rbac');
 const { getLogger } = require('../utils/logger');
@@ -127,7 +128,28 @@ exports.deleteCategory = async (req, res) => {
       return res.status(400).json(ResponseFormatter.error('Invalid category ID provided', 400));
     }
     
-    await categoryServices.deleteCategory(categoryId);
+    const result = await categoryServices.deleteCategory(categoryId);
+    
+    // Create audit log
+    try {
+      await auditLogServices.createAuditLog({
+        entityType: 'CATEGORY',
+        action: 'SOFT_DELETE',
+        entityId: categoryId,
+        actorId: req.user.userId,
+        actorName: req.user.name,
+        actorRole: req.user.role,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: {
+          categoryName: result.name,
+          categorySlug: result.slug
+        }
+      });
+    } catch (auditError) {
+      log.error('Failed to create audit log for delete category', { error: auditError.message });
+    }
+
     res.status(200).json(ResponseFormatter.success(null, 'Category deleted successfully (soft delete)'));
   } catch (error) {
     log.warn('deleteCategory error', { error: error.message });
@@ -152,6 +174,27 @@ exports.restoreCategory = async (req, res) => {
     }
     
     const category = await categoryServices.restoreCategory(categoryId);
+    
+    // Create audit log
+    try {
+      await auditLogServices.createAuditLog({
+        entityType: 'CATEGORY',
+        action: 'RESTORE',
+        entityId: categoryId,
+        actorId: req.user.userId,
+        actorName: req.user.name,
+        actorRole: req.user.role,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: {
+          categoryName: category.name,
+          categorySlug: category.slug
+        }
+      });
+    } catch (auditError) {
+      log.error('Failed to create audit log for restore category', { error: auditError.message });
+    }
+
     res.status(200).json(ResponseFormatter.success(category, 'Category restored successfully'));
   } catch (error) {
     log.warn('restoreCategory error', { error: error.message });
@@ -182,7 +225,29 @@ exports.permanentDeleteCategory = async (req, res) => {
       return res.status(403).json(ResponseFormatter.error('Unauthorized: Admin access required', 403));
     }
     
+    const category = await categoryServices.getCategoryById(categoryId, true);
     await categoryServices.permanentDeleteCategory(categoryId);
+    
+    // Create audit log
+    try {
+      await auditLogServices.createAuditLog({
+        entityType: 'CATEGORY',
+        action: 'HARD_DELETE',
+        entityId: categoryId,
+        actorId: req.user.userId,
+        actorName: req.user.name,
+        actorRole: req.user.role,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: {
+          categoryName: category.name,
+          categorySlug: category.slug
+        }
+      });
+    } catch (auditError) {
+      log.error('Failed to create audit log for permanent delete category', { error: auditError.message });
+    }
+
     res.status(200).json(ResponseFormatter.success(null, 'Category permanently deleted'));
   } catch (error) {
     log.warn('permanentDeleteCategory error', { error: error.message });

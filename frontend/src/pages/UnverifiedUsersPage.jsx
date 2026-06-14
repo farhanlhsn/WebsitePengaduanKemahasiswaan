@@ -51,6 +51,13 @@ import AdminSectionHeader from './admin/AdminSectionHeader';
 import { format } from 'date-fns';
 
 const UnverifiedUsersPage = () => {
+  const headerCellSx = {
+    fontWeight: 600,
+    bgcolor: 'background.paper',
+    backgroundImage: (theme) => `linear-gradient(${alpha(theme.palette.primary.main, 0.04)}, ${alpha(theme.palette.primary.main, 0.04)})`,
+    py: 2
+  };
+
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState([]);
@@ -258,10 +265,7 @@ const UnverifiedUsersPage = () => {
                 <TableRow>
                   <TableCell 
                     padding="checkbox"
-                    sx={{ 
-                      bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                      py: 2
-                    }}
+                    sx={headerCellSx}
                   >
                     <Checkbox
                       checked={selectedUsers.length === users.length && users.length > 0}
@@ -269,45 +273,23 @@ const UnverifiedUsersPage = () => {
                       onChange={handleSelectAll}
                     />
                   </TableCell>
-                  <TableCell sx={{ 
-                    fontWeight: 600, 
-                    bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                    py: 2 
-                  }}>
+                  <TableCell sx={headerCellSx}>
                     Pengguna
                   </TableCell>
-                  <TableCell sx={{ 
-                    fontWeight: 600, 
-                    bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                    py: 2 
-                  }}>
+                  <TableCell sx={headerCellSx}>
                     NIM
                   </TableCell>
-                  <TableCell sx={{ 
-                    fontWeight: 600, 
-                    bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                    py: 2 
-                  }}>
+                  <TableCell sx={headerCellSx}>
                     Email
                   </TableCell>
-                  <TableCell sx={{ 
-                    fontWeight: 600, 
-                    bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                    py: 2 
-                  }}>
+                  <TableCell sx={headerCellSx}>
                     KTM
                   </TableCell>
-                  <TableCell sx={{ 
-                    fontWeight: 600, 
-                    bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                    py: 2 
-                  }}>
+                  <TableCell sx={headerCellSx}>
                     Terdaftar
                   </TableCell>
                   <TableCell sx={{ 
-                    fontWeight: 600, 
-                    bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                    py: 2,
+                    ...headerCellSx,
                     textAlign: 'center'
                   }}>
                     Aksi

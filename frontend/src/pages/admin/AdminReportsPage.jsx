@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { Box, Fade, Alert, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Button, Snackbar } from '@mui/material';
-import { Visibility, Edit } from '@mui/icons-material';
+import { Visibility, Edit, Restore } from '@mui/icons-material';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import useReportStore from '../../stores/reportStore';
 import AdminDataTable from '../../components/admin/AdminDataTable';
@@ -9,7 +9,7 @@ import AdminSectionHeader from './AdminSectionHeader';
 const AdminReportsPage = () => {
   const navigate = useNavigate();
   const { onMobileMenuClick } = useOutletContext() ?? {};
-  const { reports, loading, error, getAllReports, bulkUpdateReportStatus } = useReportStore();
+  const { reports, loading, error, getAllReports, restoreReport, bulkUpdateReportStatus } = useReportStore();
 
   const [selectedIds, setSelectedIds] = useState([]);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
@@ -17,13 +17,14 @@ const AdminReportsPage = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
-    getAllReports({}, false).catch((e) => console.error(e));
+    getAllReports({ includeDeleted: true }, false).catch((e) => console.error(e));
   }, [getAllReports]);
 
   const tableData = useMemo(
     () =>
       reports.map((r) => ({
         ...r,
+        status: r.deletedAt ? 'DELETED' : r.status,
         category: r.category?.name,
         user: r.user?.name,
         isAnonymous: !!r.isAnonymous,
@@ -43,7 +44,25 @@ const AdminReportsPage = () => {
   );
 
   const actions = useMemo(
-    () => [{ id: 'detail', label: 'Lihat Detail', icon: <Visibility /> }],
+    () => [
+      { id: 'detail', label: 'Lihat Detail', icon: <Visibility /> },
+      { id: 'restore', label: 'Pulihkan', icon: <Restore />, show: (row) => !!row.deletedAt }
+    ],
+    []
+  );
+
+  const filters = useMemo(
+    () => [
+      { field: 'status', label: 'Status', options: [
+        { value: 'PENDING', label: 'Menunggu' },
+        { value: 'IN_REVIEW', label: 'Ditinjau' },
+        { value: 'IN_PROGRESS', label: 'Diproses' },
+        { value: 'RESOLVED', label: 'Selesai' },
+        { value: 'REJECTED', label: 'Ditolak' },
+        { value: 'CANCELED', label: 'Dibatalkan' },
+        { value: 'DELETED', label: 'Dihapus' },
+      ]}
+    ],
     []
   );
 
@@ -53,10 +72,18 @@ const AdminReportsPage = () => {
   );
 
   const onRowAction = useCallback(
-    (action, row) => {
+    async (action, row) => {
       if (action === 'detail') navigate(`/admin/reports/${row.id}`);
+      if (action === 'restore') {
+        try {
+          await restoreReport(row.id);
+          setSnackbar({ open: true, message: 'Laporan berhasil dipulihkan', severity: 'success' });
+        } catch (e) {
+          setSnackbar({ open: true, message: `Gagal memulihkan laporan: ${e.message || e}`, severity: 'error' });
+        }
+      }
     },
-    [navigate]
+    [navigate, restoreReport]
   );
 
   const onBulkAction = useCallback((action, ids) => {
@@ -96,7 +123,7 @@ const AdminReportsPage = () => {
           title="Manajemen Laporan"
           subtitle="Kelola dan tindak lanjuti semua laporan pengaduan"
           onMobileMenuClick={onMobileMenuClick}
-          onRefresh={() => getAllReports({}, false)}
+          onRefresh={() => getAllReports({ includeDeleted: true }, false)}
         />
         <AdminDataTable
           data={tableData}
@@ -106,6 +133,7 @@ const AdminReportsPage = () => {
           onBulkAction={onBulkAction}
           actions={actions}
           bulkActions={bulkActions}
+          filters={filters}
           title="Daftar Laporan"
           selectable
         />

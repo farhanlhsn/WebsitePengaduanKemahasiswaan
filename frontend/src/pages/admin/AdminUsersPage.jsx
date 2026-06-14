@@ -49,10 +49,10 @@ const AdminUsersPage = () => {
   const actions = useMemo(
     () => [
       { id: 'view', label: 'Lihat Detail', icon: <Visibility /> },
-      { id: 'edit', label: 'Edit Pengguna', icon: <Edit /> },
-      { id: 'verify', label: 'Verifikasi', icon: <CheckCircle /> },
-      { id: 'delete', label: 'Hapus', icon: <Delete /> },
-      { id: 'restore', label: 'Restore', icon: <Restore /> },
+      { id: 'edit', label: 'Edit Pengguna', icon: <Edit />, show: (row) => !row.deletedAt },
+      { id: 'verify', label: 'Verifikasi', icon: <CheckCircle />, show: (row) => !row.deletedAt && !row.isVerified },
+      { id: 'delete', label: 'Hapus', icon: <Delete />, show: (row) => !row.deletedAt },
+      { id: 'restore', label: 'Restore', icon: <Restore />, show: (row) => !!row.deletedAt },
     ],
     []
   );

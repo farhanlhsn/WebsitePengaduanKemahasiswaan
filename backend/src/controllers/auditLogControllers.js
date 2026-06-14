@@ -39,9 +39,9 @@ exports.getAuditLogsByEntity = async (req, res) => {
     log.info('Get audit logs by entity', { entityType, entityId });
 
     // Validate entityType
-    if (!['USER', 'REPORT'].includes(entityType)) {
+    if (!['USER', 'REPORT', 'CATEGORY', 'ASSIGNMENT'].includes(entityType)) {
       return res.status(400).json(
-        ResponseFormatter.error('Invalid entity type. Must be USER or REPORT', 400)
+        ResponseFormatter.error('Invalid entity type. Must be USER, REPORT, CATEGORY, or ASSIGNMENT', 400)
       );
     }
 

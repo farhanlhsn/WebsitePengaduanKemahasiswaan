@@ -159,9 +159,11 @@ const useUserStore = create((set, get) => ({
       set({ loading: true, error: null });
       await apiDeleteUser(userId);
       
-      // Remove from users list or mark as deleted
+      // Mark as deleted in state instead of filtering out
       set(state => ({
-        users: state.users.filter(user => user.id !== userId),
+        users: state.users.map(user => 
+          user.id === userId ? { ...user, deletedAt: new Date().toISOString() } : user
+        ),
         loading: false 
       }));
     } catch (error) {
@@ -176,11 +178,16 @@ const useUserStore = create((set, get) => ({
       set({ loading: true, error: null });
       const restoredUser = await apiRestoreUser(userId);
       
-      // Add back to users list
-      set(state => ({
-        users: [restoredUser, ...state.users],
-        loading: false 
-      }));
+      // Update the user in the list (or add if not present)
+      set(state => {
+        const exists = state.users.some(user => user.id === userId);
+        return {
+          users: exists
+            ? state.users.map(user => user.id === userId ? restoredUser : user)
+            : [restoredUser, ...state.users],
+          loading: false 
+        };
+      });
       return restoredUser;
     } catch (error) {
       set({ loading: false, error: error.response?.data?.error || 'Failed to restore user' });

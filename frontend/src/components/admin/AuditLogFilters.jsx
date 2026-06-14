@@ -106,6 +106,9 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
               <MenuItem value="REPORT">
                 <Typography fontWeight={600}>Report</Typography>
               </MenuItem>
+              <MenuItem value="CATEGORY">
+                <Typography fontWeight={600}>Kategori</Typography>
+              </MenuItem>
             </TextField>
           </Grid>
 

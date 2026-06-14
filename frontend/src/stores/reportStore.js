@@ -138,10 +138,10 @@ const useReportStore = create((set, get) => ({
   },
 
   // Get single report by ID
-  getReportById: async (reportId) => {
+  getReportById: async (reportId, includeDeleted = false) => {
     try {
       set({ loading: true, error: null });
-      const report = await apiGetReportById(reportId);
+      const report = await apiGetReportById(reportId, includeDeleted);
       set({ loading: false });
       return report;
     } catch (error) {
@@ -200,7 +200,9 @@ const useReportStore = create((set, get) => ({
       set({ loading: true, error: null });
       await apiDeleteReport(reportId);
       set(state => ({
-        reports: state.reports.filter(report => report.id !== reportId),
+        reports: state.reports.map(report => 
+          report.id === reportId ? { ...report, deletedAt: new Date().toISOString() } : report
+        ),
         loading: false
       }));
     } catch (error) {
@@ -215,10 +217,15 @@ const useReportStore = create((set, get) => ({
     try {
       set({ loading: true, error: null });
       const report = await apiRestoreReport(reportId);
-      set(state => ({
-        reports: [report, ...state.reports],
-        loading: false
-      }));
+      set(state => {
+        const exists = state.reports.some(r => r.id === reportId);
+        return {
+          reports: exists
+            ? state.reports.map(r => r.id === reportId ? report : r)
+            : [report, ...state.reports],
+          loading: false
+        };
+      });
       return report;
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to restore report';

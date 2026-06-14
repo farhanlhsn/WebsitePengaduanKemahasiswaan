@@ -41,8 +41,9 @@ function shouldRecordAnonViewAudit(actorId, reportId) {
 // Admin: Get all reports paginated (with optional search & filter)
 exports.getAllReportsPaginated = async (req, res) => {
   try {
-    const { limit = 10, lastItemId: lastItemIdRaw, search, createdAt, categoryId, assignedToId, ...rest } = req.query;
+    const { limit = 10, lastItemId: lastItemIdRaw, search, createdAt, categoryId, assignedToId, includeDeleted: includeDeletedRaw, ...rest } = req.query;
     let filters = { ...rest };
+    const includeDeleted = includeDeletedRaw === 'true' || includeDeletedRaw === true;
     const take = parseInt(limit, 10);
     log.info('Admin get reports paginated', { take, search, createdAt, categoryId, assignedToId });
     let lastItemIdInt = null;
@@ -122,7 +123,7 @@ exports.getAllReportsPaginated = async (req, res) => {
     const result = await ReportServices.getAllReportsPaginated(
       take,
       filters,
-      false,
+      includeDeleted,
       lastItemIdInt
     );
     // Mask reporter identity for any anonymous report (admin included)

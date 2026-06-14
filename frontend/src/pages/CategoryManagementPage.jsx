@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Container,
   Typography,
@@ -74,7 +74,7 @@ const CategoryManagementPage = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [includeDeleted, setIncludeDeleted] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -87,14 +87,14 @@ const CategoryManagementPage = () => {
   const loadCategories = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await getCategories(includeDeleted);
+      const data = await getCategories(true);
       setCategories(data);
     } catch (error) {
       showSnackbar('Failed to load categories: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }
-  }, [includeDeleted]);
+  }, []);
 
   const loadStats = useCallback(async () => {
     try {
@@ -109,6 +109,19 @@ const CategoryManagementPage = () => {
     loadCategories();
     loadStats();
   }, [loadCategories, loadStats]);
+
+  const filteredCategories = useMemo(() => {
+    return categories.filter((category) => {
+      if (statusFilter === 'ACTIVE') return !category.deletedAt;
+      if (statusFilter === 'DELETED') return !!category.deletedAt;
+      return true;
+    });
+  }, [categories, statusFilter]);
+
+  const handleStatusFilterChange = (event) => {
+    setStatusFilter(event.target.value);
+    setPage(0);
+  };
 
   const handleFormChange = (field) => (event) => {
     const value = field === 'allowAnonymous' ? event.target.checked : event.target.value;
@@ -215,7 +228,7 @@ const CategoryManagementPage = () => {
   };
 
   // Paginated categories
-  const paginatedCategories = categories.slice(
+  const paginatedCategories = filteredCategories.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
   );
@@ -349,15 +362,23 @@ const CategoryManagementPage = () => {
           </Grid>
         )}
 
-        {/* Toggle Show Deleted */}
+        {/* Filter Status */}
         <Box sx={{ mb: 3 }}>
-          <Button
-            onClick={() => setIncludeDeleted(!includeDeleted)}
-            variant={includeDeleted ? 'contained' : 'outlined'}
-            sx={{ borderRadius: 2, fontWeight: 600 }}
-          >
-            {includeDeleted ? 'Sembunyikan' : 'Tampilkan'} yang Dihapus
-          </Button>
+          <FormControl sx={{ minWidth: 200 }} size="small">
+            <InputLabel id="status-filter-label">Status Kategori</InputLabel>
+            <Select
+              labelId="status-filter-label"
+              id="status-filter"
+              value={statusFilter}
+              label="Status Kategori"
+              onChange={handleStatusFilterChange}
+              sx={{ borderRadius: 2 }}
+            >
+              <MenuItem value="ALL">Semua</MenuItem>
+              <MenuItem value="ACTIVE">Aktif</MenuItem>
+              <MenuItem value="DELETED">Dihapus</MenuItem>
+            </Select>
+          </FormControl>
         </Box>
 
         {/* Categories Table */}
@@ -392,7 +413,7 @@ const CategoryManagementPage = () => {
                       </Typography>
                     </TableCell>
                   </TableRow>
-                ) : categories.length === 0 ? (
+                ) : filteredCategories.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
                       <Typography color="text.secondary" fontWeight={600}>
@@ -519,7 +540,7 @@ const CategoryManagementPage = () => {
           {/* Pagination */}
           <TablePagination
             component="div"
-            count={categories.length}
+            count={filteredCategories.length}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}

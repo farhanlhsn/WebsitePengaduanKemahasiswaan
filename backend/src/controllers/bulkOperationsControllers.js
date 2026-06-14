@@ -247,6 +247,27 @@ exports.bulkDeleteCategories = async (req, res) => {
 
     const result = await bulkOperationsServices.bulkDeleteCategories(categoryIds);
 
+    // Create audit log
+    try {
+      await auditLogServices.createAuditLog({
+        entityType: 'CATEGORY',
+        action: 'SOFT_DELETE',
+        entityId: 0,
+        actorId: req.user.userId,
+        actorName: req.user.name,
+        actorRole: req.user.role,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: {
+          operation: 'BULK_DELETE',
+          categoryIds,
+          count: result.deleted
+        }
+      });
+    } catch (auditError) {
+      log.error('Failed to create audit log for bulk delete categories', { error: auditError.message });
+    }
+
     res.status(200).json(
       ResponseFormatter.success(result, `Successfully deleted ${result.deleted} categories`)
     );
@@ -265,6 +286,27 @@ exports.bulkRestoreCategories = async (req, res) => {
 
     const result = await bulkOperationsServices.bulkRestoreCategories(categoryIds);
 
+    // Create audit log
+    try {
+      await auditLogServices.createAuditLog({
+        entityType: 'CATEGORY',
+        action: 'RESTORE',
+        entityId: 0,
+        actorId: req.user.userId,
+        actorName: req.user.name,
+        actorRole: req.user.role,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: {
+          operation: 'BULK_RESTORE',
+          categoryIds,
+          count: result.restored
+        }
+      });
+    } catch (auditError) {
+      log.error('Failed to create audit log for bulk restore categories', { error: auditError.message });
+    }
+
     res.status(200).json(
       ResponseFormatter.success(result, `Successfully restored ${result.restored} categories`)
     );
@@ -275,4 +317,3 @@ exports.bulkRestoreCategories = async (req, res) => {
     );
   }
 };
-

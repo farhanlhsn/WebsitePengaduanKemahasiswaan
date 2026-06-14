@@ -77,11 +77,11 @@ const AdminReportDetailPage = () => {
   useEffect(() => { if (user && !['ADMIN', 'SUPERADMIN'].includes(user.role)) navigate('/dashboard'); }, [user, navigate]);
 
   useEffect(() => {
-    if (id) { getReportById(id).then(setReport); }
+    if (id) { getReportById(id, true).then(setReport); }
   }, [id, getReportById]);
 
   const handleDelete = async () => { await deleteReport(id); setDeleteDialog(false); navigate('/admin/reports'); };
-  const handleRestore = async () => { await restoreReport(id); setRestoreDialog(false); setReport(await getReportById(id)); };
+  const handleRestore = async () => { await restoreReport(id); setRestoreDialog(false); setReport(await getReportById(id, true)); };
   const handleOpenChat = async () => { if (report) { await selectReport(report); navigate('/admin/chat'); } };
   const handleStatusChange = async (s) => {
     setStatusMenuAnchor(null);

@@ -37,6 +37,13 @@ const getEntityIcon = (entityType) => {
 };
 
 const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPerPage, totalLogs, onPageChange, onRowsPerPageChange }) => {
+  const headerCellSx = {
+    fontWeight: 600,
+    bgcolor: 'background.paper',
+    backgroundImage: (theme) => `linear-gradient(${alpha(theme.palette.primary.main, 0.04)}, ${alpha(theme.palette.primary.main, 0.04)})`,
+    py: 2
+  };
+
   if (loading) {
     return (
       <Paper sx={{ 
@@ -94,52 +101,26 @@ const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPer
         <Table stickyHeader>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ 
-                fontWeight: 600, 
-                bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                py: 2 
-              }}>
+              <TableCell sx={headerCellSx}>
                 Entitas
               </TableCell>
-              <TableCell sx={{ 
-                fontWeight: 600, 
-                bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                py: 2 
-              }}>
+              <TableCell sx={headerCellSx}>
                 Aksi
               </TableCell>
-              <TableCell sx={{ 
-                fontWeight: 600, 
-                bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                py: 2 
-              }}>
+              <TableCell sx={headerCellSx}>
                 ID Entitas
               </TableCell>
-              <TableCell sx={{ 
-                fontWeight: 600, 
-                bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                py: 2 
-              }}>
+              <TableCell sx={headerCellSx}>
                 Aktor
               </TableCell>
-              <TableCell sx={{ 
-                fontWeight: 600, 
-                bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                py: 2 
-              }}>
+              <TableCell sx={headerCellSx}>
                 IP Address
               </TableCell>
-              <TableCell sx={{ 
-                fontWeight: 600, 
-                bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                py: 2 
-              }}>
+              <TableCell sx={headerCellSx}>
                 Waktu
               </TableCell>
               <TableCell sx={{ 
-                fontWeight: 600, 
-                bgcolor: (theme) => `${theme.palette.primary.main}0a`,
-                py: 2,
+                ...headerCellSx,
                 textAlign: 'center'
               }}>
                 Detail

@@ -490,33 +490,43 @@ const AdminDataTable = ({
                       </TableCell>
                     ))}
                     
-                    {actions.length > 0 && (
-                      <TableCell align="center">
-                        {actions.length === 1 ? (
-                          <Tooltip title={actions[0].label}>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleAction(actions[0].id, row)}
-                              sx={{ 
-                                color: 'primary.main',
-                                '&:hover': { 
-                                  bgcolor: alpha(theme.palette.primary.main, 0.08) 
-                                }
-                              }}
-                            >
-                              {actions[0].icon}
-                            </IconButton>
-                          </Tooltip>
-                        ) : (
+                    {actions.length > 0 && (() => {
+                      const visibleActions = actions.filter((action) => !action.show || action.show(row));
+                      if (visibleActions.length === 0) {
+                        return <TableCell align="center">-</TableCell>;
+                      }
+                      if (visibleActions.length === 1) {
+                        const action = visibleActions[0];
+                        return (
+                          <TableCell align="center">
+                            <Tooltip title={action.label}>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleAction(action.id, row)}
+                                sx={{ 
+                                  color: 'primary.main',
+                                  '&:hover': { 
+                                    bgcolor: alpha(theme.palette.primary.main, 0.08) 
+                                  }
+                                }}
+                              >
+                                {action.icon}
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        );
+                      }
+                      return (
+                        <TableCell align="center">
                           <IconButton
                             size="small"
                             onClick={(e) => handleMenuOpen(e, row)}
                           >
                             <MoreVert />
                           </IconButton>
-                        )}
-                      </TableCell>
-                    )}
+                        </TableCell>
+                      );
+                    })()}
                   </TableRow>
                 </Fade>
               ))}
@@ -552,16 +562,18 @@ const AdminDataTable = ({
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        {actions.map((action) => (
-          <MenuItem
-            key={action.id}
-            onClick={() => handleAction(action.id, selectedRow)}
-            sx={{ gap: 1 }}
-          >
-            {action.icon}
-            {action.label}
-          </MenuItem>
-        ))}
+        {selectedRow && actions
+          .filter((action) => !action.show || action.show(selectedRow))
+          .map((action) => (
+            <MenuItem
+              key={action.id}
+              onClick={() => handleAction(action.id, selectedRow)}
+              sx={{ gap: 1 }}
+            >
+              {action.icon}
+              {action.label}
+            </MenuItem>
+          ))}
       </Menu>
 
       {/* Bulk Action Menu */}
