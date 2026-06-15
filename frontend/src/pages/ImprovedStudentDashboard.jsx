@@ -13,6 +13,7 @@ import useUserStore from '../stores/userStore';
 import useAuthStore from '../stores/authStore';
 import useChatStore from '../stores/chatStore';
 import { useTranslation } from '../stores/settingsStore';
+import { useLocation } from 'react-router-dom';
 
 import StudentSidebar from '../components/dashboard/StudentSidebar';
 import EnhancedStatCard from '../components/dashboard/EnhancedStatCard';
@@ -42,6 +43,15 @@ export default React.memo(function ImprovedStudentDashboard() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState('dashboard');
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.activeMenu) {
+      setActiveMenu(location.state.activeMenu);
+      // Clear navigation state to prevent issues on page refresh/reload
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
   
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const savedState = localStorage.getItem('sidebar-open');

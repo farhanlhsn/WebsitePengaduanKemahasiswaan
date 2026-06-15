@@ -300,7 +300,7 @@ const SettingsPage = ({ isEmbedded = false }) => {
                 <Stack direction="row" alignItems="center" spacing={2}>
                   <Security color="primary" />
                   <Typography variant="h6" fontWeight={600}>
-                    Keamanan Akun
+                    Privasi & Keamanan
                   </Typography>
                 </Stack>
               </AccordionSummary>

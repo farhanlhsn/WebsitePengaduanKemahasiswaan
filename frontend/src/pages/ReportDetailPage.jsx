@@ -240,7 +240,7 @@ const ReportDetailPage = () => {
   const handleOpenChat = async () => {
     if (report) {
       await selectReport(report);
-      navigate(`/dashboard/chat/${report.id}`);
+      navigate(`/dashboard`, { state: { activeMenu: 'chat' } });
     }
   };
   const formatDate = (dateString) => {

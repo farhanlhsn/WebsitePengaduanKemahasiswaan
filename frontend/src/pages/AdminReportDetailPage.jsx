@@ -276,6 +276,7 @@ const AdminReportDetailPage = () => {
                     startIcon={<Edit />}
                     onClick={(e) => setStatusMenuAnchor(e.currentTarget)}
                     disabled={!!report?.deletedAt}
+                    aria-label="Status"
                     sx={{ py: 1.5, borderRadius: 2, fontWeight: 600 }}
                   >
                     Ubah Status Laporan
