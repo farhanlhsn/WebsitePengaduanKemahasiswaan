@@ -11,14 +11,13 @@ import {
   useTheme,
   alpha
 } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Login, PersonAdd, Home, AccountCircle, HelpOutline, Dashboard } from '@mui/icons-material';
 import useAuthStore from '../stores/authStore';
 import UBHLogo from './ui/UBHLogo';
 
 export default function Header() {
   const theme = useTheme();
-  const navigate = useNavigate();
   const { isAuthenticated, user } = useAuthStore();
 
   const getDashboardLink = () => {

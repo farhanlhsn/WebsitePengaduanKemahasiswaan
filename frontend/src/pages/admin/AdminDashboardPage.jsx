@@ -13,7 +13,7 @@ import AdminSectionHeader from './AdminSectionHeader';
 const AdminDashboardPage = () => {
   const theme = useTheme();
   const { onMobileMenuClick } = useOutletContext() ?? {};
-  const { users, loading: userLoading, error: userError, getAllUsers } = useUserStore();
+  const { loading: userLoading, error: userError, getAllUsers } = useUserStore();
   const { reports, loading: reportLoading, error: reportError, getAllReports } = useReportStore();
   const { getCategories } = useCategoryStore();
 
