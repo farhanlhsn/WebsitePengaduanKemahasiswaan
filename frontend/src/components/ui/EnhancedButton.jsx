@@ -58,7 +58,7 @@ const StyledButton = styled(Button)(({ theme, variant, color = 'primary' }) => (
 const EnhancedButton = ({ 
   children, 
   loading = false, 
-  loadingText = 'Loading...', 
+  loadingText = 'Memuat...', 
   icon,
   ...props 
 }) => {

@@ -169,7 +169,7 @@ const UserStatistics = ({ users = [], loading = false }) => {
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3, borderRadius: 3 }}>
             <Typography variant="h6" fontWeight={600} gutterBottom>
-              Distribusi Role
+              Distribusi Peran
             </Typography>
             
             <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>

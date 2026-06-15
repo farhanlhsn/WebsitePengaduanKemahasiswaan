@@ -4,7 +4,7 @@ export const exportUsersToCSV = (users) => {
     'Nama',
     'NIM', 
     'Email',
-    'Role',
+    'Peran',
     'Status',
     'Terverifikasi',
     'Tanggal Daftar',
@@ -72,7 +72,7 @@ Total Pengguna: ${stats.total}
 - Belum Terverifikasi: ${stats.unverified}
 - Dihapus: ${stats.deleted}
 
-Berdasarkan Role:
+Berdasarkan Peran:
 - Mahasiswa: ${stats.students}
 - Admin: ${stats.admins}
     `.trim()

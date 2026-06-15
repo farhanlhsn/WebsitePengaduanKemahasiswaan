@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Box, Fade, Alert } from '@mui/material';
-import { Visibility, Edit, CheckCircle, Delete, Restore } from '@mui/icons-material';
+import { Visibility, CheckCircle, Delete, Restore } from '@mui/icons-material';
 import { useOutletContext } from 'react-router-dom';
 import useUserStore from '../../stores/userStore';
 import useAuthStore from '../../stores/authStore';
@@ -35,13 +35,13 @@ const AdminUsersPage = () => {
 
   const columns = useMemo(
     () => [
-      { field: 'name', headerName: 'Nama', sortable: true },
-      { field: 'nim', headerName: 'NIM', sortable: true },
-      { field: 'email', headerName: 'Email', sortable: true, maxLength: 30 },
-      { field: 'status', headerName: 'Status', type: 'status', sortable: true },
-      { field: 'isVerified', headerName: 'Terverifikasi', type: 'boolean', sortable: true },
-      { field: 'role', headerName: 'Role', type: 'chip', chipColor: 'primary', sortable: true },
-      { field: 'createdAt', headerName: 'Tanggal Daftar', type: 'date', sortable: true },
+      { field: 'name', headerName: 'Nama', sortable: true, width: '19%' },
+      { field: 'nim', headerName: 'NIM', sortable: true, width: '12%' },
+      { field: 'email', headerName: 'Email', sortable: true, maxLength: 30, width: '22%' },
+      { field: 'status', headerName: 'Status', type: 'status', sortable: true, width: '14%' },
+      { field: 'isVerified', headerName: 'Terverifikasi', type: 'boolean', sortable: true, width: '13%' },
+      { field: 'role', headerName: 'Peran', type: 'chip', chipColor: 'primary', sortable: true, width: '10%' },
+      { field: 'createdAt', headerName: 'Tanggal Daftar', type: 'date', sortable: true, width: '10%' },
     ],
     []
   );
@@ -49,10 +49,9 @@ const AdminUsersPage = () => {
   const actions = useMemo(
     () => [
       { id: 'view', label: 'Lihat Detail', icon: <Visibility /> },
-      { id: 'edit', label: 'Edit Pengguna', icon: <Edit />, show: (row) => !row.deletedAt },
       { id: 'verify', label: 'Verifikasi', icon: <CheckCircle />, show: (row) => !row.deletedAt && !row.isVerified },
       { id: 'delete', label: 'Hapus', icon: <Delete />, show: (row) => !row.deletedAt },
-      { id: 'restore', label: 'Restore', icon: <Restore />, show: (row) => !!row.deletedAt },
+      { id: 'restore', label: 'Pulihkan', icon: <Restore />, show: (row) => !!row.deletedAt },
     ],
     []
   );
@@ -68,7 +67,7 @@ const AdminUsersPage = () => {
         { value: 'true', label: 'Terverifikasi' },
         { value: 'false', label: 'Belum Terverifikasi' },
       ]},
-      { field: 'role', label: 'Role', options: [
+      { field: 'role', label: 'Peran', options: [
         { value: 'MAHASISWA', label: 'Mahasiswa' },
         { value: 'ADMIN', label: 'Admin' },
         { value: 'SUPERADMIN', label: 'Super Admin' },

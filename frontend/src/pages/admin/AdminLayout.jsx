@@ -59,8 +59,8 @@ const AdminLayout = () => {
         onMobileMenuClick={handleDrawerToggle}
       />
 
-      <Box component="main" sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Box sx={{ flex: 1, p: { xs: 2, md: 3 }, overflowY: 'auto' }}>
+      <Box component="main" sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        <Box sx={{ flex: 1, p: { xs: 1.5, md: 2.5 }, overflowY: 'auto', overflowX: 'hidden' }}>
           <Outlet context={{ onMobileMenuClick: handleDrawerToggle }} />
         </Box>
       </Box>

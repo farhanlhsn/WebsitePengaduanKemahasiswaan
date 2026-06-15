@@ -68,11 +68,11 @@ const StatusIndicator = ({ status }) => {
   const theme = useTheme();
   
   const statusConfig = {
-    PENDING: { color: theme.palette.warning.main, label: 'Pending' },
+    PENDING: { color: theme.palette.warning.main, label: 'Menunggu' },
     IN_REVIEW: { color: theme.palette.info.main, label: 'Review' },
     IN_PROGRESS: { color: theme.palette.primary.main, label: 'Progress' },
-    RESOLVED: { color: theme.palette.success.main, label: 'Resolved' },
-    REJECTED: { color: theme.palette.error.main, label: 'Rejected' },
+    RESOLVED: { color: theme.palette.success.main, label: 'Selesai' },
+    REJECTED: { color: theme.palette.error.main, label: 'Ditolak' },
     CANCELED: { color: theme.palette.grey[500], label: 'Canceled' },
   };
 

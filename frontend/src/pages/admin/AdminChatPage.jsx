@@ -14,7 +14,7 @@ const AdminChatPage = () => {
     <Fade in timeout={300}>
       <Box>
         <AdminSectionHeader
-          title="Chat & Komunikasi"
+          title="Percakapan"
           subtitle="Komunikasi langsung dengan pelapor"
           onMobileMenuClick={onMobileMenuClick}
           showRefresh={false}

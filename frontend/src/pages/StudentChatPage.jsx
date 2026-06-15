@@ -78,7 +78,7 @@ export default function StudentChatPage() {
           <IconButton onClick={() => navigate(-1)}>
             <ArrowBack />
           </IconButton>
-          <Typography variant="h5" fontWeight={700}>Chat & Komunikasi</Typography>
+          <Typography variant="h5" fontWeight={700}>Percakapan</Typography>
         </Box>
 
         <Grid container spacing={3}>

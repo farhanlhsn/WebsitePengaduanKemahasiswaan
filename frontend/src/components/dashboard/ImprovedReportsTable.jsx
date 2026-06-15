@@ -1,12 +1,12 @@
 import React from 'react';
 import {
-  Box, Paper, Typography, Button, FormControl, InputLabel, Select, MenuItem,
+  Box, Typography, FormControl, InputLabel, Select, MenuItem, Menu,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  IconButton, CircularProgress, Card, CardContent, CardActions,
-  Skeleton, Fade, Zoom, Tooltip, Stack, useMediaQuery, SwipeableDrawer
+  IconButton, CardContent, CardActions,
+  Skeleton, Zoom, Tooltip, Stack, useMediaQuery
 } from '@mui/material';
 import { 
-  Visibility, AddCircle, Assignment, FilterList, ViewModule, ViewList, VisibilityOff
+  Visibility, AddCircle, Assignment, ViewModule, ViewList, VisibilityOff, MoreVert
 } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +16,7 @@ import StatusBadge from '../ui/StatusBadge';
 import GlassCard from '../ui/GlassCard';
 import RichTextDisplay from '../ui/RichTextDisplay';
 import { richTextToPlainText } from '../../utils/sanitizeHtml';
+import ReportDetailModal from './ReportDetailModal';
 
 const CATEGORY_COLOR = '#2E7D32';
 
@@ -35,13 +36,33 @@ const ImprovedReportsTable = React.memo(({
   hasNextPage,
   onCreateReport,
   searchQuery,
-  onSearchChange
+  onSearchChange,
+  onOpenDetail
 }) => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [viewMode, setViewMode] = React.useState(isMobile ? 'card' : 'table');
+  const [actionAnchorEl, setActionAnchorEl] = React.useState(null);
+  const [actionReport, setActionReport] = React.useState(null);
+  const [fallbackReport, setFallbackReport] = React.useState(null);
+
+  const openDetail = React.useCallback((report) => {
+    if (onOpenDetail) onOpenDetail(report);
+    else setFallbackReport(report);
+  }, [onOpenDetail]);
+
+  const openActionMenu = (event, report) => {
+    event.stopPropagation();
+    setActionAnchorEl(event.currentTarget);
+    setActionReport(report);
+  };
+
+  const closeActionMenu = () => {
+    setActionAnchorEl(null);
+    setActionReport(null);
+  };
 
   // Auto-switch to card view on mobile
   React.useEffect(() => {
@@ -100,21 +121,20 @@ const ImprovedReportsTable = React.memo(({
         sm: 'repeat(auto-fill, minmax(320px, 1fr))',
         md: 'repeat(auto-fill, minmax(350px, 1fr))'
       }, 
-      gap: { xs: 2, sm: 3 }, 
-      p: { xs: 1, sm: 2 } 
+      gap: { xs: 1.25, sm: 1.75 }, 
+      p: { xs: 1.25, sm: 1.75 } 
     }}>
       {reports.map((report) => (
           <GlassCard 
             key={report.id}
-            variant="glass" 
-            hover
+            variant="default" 
+            hover={false}
             sx={{
               cursor: 'pointer',
-              '&:active': {
-                transform: 'scale(0.98)',
-              }
+              p: 0,
+              boxShadow: 'none'
             }}
-            onClick={() => navigate(`/report/${report.id}`)}
+            onClick={() => openDetail(report)}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               {/* Header */}
@@ -218,7 +238,7 @@ const ImprovedReportsTable = React.memo(({
                 startIcon={<Visibility />}
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/report/${report.id}`);
+                  openDetail(report);
                 }}
                 fullWidth
                 size="small"
@@ -231,181 +251,26 @@ const ImprovedReportsTable = React.memo(({
     </Box>
   );
 
-  const MobileTableView = () => (
-    <Box sx={{ 
-      overflowX: 'auto',
-      WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
-      '&::-webkit-scrollbar': {
-        height: 8,
-        backgroundColor: 'rgba(0,0,0,0.1)',
-      },
-      '&::-webkit-scrollbar-thumb': {
-        backgroundColor: 'rgba(0,0,0,0.3)',
-        borderRadius: 4,
-      },
-      '&::-webkit-scrollbar-track': {
-        backgroundColor: 'rgba(0,0,0,0.05)',
-      }
-    }}>
-      <Table 
-        size="small" 
-        sx={{ 
-          minWidth: 800, // Ensure minimum width for proper table layout
-          '& .MuiTableCell-root': {
-            whiteSpace: 'nowrap',
-            padding: { xs: '8px 4px', sm: '12px 8px' }
-          }
-        }}
-      >
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', minWidth: 120 }}>
-              No. Registrasi
-            </TableCell>
-            <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', minWidth: 200 }}>
-              Judul Laporan
-            </TableCell>
-            <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', minWidth: 120 }}>
-              Kategori
-            </TableCell>
-            <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', minWidth: 100 }}>
-              Status
-            </TableCell>
-            <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', minWidth: 100 }}>
-              Tanggal
-            </TableCell>
-            <TableCell align="center" sx={{ fontWeight: 600, fontSize: '0.875rem', minWidth: 80 }}>
-              Aksi
-            </TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {reports.map((report) => (
-              <TableRow 
-                key={report.id}
-                onClick={() => navigate(`/report/${report.id}`)}
-                sx={{ 
-                  '&:hover': { 
-                    bgcolor: alpha(theme.palette.primary.main, 0.02),
-                    cursor: 'pointer'
-                  },
-                  '&:last-child td': { border: 0 }
-                }}
-              >
-                <TableCell>
-                  <Stack direction="row" spacing={0.5} alignItems="center">
-                    <Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.8rem' }}>
-                      {report.registrationNumber}
-                    </Typography>
-                    {report.isAnonymous && (
-                      <Tooltip title="Laporan anonim">
-                        <VisibilityOff sx={{ fontSize: 14, color: 'warning.main' }} />
-                      </Tooltip>
-                    )}
-                  </Stack>
-                </TableCell>
-                <TableCell sx={{ maxWidth: 200 }}>
-                  <Typography 
-                    variant="body2" 
-                    fontWeight={500} 
-                    sx={{ 
-                      mb: 0.5,
-                      fontSize: '0.8rem',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {report.title}
-                  </Typography>
-                  <Typography 
-                    variant="caption" 
-                    color="text.secondary"
-                    sx={{
-                      display: 'block',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      maxWidth: 180
-                    }}
-                  >
-                    {(() => {
-                      const plain = stripHtml(report.description);
-                      return plain.length > 30 ? `${plain.substring(0, 30)}...` : plain;
-                    })()}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Box
-                    sx={{
-                      px: 1.5,
-                      py: 0.5,
-                      borderRadius: 2,
-                      bgcolor: CATEGORY_COLOR,
-                      color: 'white',
-                      display: 'inline-block',
-                      fontWeight: 600,
-                      fontSize: '0.7rem',
-                      minWidth: 60,
-                      textAlign: 'center',
-                      maxWidth: 100,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {report.category?.name || 'N/A'}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={report.status} size="small" />
-                </TableCell>
-                <TableCell>
-                  <Typography variant="caption" color="text.secondary">
-                    {formatDate(report.createdAt)}
-                  </Typography>
-                </TableCell>
-                <TableCell align="center">
-                  <Tooltip title="Lihat Detail">
-                    <IconButton 
-                      onClick={() => navigate(`/report/${report.id}`)}
-                      size="small"
-                      sx={{ 
-                        color: 'primary.main',
-                        '&:hover': {
-                          bgcolor: alpha(theme.palette.primary.main, 0.08)
-                        }
-                      }}
-                    >
-                      <Visibility fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Box>
-  );
+  const MobileTableView = CardView;
 
   const DesktopTableView = () => (
-    <TableContainer>
-      <Table size="medium">
+    <TableContainer sx={{ overflowX: 'hidden' }}>
+      <Table size="small" sx={{ width: '100%', tableLayout: 'fixed' }}>
         <TableHead>
           <TableRow>
-            <TableCell sx={{ fontWeight: 600, fontSize: '1rem', py: 3 }}>No. Registrasi</TableCell>
-            <TableCell sx={{ fontWeight: 600, fontSize: '1rem', py: 3 }}>Judul Laporan</TableCell>
-            <TableCell sx={{ fontWeight: 600, fontSize: '1rem', py: 3 }}>Kategori</TableCell>
-            <TableCell sx={{ fontWeight: 600, fontSize: '1rem', py: 3 }}>Status</TableCell>
-            <TableCell sx={{ fontWeight: 600, fontSize: '1rem', py: 3 }}>Tanggal</TableCell>
-            <TableCell align="center" sx={{ fontWeight: 600, fontSize: '1rem', py: 3 }}>Aksi</TableCell>
+            <TableCell sx={{ fontWeight: 700, width: '17%', py: 1.5 }}>No. Registrasi</TableCell>
+            <TableCell sx={{ fontWeight: 700, width: '31%', py: 1.5 }}>Judul Laporan</TableCell>
+            <TableCell sx={{ fontWeight: 700, width: '17%', py: 1.5 }}>Kategori</TableCell>
+            <TableCell sx={{ fontWeight: 700, width: '16%', py: 1.5 }}>Status</TableCell>
+            <TableCell sx={{ fontWeight: 700, width: '13%', py: 1.5 }}>Tanggal</TableCell>
+            <TableCell align="center" sx={{ fontWeight: 700, width: 56, py: 1.5 }}>Aksi</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {reports.map((report) => (
               <TableRow 
                 key={report.id}
-                onClick={() => navigate(`/report/${report.id}`)}
+                onClick={() => openDetail(report)}
                 sx={{ 
                   '&:hover': { 
                     bgcolor: alpha(theme.palette.primary.main, 0.02),
@@ -414,7 +279,7 @@ const ImprovedReportsTable = React.memo(({
                   '&:last-child td': { border: 0 }
                 }}
               >
-                <TableCell sx={{ py: 3 }}>
+                <TableCell sx={{ py: 1.5, wordBreak: 'break-word' }}>
                   <Stack direction="row" spacing={0.75} alignItems="center">
                     <Typography variant="body1" fontWeight={600}>
                       {report.registrationNumber}
@@ -426,7 +291,7 @@ const ImprovedReportsTable = React.memo(({
                     )}
                   </Stack>
                 </TableCell>
-                <TableCell sx={{ py: 3, maxWidth: 400 }}>
+                <TableCell sx={{ py: 1.5, wordBreak: 'break-word' }}>
                   <Typography variant="body1" fontWeight={500} sx={{ mb: 0.5 }}>
                     {report.title}
                   </Typography>
@@ -437,7 +302,7 @@ const ImprovedReportsTable = React.memo(({
                     })()}
                   </Typography>
                 </TableCell>
-                <TableCell sx={{ py: 3 }}>
+                <TableCell sx={{ py: 1.5, wordBreak: 'break-word' }}>
                   <Box
                     sx={{
                       px: 2,
@@ -452,29 +317,21 @@ const ImprovedReportsTable = React.memo(({
                       textAlign: 'center'
                     }}
                   >
-                    {report.category?.name || 'N/A'}
+                    {report.category?.name || '-'}
                   </Box>
                 </TableCell>
-                <TableCell sx={{ py: 3 }}>
+                <TableCell sx={{ py: 1.5, wordBreak: 'break-word' }}>
                   <StatusBadge status={report.status} />
                 </TableCell>
-                <TableCell sx={{ py: 3 }}>
+                <TableCell sx={{ py: 1.5, wordBreak: 'break-word' }}>
                   <Typography variant="body2" color="text.secondary">
                     {formatDate(report.createdAt)}
                   </Typography>
                 </TableCell>
-                <TableCell align="center" sx={{ py: 3 }}>
-                  <Tooltip title="Lihat Detail">
-                    <IconButton 
-                      onClick={() => navigate(`/report/${report.id}`)}
-                      sx={{ 
-                        color: 'primary.main',
-                        '&:hover': {
-                          bgcolor: alpha(theme.palette.primary.main, 0.08)
-                        }
-                      }}
-                    >
-                      <Visibility />
+                <TableCell align="center" sx={{ py: 1.5 }}>
+                  <Tooltip title="Buka menu aksi">
+                    <IconButton size="small" onClick={(event) => openActionMenu(event, report)} aria-label="Buka menu aksi">
+                      <MoreVert />
                     </IconButton>
                   </Tooltip>
                 </TableCell>
@@ -487,20 +344,20 @@ const ImprovedReportsTable = React.memo(({
 
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100%', pt: 0 }}>
-      <GlassCard variant="glass" sx={{ borderRadius: { xs: 0, sm: 4 }, overflow: 'hidden' }}>
+      <GlassCard variant="default" hover={false} sx={{ p: 0, borderRadius: { xs: 2, sm: 3 }, overflow: 'hidden', boxShadow: 'none' }}>
         {/* Header Section */}
-        <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        <Box sx={{ p: { xs: 1.5, sm: 2, md: 2.5 }, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
           <Box sx={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: { xs: 'flex-start', sm: 'center' }, 
-            mb: 3,
+            mb: 2,
             flexDirection: { xs: 'column', sm: 'row' },
             gap: { xs: 2, sm: 0 }
           }}>
             <Box>
               <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-                Laporan Terbaru
+                Daftar Laporan
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Kelola dan pantau status laporan Anda
@@ -634,7 +491,35 @@ const ImprovedReportsTable = React.memo(({
             )}
           </>
         )}
+
+        <Menu
+          anchorEl={actionAnchorEl}
+          open={Boolean(actionAnchorEl)}
+          onClose={closeActionMenu}
+          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        >
+          <MenuItem
+            onClick={() => {
+              if (actionReport) openDetail(actionReport);
+              closeActionMenu();
+            }}
+            sx={{ gap: 1 }}
+          >
+            <Visibility fontSize="small" />
+            Lihat Detail
+          </MenuItem>
+        </Menu>
       </GlassCard>
+      <ReportDetailModal
+        open={Boolean(fallbackReport)}
+        report={fallbackReport}
+        onClose={() => setFallbackReport(null)}
+        onOpenChat={(report) => {
+          setFallbackReport(null);
+          if (report?.id) navigate(`/dashboard/chat/${report.id}`);
+        }}
+      />
     </Box>
   );
 });

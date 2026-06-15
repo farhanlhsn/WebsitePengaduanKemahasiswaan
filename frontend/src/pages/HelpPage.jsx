@@ -99,7 +99,7 @@ const HelpPage = ({ isEmbedded = false }) => {
   // Quick Guide Steps
   const quickGuide = [
     { step: 1, title: 'Daftar', description: 'Buat & verifikasi akun Anda', icon: <AccountCircle /> },
-    { step: 2, title: 'Login', description: 'Akses dashboard mahasiswa', icon: <School /> },
+    { step: 2, title: 'Masuk', description: 'Akses dasbor mahasiswa', icon: <School /> },
     { step: 3, title: 'Lapor', description: 'Isi form dengan detail', icon: <Assignment /> },
     { step: 4, title: 'Pantau', description: 'Cek status laporan Anda', icon: <Notifications /> }
   ];
@@ -126,7 +126,7 @@ const HelpPage = ({ isEmbedded = false }) => {
   const categories = [
     { id: 'all', label: 'Semua', count: faqData.length },
     { id: 'umum', label: 'Umum', count: faqData.filter(i => i.category === 'umum').length },
-    { id: 'akun', label: 'Akun & Login', count: faqData.filter(i => i.category === 'akun').length },
+    { id: 'akun', label: 'Akun & Masuk', count: faqData.filter(i => i.category === 'akun').length },
     { id: 'laporan', label: 'Laporan', count: faqData.filter(i => i.category === 'laporan').length },
     { id: 'teknis', label: 'Teknis', count: faqData.filter(i => i.category === 'teknis').length },
     { id: 'privasi', label: 'Privasi', count: faqData.filter(i => i.category === 'privasi').length }

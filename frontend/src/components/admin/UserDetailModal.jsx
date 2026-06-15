@@ -116,7 +116,7 @@ const UserDetailModal = ({ open, onClose, user, onAction, isSuperAdmin }) => {
                   </Box>
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, ml:3 }}>
                     <Chip
-                      label={user.role || 'STUDENT'}
+                      label={user.role || 'MAHASISWA'}
                       color={getRoleColor(user.role)}
                       size="small"
                       variant="outlined"
@@ -271,7 +271,7 @@ const UserDetailModal = ({ open, onClose, user, onAction, isSuperAdmin }) => {
           )}
           {user.status === 'DELETED' && (
             <Button onClick={() => handleAction('restore')} variant="contained" color="primary">
-              Restore
+              Pulihkan
             </Button>
           )}
         </DialogActions>
@@ -305,7 +305,7 @@ const UserDetailModal = ({ open, onClose, user, onAction, isSuperAdmin }) => {
           >
             <img
               src={`${BACKEND_UPLOAD_URL}${user.ktmPath}`}
-              alt="Foto KTM Enlarged"
+              alt="Foto KTM diperbesar"
               style={{
                 maxWidth: '95vw',
                 maxHeight: '95vh',

@@ -1,11 +1,12 @@
 import React, { useEffect, Suspense, useState, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
-  Box, Typography, Alert, IconButton, Container
+  Box, Typography, Alert, IconButton
 } from '@mui/material';
 import Grid from '@mui/material/Grid'; // Impor Grid yang benar
 import { 
   Assignment, CheckCircle, HourglassEmpty, PendingActions, 
-  Menu as MenuIcon, Notifications 
+  Menu as MenuIcon
 } from '@mui/icons-material';
 import useReportStore from '../stores/reportStore';
 import useCategoryStore from '../stores/categoryStore';
@@ -18,6 +19,8 @@ import StudentSidebar from '../components/dashboard/StudentSidebar';
 import EnhancedStatCard from '../components/dashboard/EnhancedStatCard';
 import ImprovedReportsTable from '../components/dashboard/ImprovedReportsTable';
 import CreateReportModal from '../components/dashboard/CreateReportModal';
+import ReportDetailModal from '../components/dashboard/ReportDetailModal';
+import StudentNotificationMenu from '../components/dashboard/StudentNotificationMenu';
 import ChatList from '../components/chat/ChatList';
 import ChatInterface from '../components/chat/ChatInterface';
 import ProfilePage from './ProfilePage';
@@ -29,12 +32,13 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 const drawerWidth = 300;
 
 export default React.memo(function ImprovedStudentDashboard() {
-  const { reports, loading, error, getUserReports, pagination, reset, createReport } = useReportStore();
+  const { reports, loading, error, getUserReports, getReportById, pagination, reset, createReport } = useReportStore();
   const { categories, getCategories } = useCategoryStore();
   const { userStats, getUserStatsById } = useUserStore();
   const { user } = useAuthStore();
   const { selectReport } = useChatStore();
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -42,6 +46,7 @@ export default React.memo(function ImprovedStudentDashboard() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState('dashboard');
+  const [selectedReport, setSelectedReport] = useState(null);
   
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const savedState = localStorage.getItem('sidebar-open');
@@ -68,6 +73,32 @@ export default React.memo(function ImprovedStudentDashboard() {
       getUserStatsById(user.id);
     }
   }, [user?.id, getUserReports, getCategories, getUserStatsById]);
+
+  useEffect(() => {
+    const reportId = searchParams.get('report');
+    if (!reportId || !user?.id) return;
+
+    const reportFromList = reports.find((item) => String(item.id) === String(reportId));
+    if (reportFromList) {
+      setSelectedReport(reportFromList);
+      return;
+    }
+
+    let active = true;
+    getReportById(reportId)
+      .then((report) => { if (active) setSelectedReport(report); })
+      .catch(() => {})
+    return () => { active = false; };
+  }, [searchParams, reports, user?.id, getReportById]);
+
+  const closeReportDetail = useCallback(() => {
+    setSelectedReport(null);
+    if (searchParams.has('report')) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('report');
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // ... (semua handler tetap sama) ...
   const fetchFilteredReports = useCallback((status, categoryId, search) => {
@@ -129,21 +160,24 @@ export default React.memo(function ImprovedStudentDashboard() {
 
 
   if (loading && reports.length === 0) {
-    return <LoadingSpinner fullScreen message="Memuat dashboard..." />;
+    return <LoadingSpinner fullScreen message="Memuat dasbor..." />;
   }
 
   const renderContent = () => {
     // ... (commonHeader tetap sama) ...
     const commonHeader = (title, subtitle) => (
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Box>
-            <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ display: { sm: 'none' }, mr: 2 }}>
+      <Box sx={{ mb: 2.5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', minWidth: 0 }}>
+            <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ display: { sm: 'none' }, mr: 1, mt: 0.25 }}>
               <MenuIcon />
             </IconButton>
-            <Typography variant="h3" fontWeight={800} sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>{title}</Typography>
-            <Typography variant="body1" color="text.secondary">{subtitle}</Typography>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h3" fontWeight={800} sx={{ fontSize: { xs: '1.45rem', sm: '1.9rem' }, lineHeight: 1.2 }}>{title}</Typography>
+              <Typography variant="body2" color="text.secondary">{subtitle}</Typography>
+            </Box>
           </Box>
+          <StudentNotificationMenu reports={reports} onOpenReport={setSelectedReport} />
         </Box>
       </Box>
     );
@@ -153,9 +187,9 @@ export default React.memo(function ImprovedStudentDashboard() {
         return (
           <>
             {commonHeader(t('dashboard.title'), t('dashboard.subtitle'))}
-            <Box sx={{ mb: 4 }}>
+            <Box sx={{ mb: 2.5 }}>
               {/* --- GRID YANG SUDAH DIPERBAIKI --- */}
-              <Grid container spacing={3}>
+              <Grid container spacing={2}>
                 <Grid item xs={12} sm={6} lg={3}>
                   <EnhancedStatCard title={t('dashboard.total_reports')} value={memoizedStats.totalReports} icon={<Assignment />} color="#2E7D32" animateValue />
                 </Grid>
@@ -171,7 +205,7 @@ export default React.memo(function ImprovedStudentDashboard() {
               </Grid>
             </Box>
             <Box sx={{ width: '100%', mx: 0, px: { xs: 0, sm: 0 } }}>
-              <ImprovedReportsTable reports={reports} loading={loading} categories={categories} statusFilter={statusFilter} categoryFilter={categoryFilter} searchQuery={searchQuery} onStatusChange={handleStatusChange} onCategoryChange={handleCategoryChange} onSearchChange={handleSearchChange} onLoadMore={handleLoadMore} hasNextPage={pagination.hasNextPage} onCreateReport={() => setModalOpen(true)} />
+              <ImprovedReportsTable reports={reports} loading={loading} categories={categories} statusFilter={statusFilter} categoryFilter={categoryFilter} searchQuery={searchQuery} onStatusChange={handleStatusChange} onCategoryChange={handleCategoryChange} onSearchChange={handleSearchChange} onLoadMore={handleLoadMore} hasNextPage={pagination.hasNextPage} onCreateReport={() => setModalOpen(true)} onOpenDetail={setSelectedReport} />
             </Box>
           </>
         );
@@ -181,7 +215,7 @@ export default React.memo(function ImprovedStudentDashboard() {
           <>
             {commonHeader(t('reports.title'), t('reports.subtitle'))}
             <Box sx={{ width: '100%', mx: 0 }}>
-              <ImprovedReportsTable reports={reports} loading={loading} categories={categories} statusFilter={statusFilter} categoryFilter={categoryFilter} searchQuery={searchQuery} onStatusChange={handleStatusChange} onCategoryChange={handleCategoryChange} onSearchChange={handleSearchChange} onLoadMore={handleLoadMore} hasNextPage={pagination.hasNextPage} onCreateReport={() => setModalOpen(true)} />
+              <ImprovedReportsTable reports={reports} loading={loading} categories={categories} statusFilter={statusFilter} categoryFilter={categoryFilter} searchQuery={searchQuery} onStatusChange={handleStatusChange} onCategoryChange={handleCategoryChange} onSearchChange={handleSearchChange} onLoadMore={handleLoadMore} hasNextPage={pagination.hasNextPage} onCreateReport={() => setModalOpen(true)} onOpenDetail={setSelectedReport} />
             </Box>
           </>
         );
@@ -242,13 +276,24 @@ export default React.memo(function ImprovedStudentDashboard() {
           onSidebarToggle={handleSidebarToggle}
         />
       </Suspense>
-      <Box component="main" sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Box sx={{ flex: 1, p: { xs: 2, sm: 3 }, overflowY: 'auto', bgcolor: 'background.default' }}>
+      <Box component="main" sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        <Box sx={{ flex: 1, p: { xs: 1.5, sm: 2.5 }, overflowY: 'auto', overflowX: 'hidden', bgcolor: 'background.default' }}>
           {renderContent()}
           {error && <Alert severity="error" sx={{ mt: 3, borderRadius: 2 }}>{error}</Alert>}
         </Box>
       </Box>
       <CreateReportModal open={modalOpen} onClose={() => setModalOpen(false)} categories={categories} onSubmit={handleCreateReport} />
+      <ReportDetailModal
+        open={Boolean(selectedReport)}
+        report={selectedReport}
+        onClose={closeReportDetail}
+        onOpenChat={async (report) => {
+          if (!report) return;
+          await selectReport(report);
+          closeReportDetail();
+          setActiveMenu('chat');
+        }}
+      />
     </Box>
   );
 });

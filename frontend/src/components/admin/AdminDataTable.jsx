@@ -1,14 +1,36 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, 
-  TableRow, TablePagination, TableSortLabel, Checkbox, IconButton,
-  Chip, Avatar, Typography, Menu, MenuItem, Tooltip, Fade, Skeleton,
-  TextField, InputAdornment, FormControl, InputLabel, Select,
-  Stack
+  Avatar,
+  Box,
+  Checkbox,
+  Chip,
+  Divider,
+  FormControl,
+  IconButton,
+  InputLabel,
+  Menu,
+  MenuItem,
+  Paper,
+  Select,
+  Skeleton,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
+  TableSortLabel,
+  Tooltip,
+  Typography,
+  useMediaQuery,
 } from '@mui/material';
 import {
-  MoreVert, Visibility, Edit, Delete, Restore, Search, FilterList,
-  GetApp, Refresh, VisibilityOff
+  GetApp,
+  MoreVert,
+  Refresh,
+  VisibilityOff,
 } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
 import StatusBadge from '../ui/StatusBadge';
@@ -38,10 +60,10 @@ const AdminDataTable = ({
   exportable = false,
   refreshable = false,
   onExport,
-  onRefresh
+  onRefresh,
 }) => {
   const theme = useTheme();
-
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [selected, setSelected] = useState([]);
   const [orderBy, setOrderBy] = useState('');
   const [order, setOrder] = useState('asc');
@@ -50,160 +72,90 @@ const AdminDataTable = ({
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedRow, setSelectedRow] = useState(null);
   const [bulkActionAnchorEl, setBulkActionAnchorEl] = useState(null);
-  
-  // Internal pagination state
   const [internalPage, setInternalPage] = useState(0);
   const [internalRowsPerPage, setInternalRowsPerPage] = useState(10);
 
-  // Use props if provided (controlled), otherwise internal state (uncontrolled)
   const currentPage = onPageChange ? page : internalPage;
   const currentRowsPerPage = onRowsPerPageChange ? rowsPerPage : internalRowsPerPage;
 
-  const handleSort = (property) => {
-    const isAsc = orderBy === property && order === 'asc';
-    const newOrder = isAsc ? 'desc' : 'asc';
-    setOrder(newOrder);
-    setOrderBy(property);
-    if (onSort) {
-      onSort(property, newOrder);
-    }
-  };
+  const getNestedValue = (obj, path) => path
+    .split('.')
+    .reduce((value, key) => (value === null || value === undefined ? value : value[key]), obj);
 
-  // Helper to get nested object values (e.g., 'category.name')
-  const getNestedValue = (obj, path) => {
-    return path.split('.').reduce((acc, part) => acc && acc[part], obj);
-  };
-
-  // Processed data (Search -> Filter -> Sort)
   const processedData = useMemo(() => {
-    if (loading || !data) return [];
-    
+    if (loading || !Array.isArray(data)) return [];
     let result = [...data];
 
-    // 1. Search (Client-side only if onSearch is not provided)
-    if (!onSearch && searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(row => 
-        columns.some(column => {
-          // Skip search for boolean, date, or complex types if needed, or convert to string
-          const value = getNestedValue(row, column.field);
-          return value !== null && value !== undefined && String(value).toLowerCase().includes(query);
-        })
-      );
+    if (!onSearch && searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      result = result.filter((row) => columns.some((column) => {
+        const value = getNestedValue(row, column.field);
+        return value !== null && value !== undefined && String(value).toLowerCase().includes(query);
+      }));
     }
 
-    // 2. Filter (Client-side only if onFilter is not provided)
-    if (!onFilter && Object.keys(filterValues).length > 0) {
-      Object.keys(filterValues).forEach(key => {
-        const filterValue = filterValues[key];
+    if (!onFilter) {
+      Object.entries(filterValues).forEach(([field, filterValue]) => {
         if (filterValue !== '' && filterValue !== null && filterValue !== undefined) {
-           result = result.filter(row => {
-             const rowValue = getNestedValue(row, key);
-             return String(rowValue) === String(filterValue);
-           });
+          result = result.filter((row) => String(getNestedValue(row, field)) === String(filterValue));
         }
       });
     }
 
-    // 3. Sort (Client-side only if onSort is not provided OR explicitly requested)
     if (!onSort && orderBy) {
       result.sort((a, b) => {
-        const valueA = getNestedValue(a, orderBy);
-        const valueB = getNestedValue(b, orderBy);
-
-        if (valueB === null || valueB === undefined) return -1;
-        if (valueA === null || valueA === undefined) return 1;
-
-        if (typeof valueA === 'string' && typeof valueB === 'string') {
-          return order === 'asc' 
-            ? valueA.localeCompare(valueB) 
-            : valueB.localeCompare(valueA);
+        const aValue = getNestedValue(a, orderBy);
+        const bValue = getNestedValue(b, orderBy);
+        if (aValue === bValue) return 0;
+        if (aValue === null || aValue === undefined) return 1;
+        if (bValue === null || bValue === undefined) return -1;
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return order === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
         }
-
-        if (valueA < valueB) {
-          return order === 'asc' ? -1 : 1;
-        }
-        if (valueA > valueB) {
-          return order === 'asc' ? 1 : -1;
-        }
-        return 0;
+        return order === 'asc' ? (aValue < bValue ? -1 : 1) : (aValue > bValue ? -1 : 1);
       });
     }
 
     return result;
-  }, [data, orderBy, order, loading, searchQuery, filterValues, onSearch, onFilter, onSort, columns]);
+  }, [columns, data, filterValues, loading, onFilter, onSearch, onSort, order, orderBy, searchQuery]);
 
-  // Paginated data (Client-side only if onPageChange is not provided)
   const paginatedData = useMemo(() => {
-    if (onPageChange) return data; // Server-side pagination assumes data is already sliced
-    
+    if (onPageChange) return data;
     const start = currentPage * currentRowsPerPage;
-    const end = start + currentRowsPerPage;
-    return processedData.slice(start, end);
-  }, [processedData, currentPage, currentRowsPerPage, onPageChange, data]);
+    return processedData.slice(start, start + currentRowsPerPage);
+  }, [currentPage, currentRowsPerPage, data, onPageChange, processedData]);
 
-  const handleSelectAll = (event) => {
-    if (event.target.checked) {
-      setSelected(paginatedData.map(row => row.id));
-    } else {
-      setSelected([]);
-    }
-  };
-
-  const handleSelectRow = (id) => {
-    const selectedIndex = selected.indexOf(id);
-    let newSelected = [];
-
-    if (selectedIndex === -1) {
-      newSelected = newSelected.concat(selected, id);
-    } else if (selectedIndex === 0) {
-      newSelected = newSelected.concat(selected.slice(1));
-    } else if (selectedIndex === selected.length - 1) {
-      newSelected = newSelected.concat(selected.slice(0, -1));
-    } else if (selectedIndex > 0) {
-      newSelected = newSelected.concat(
-        selected.slice(0, selectedIndex),
-        selected.slice(selectedIndex + 1),
-      );
-    }
-
-    setSelected(newSelected);
+  const handleSort = (field) => {
+    const nextOrder = orderBy === field && order === 'asc' ? 'desc' : 'asc';
+    setOrderBy(field);
+    setOrder(nextOrder);
+    onSort?.(field, nextOrder);
   };
 
   const handleSearch = (value) => {
     setSearchQuery(value);
-    setInternalPage(0); // Reset to first page on search
-    if (onSearch) {
-      onSearch(value);
-    }
-  };
-
-  const handleFilterChange = (filterKey, value) => {
-    const newFilters = { ...filterValues, [filterKey]: value };
-    setFilterValues(newFilters);
-    setInternalPage(0); // Reset to first page on filter
-    if (onFilter) {
-      onFilter(newFilters);
-    }
-  };
-
-  const handleChangePage = (event, newPage) => {
-    setInternalPage(newPage);
-    if (onPageChange) {
-      onPageChange(event, newPage);
-    }
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    const newRowsPerPage = parseInt(event.target.value, 10);
-    setInternalRowsPerPage(newRowsPerPage);
     setInternalPage(0);
-    if (onRowsPerPageChange) {
-      onRowsPerPageChange(event);
-    }
+    onSearch?.(value);
+  };
+
+  const handleFilterChange = (field, value) => {
+    const next = { ...filterValues, [field]: value };
+    setFilterValues(next);
+    setInternalPage(0);
+    onFilter?.(next);
+  };
+
+  const handleSelectAll = (event) => {
+    const pageIds = paginatedData.map((row) => row.id);
+    setSelected(event.target.checked ? Array.from(new Set([...selected, ...pageIds])) : selected.filter((id) => !pageIds.includes(id)));
+  };
+
+  const handleSelectRow = (id) => {
+    setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   };
 
   const handleMenuOpen = (event, row) => {
+    event.stopPropagation();
     setAnchorEl(event.currentTarget);
     setSelectedRow(row);
   };
@@ -214,387 +166,230 @@ const AdminDataTable = ({
   };
 
   const handleAction = (action, row) => {
-    if (onRowAction) {
-      onRowAction(action, row);
-    }
+    onRowAction?.(action, row);
     handleMenuClose();
   };
 
   const handleBulkAction = (action) => {
-    if (onBulkAction && selected.length > 0) {
-      onBulkAction(action, selected);
-      setSelected([]);
-    }
+    if (selected.length) onBulkAction?.(action, selected);
+    setSelected([]);
     setBulkActionAnchorEl(null);
   };
 
+  const visibleActions = (row) => actions.filter((action) => !action.show || action.show(row));
+
   const renderCellContent = (row, column) => {
-    const value = row[column.field];
-    
+    const value = getNestedValue(row, column.field);
     switch (column.type) {
       case 'avatar':
-        return (
-          <Avatar sx={{ width: 40, height: 40 }}>
-            {value?.charAt(0)?.toUpperCase() || '?'}
-          </Avatar>
-        );
-      
-      case 'reporter': {
-        // Special-cased renderer for the "Pelapor" column.
-        // When the row represents an anonymous report, show a warning chip
-        // so admins know identity has been masked. Otherwise show plain name.
-        const isAnonymous = !!row.isAnonymous;
-        if (isAnonymous) {
-          return (
-            <Chip
-              icon={<VisibilityOff sx={{ fontSize: 14 }} />}
-              label="Anonim"
-              size="small"
-              variant="outlined"
-              sx={{
-                color: 'warning.main',
-                borderColor: 'warning.main',
-                '& .MuiChip-icon': { color: 'warning.main' }
-              }}
-            />
-          );
-        }
-        return value ?? '-';
-      }
-      
+        return <Avatar sx={{ width: 34, height: 34 }}>{value?.charAt(0)?.toUpperCase() || '?'}</Avatar>;
+      case 'reporter':
+        return row.isAnonymous
+          ? <Chip icon={<VisibilityOff sx={{ fontSize: 14 }} />} label="Anonim" size="small" variant="outlined" color="warning" />
+          : (value ?? '-');
       case 'status':
-        return <StatusBadge status={value} />;
-      
+        return <StatusBadge status={value} size="small" />;
       case 'chip':
-        return (
-          <Chip 
-            label={value} 
-            size="small" 
-            color={column.chipColor || 'default'}
-            variant={column.chipVariant || 'filled'}
-          />
-        );
-      
+        return <Chip label={value || '-'} size="small" color={column.chipColor || 'default'} variant={column.chipVariant || 'filled'} />;
       case 'date':
-        return new Date(value).toLocaleDateString('id-ID');
-      
+        return value ? new Date(value).toLocaleDateString('id-ID') : '-';
       case 'currency':
-        return new Intl.NumberFormat('id-ID', {
-          style: 'currency',
-          currency: 'IDR'
-        }).format(value);
-      
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value || 0);
       case 'number':
-        return value?.toLocaleString('id-ID');
-      
+        return Number(value || 0).toLocaleString('id-ID');
       case 'boolean':
-        return (
-          <Chip 
-            label={value ? 'Ya' : 'Tidak'} 
-            color={value ? 'success' : 'default'}
-            size="small"
-          />
-        );
-      
-      default:
-        return column.maxLength && value?.length > column.maxLength
-          ? `${value.substring(0, column.maxLength)}...`
-          : value;
+        return <Chip label={value ? 'Ya' : 'Tidak'} color={value ? 'success' : 'default'} size="small" />;
+      default: {
+        const text = value === null || value === undefined || value === '' ? '-' : String(value);
+        return column.maxLength && text.length > column.maxLength ? `${text.slice(0, column.maxLength)}…` : text;
+      }
     }
   };
 
-  const LoadingSkeleton = () => (
-    <TableBody>
-      {[...Array(rowsPerPage)].map((_, index) => (
-        <TableRow key={index}>
-          {selectable && <TableCell><Skeleton width={24} height={24} /></TableCell>}
-          {columns.map((column) => (
-            <TableCell key={column.field}>
-              <Skeleton height={24} />
-            </TableCell>
-          ))}
-          <TableCell><Skeleton width={24} height={24} /></TableCell>
-        </TableRow>
+  const currentPageIds = paginatedData.map((row) => row.id);
+  const selectedOnPage = currentPageIds.filter((id) => selected.includes(id)).length;
+
+  const ActionButton = ({ row }) => {
+    if (!visibleActions(row).length) return <Typography variant="body2" color="text.disabled">-</Typography>;
+    return (
+      <Tooltip title="Buka menu aksi">
+        <IconButton size="small" onClick={(event) => handleMenuOpen(event, row)} aria-label="Buka menu aksi">
+          <MoreVert />
+        </IconButton>
+      </Tooltip>
+    );
+  };
+
+  const MobileList = () => (
+    <Box sx={{ px: 1.5, pb: 1.5 }}>
+      {loading ? [...Array(Math.min(currentRowsPerPage, 5))].map((_, index) => (
+        <Paper key={index} variant="outlined" sx={{ p: 1.5, mb: 1.25, borderRadius: 2 }}>
+          <Skeleton width="55%" /><Skeleton width="80%" /><Skeleton width="45%" />
+        </Paper>
+      )) : paginatedData.length === 0 ? (
+        <Box sx={{ py: 5, textAlign: 'center' }}>
+          <Typography fontWeight={700}>Data tidak ditemukan</Typography>
+          <Typography variant="body2" color="text.secondary">Coba ubah kata kunci atau filter.</Typography>
+        </Box>
+      ) : paginatedData.map((row) => (
+        <Paper key={row.id} variant="outlined" sx={{ p: 1.5, mb: 1.25, borderRadius: 2.25 }}>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+            {selectable && (
+              <Checkbox size="small" checked={selected.includes(row.id)} onChange={() => handleSelectRow(row.id)} sx={{ p: 0.25, mt: 0.1 }} />
+            )}
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              {columns.slice(0, 4).map((column, index) => (
+                <Box key={column.field} sx={{ display: 'grid', gridTemplateColumns: '100px minmax(0, 1fr)', gap: 1, mb: index === 3 ? 0 : 0.75, alignItems: 'start' }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={650}>{column.headerName}</Typography>
+                  <Box sx={{ minWidth: 0, fontSize: '0.875rem', wordBreak: 'break-word' }}>{renderCellContent(row, column)}</Box>
+                </Box>
+              ))}
+            </Box>
+            <ActionButton row={row} />
+          </Box>
+        </Paper>
       ))}
-    </TableBody>
+    </Box>
   );
 
   return (
-    <Paper sx={{ 
-      borderRadius: 4, 
-      overflow: 'hidden',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-      border: '1px solid rgba(0,0,0,0.05)'
-    }}>
-      {/* Header */}
-      <Box sx={{ 
-        p: 3, 
-        borderBottom: '1px solid rgba(0,0,0,0.06)',
-        background: `linear-gradient(135deg, 
-          ${alpha(theme.palette.background.paper, 0.8)}, 
-          ${alpha(theme.palette.background.default, 0.4)})`
-      }}>
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          mb: 2 
-        }}>
-          <Typography variant="h6" fontWeight={700}>
-            {title}
-          </Typography>
-          
-          <Stack direction="row" spacing={1}>
+    <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
+      <Box sx={{ p: { xs: 1.5, sm: 2 }, borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+          <Typography variant="h6" fontWeight={800}>{title}</Typography>
+          <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap">
             {selectable && selected.length > 0 && (
               <>
-                <Typography variant="body2" color="text.secondary" sx={{ alignSelf: 'center' }}>
-                  {selected.length} dipilih
-                </Typography>
-                <EnhancedButton
-                  variant="outlined"
-                  size="small"
-                  onClick={(e) => setBulkActionAnchorEl(e.currentTarget)}
-                >
-                  Bulk Action
+                <Typography variant="caption" color="text.secondary">{selected.length} dipilih</Typography>
+                <EnhancedButton variant="outlined" size="small" onClick={(event) => setBulkActionAnchorEl(event.currentTarget)}>
+                  Aksi Massal
                 </EnhancedButton>
               </>
             )}
             {refreshable && (
-              <Tooltip title="Refresh Data">
-                <IconButton onClick={onRefresh} size="small">
-                  <Refresh />
-                </IconButton>
+              <Tooltip title="Segarkan data">
+                <IconButton onClick={onRefresh} size="small" aria-label="Segarkan data"><Refresh /></IconButton>
               </Tooltip>
             )}
             {exportable && (
-              <EnhancedButton
-                variant="outlined"
-                startIcon={<GetApp />}
-                onClick={onExport}
-                size="small"
-              >
-                Export
-              </EnhancedButton>
+              <EnhancedButton variant="outlined" startIcon={<GetApp />} onClick={onExport} size="small">Ekspor</EnhancedButton>
             )}
           </Stack>
         </Box>
 
-        {/* Search and Filters */}
-        <Stack 
-          direction={{ xs: 'column', md: 'row' }} 
-          spacing={2} 
-          alignItems={{ xs: 'stretch', md: 'center' }}
-          sx={{ mt: 2 }}
-        >
-          <Box sx={{ flex: 1, minWidth: { xs: '100%', md: 250 } }}>
-            <SearchInput
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder={searchPlaceholder}
-            />
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems={{ xs: 'stretch', md: 'center' }} sx={{ mt: 1.5 }}>
+          <Box sx={{ flex: 1, minWidth: { md: 240 } }}>
+            <SearchInput value={searchQuery} onChange={(event) => handleSearch(event.target.value)} placeholder={searchPlaceholder} />
           </Box>
-          
           {filters.map((filter) => (
             <FormControl key={filter.field} size="small" sx={{ minWidth: { xs: '100%', md: 150 } }}>
               <InputLabel>{filter.label}</InputLabel>
-              <Select
-                value={filterValues[filter.field] || ''}
-                label={filter.label}
-                onChange={(e) => handleFilterChange(filter.field, e.target.value)}
-              >
+              <Select value={filterValues[filter.field] || ''} label={filter.label} onChange={(event) => handleFilterChange(filter.field, event.target.value)}>
                 <MenuItem value="">Semua</MenuItem>
-                {filter.options.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
+                {filter.options.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
               </Select>
             </FormControl>
           ))}
         </Stack>
       </Box>
 
-      {/* Table */}
-      <TableContainer sx={{ maxHeight: 600 }}>
-        <Table stickyHeader>
-          <TableHead>
-            <TableRow>
-              {selectable && (
-                <TableCell padding="checkbox" sx={{ backgroundColor: 'background.paper' }}>
-                  <Checkbox
-                    indeterminate={selected.length > 0 && selected.length < data.length}
-                    checked={data.length > 0 && selected.length === data.length}
-                    onChange={handleSelectAll}
-                  />
-                </TableCell>
-              )}
-              
-              {columns.map((column) => (
-                <TableCell
-                  key={column.field}
-                  sortDirection={orderBy === column.field ? order : false}
-                  sx={{ 
-                    fontWeight: 600,
-                    backgroundColor: 'background.paper'
-                  }}
-                >
-                  {column.sortable ? (
-                    <TableSortLabel
-                      active={orderBy === column.field}
-                      direction={orderBy === column.field ? order : 'asc'}
-                      onClick={() => handleSort(column.field)}
-                    >
-                      {column.headerName}
-                    </TableSortLabel>
-                  ) : (
-                    column.headerName
-                  )}
-                </TableCell>
-              ))}
-              
-              {actions.length > 0 && (
-                <TableCell align="center" sx={{ fontWeight: 600, backgroundColor: 'background.paper' }}>
-                  Aksi
-                </TableCell>
-              )}
-            </TableRow>
-          </TableHead>
-
-          {loading ? (
-            <LoadingSkeleton />
-          ) : (
-            <TableBody>
-              {paginatedData.map((row, index) => (
-                <Fade in timeout={200 + index * 50} key={row.id}>
-                  <TableRow
-                    hover
-                    selected={selected.indexOf(row.id) !== -1}
+      {isMobile ? <MobileList /> : (
+        <TableContainer sx={{ maxHeight: 600, overflowX: 'hidden' }}>
+          <Table stickyHeader size="small" sx={{ width: '100%', tableLayout: 'fixed' }}>
+            <TableHead>
+              <TableRow>
+                {selectable && (
+                  <TableCell padding="checkbox" sx={{ width: 48, bgcolor: 'background.paper' }}>
+                    <Checkbox
+                      indeterminate={selectedOnPage > 0 && selectedOnPage < paginatedData.length}
+                      checked={paginatedData.length > 0 && selectedOnPage === paginatedData.length}
+                      onChange={handleSelectAll}
+                    />
+                  </TableCell>
+                )}
+                {columns.map((column) => (
+                  <TableCell
+                    key={column.field}
+                    sortDirection={orderBy === column.field ? order : false}
                     sx={{
-                      '&:hover': {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.02)
-                      }
+                      width: column.width,
+                      fontWeight: 700,
+                      bgcolor: 'background.paper',
+                      py: 1.25,
+                      px: 1.25,
                     }}
                   >
-                    {selectable && (
-                      <TableCell padding="checkbox">
-                        <Checkbox
-                          checked={selected.indexOf(row.id) !== -1}
-                          onChange={() => handleSelectRow(row.id)}
-                        />
-                      </TableCell>
-                    )}
-                    
-                    {columns.map((column) => (
-                      <TableCell key={column.field}>
-                        {renderCellContent(row, column)}
-                      </TableCell>
-                    ))}
-                    
-                    {actions.length > 0 && (() => {
-                      const visibleActions = actions.filter((action) => !action.show || action.show(row));
-                      if (visibleActions.length === 0) {
-                        return <TableCell align="center">-</TableCell>;
-                      }
-                      if (visibleActions.length === 1) {
-                        const action = visibleActions[0];
-                        return (
-                          <TableCell align="center">
-                            <Tooltip title={action.label}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleAction(action.id, row)}
-                                sx={{ 
-                                  color: 'primary.main',
-                                  '&:hover': { 
-                                    bgcolor: alpha(theme.palette.primary.main, 0.08) 
-                                  }
-                                }}
-                              >
-                                {action.icon}
-                              </IconButton>
-                            </Tooltip>
-                          </TableCell>
-                        );
-                      }
-                      return (
-                        <TableCell align="center">
-                          <IconButton
-                            size="small"
-                            onClick={(e) => handleMenuOpen(e, row)}
-                          >
-                            <MoreVert />
-                          </IconButton>
-                        </TableCell>
-                      );
-                    })()}
-                  </TableRow>
-                </Fade>
+                    {column.sortable ? (
+                      <TableSortLabel active={orderBy === column.field} direction={orderBy === column.field ? order : 'asc'} onClick={() => handleSort(column.field)}>
+                        {column.headerName}
+                      </TableSortLabel>
+                    ) : column.headerName}
+                  </TableCell>
+                ))}
+                {actions.length > 0 && <TableCell align="center" sx={{ width: 58, fontWeight: 700, bgcolor: 'background.paper' }}>Aksi</TableCell>}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? [...Array(Math.min(currentRowsPerPage, 10))].map((_, index) => (
+                <TableRow key={index}>
+                  {selectable && <TableCell><Skeleton width={24} /></TableCell>}
+                  {columns.map((column) => <TableCell key={column.field}><Skeleton /></TableCell>)}
+                  {actions.length > 0 && <TableCell><Skeleton width={24} /></TableCell>}
+                </TableRow>
+              )) : paginatedData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length + (selectable ? 1 : 0) + (actions.length ? 1 : 0)} align="center" sx={{ py: 6 }}>
+                    <Typography fontWeight={700}>Data tidak ditemukan</Typography>
+                    <Typography variant="body2" color="text.secondary">Coba ubah kata kunci atau filter.</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : paginatedData.map((row) => (
+                <TableRow key={row.id} hover selected={selected.includes(row.id)} sx={{ '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.025) } }}>
+                  {selectable && <TableCell padding="checkbox"><Checkbox checked={selected.includes(row.id)} onChange={() => handleSelectRow(row.id)} /></TableCell>}
+                  {columns.map((column) => (
+                    <TableCell key={column.field} sx={{ py: 1.25, px: 1.25, verticalAlign: 'top', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                      {renderCellContent(row, column)}
+                    </TableCell>
+                  ))}
+                  {actions.length > 0 && <TableCell align="center"><ActionButton row={row} /></TableCell>}
+                </TableRow>
               ))}
             </TableBody>
-          )}
-        </Table>
-      </TableContainer>
+          </Table>
+        </TableContainer>
+      )}
 
-      {/* Pagination */}
+      <Divider />
       <TablePagination
         component="div"
         count={onPageChange ? totalCount : processedData.length}
         page={currentPage}
-        onPageChange={handleChangePage}
+        onPageChange={(event, nextPage) => { setInternalPage(nextPage); onPageChange?.(event, nextPage); }}
         rowsPerPage={currentRowsPerPage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
+        onRowsPerPageChange={(event) => {
+          const next = Number.parseInt(event.target.value, 10);
+          setInternalRowsPerPage(next);
+          setInternalPage(0);
+          onRowsPerPageChange?.(event);
+        }}
         rowsPerPageOptions={[5, 10, 25, 50]}
         labelRowsPerPage="Baris per halaman:"
-        labelDisplayedRows={({ from, to, count }) => 
-          `${from}-${to} dari ${count !== -1 ? count : `lebih dari ${to}`}`
-        }
-        sx={{
-          borderTop: '1px solid rgba(0,0,0,0.06)',
-          backgroundColor: alpha(theme.palette.background.default, 0.3)
-        }}
+        labelDisplayedRows={({ from, to, count }) => `${from}-${to} dari ${count !== -1 ? count : `lebih dari ${to}`}`}
+        sx={{ '& .MuiTablePagination-toolbar': { px: { xs: 1, sm: 2 } } }}
       />
 
-      {/* Action Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-      >
-        {selectedRow && actions
-          .filter((action) => !action.show || action.show(selectedRow))
-          .map((action) => (
-            <MenuItem
-              key={action.id}
-              onClick={() => handleAction(action.id, selectedRow)}
-              sx={{ gap: 1 }}
-            >
-              {action.icon}
-              {action.label}
-            </MenuItem>
-          ))}
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose} anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }} transformOrigin={{ horizontal: 'right', vertical: 'top' }}>
+        {selectedRow && visibleActions(selectedRow).map((action) => (
+          <MenuItem key={action.id} onClick={() => handleAction(action.id, selectedRow)} sx={{ gap: 1.25 }}>
+            {action.icon}{action.label}
+          </MenuItem>
+        ))}
       </Menu>
 
-      {/* Bulk Action Menu */}
-      <Menu
-        anchorEl={bulkActionAnchorEl}
-        open={Boolean(bulkActionAnchorEl)}
-        onClose={() => setBulkActionAnchorEl(null)}
-        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-      >
-        {(bulkActions && bulkActions.length > 0
-          ? bulkActions
-          : actions.filter(action => ['verify', 'delete', 'restore'].includes(action.id))
-        ).map((action) => (
-          <MenuItem
-            key={action.id}
-            onClick={() => handleBulkAction(action.id)}
-            sx={{ gap: 1 }}
-          >
-            {action.icon}
-            {action.label} ({selected.length})
+      <Menu anchorEl={bulkActionAnchorEl} open={Boolean(bulkActionAnchorEl)} onClose={() => setBulkActionAnchorEl(null)} anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }} transformOrigin={{ horizontal: 'right', vertical: 'top' }}>
+        {(bulkActions.length ? bulkActions : actions.filter((action) => ['verify', 'delete', 'restore'].includes(action.id))).map((action) => (
+          <MenuItem key={action.id} onClick={() => handleBulkAction(action.id)} sx={{ gap: 1.25 }}>
+            {action.icon}{action.label} ({selected.length})
           </MenuItem>
         ))}
       </Menu>

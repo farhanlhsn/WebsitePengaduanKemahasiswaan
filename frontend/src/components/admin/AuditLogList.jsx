@@ -15,10 +15,13 @@ import {
   TablePagination,
   Fade,
   CircularProgress,
-  Avatar
+  Avatar,
+  Menu,
+  MenuItem,
+  ListItemIcon
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import { Info, Person, Assignment, History } from '@mui/icons-material';
+import { Info, Person, Assignment, History, MoreVert } from '@mui/icons-material';
 import { format } from 'date-fns';
 
 const getActionColor = (action) => {
@@ -32,11 +35,44 @@ const getActionColor = (action) => {
   return colors[action] || 'default';
 };
 
+const ACTION_LABELS = {
+  SOFT_DELETE: 'Dihapus sementara',
+  RESTORE: 'Pulihkan',
+  HARD_DELETE: 'Hapus Permanen',
+  UPDATE_STATUS: 'Ubah Status',
+  VERIFY_MAHASISWA: 'Verifikasi Mahasiswa',
+};
+
+const ENTITY_LABELS = {
+  USER: 'Pengguna',
+  REPORT: 'Laporan',
+  CATEGORY: 'Kategori',
+};
+
 const getEntityIcon = (entityType) => {
   return entityType === 'USER' ? <Person fontSize="small" /> : <Assignment fontSize="small" />;
 };
 
 const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPerPage, totalLogs, onPageChange, onRowsPerPageChange }) => {
+  const [actionAnchorEl, setActionAnchorEl] = React.useState(null);
+  const [selectedLog, setSelectedLog] = React.useState(null);
+
+  const openActionMenu = (event, log) => {
+    setActionAnchorEl(event.currentTarget);
+    setSelectedLog(log);
+  };
+
+  const closeActionMenu = () => {
+    setActionAnchorEl(null);
+    setSelectedLog(null);
+  };
+
+  const showSelectedDetail = () => {
+    const log = selectedLog;
+    closeActionMenu();
+    if (log) onShowDetails(log);
+  };
+
   const headerCellSx = {
     fontWeight: 600,
     bgcolor: 'background.paper',
@@ -47,15 +83,15 @@ const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPer
   if (loading) {
     return (
       <Paper sx={{ 
-        borderRadius: 4, 
-        boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
+        borderRadius: 3, 
+        boxShadow: '0 2px 12px rgba(0,0,0,0.06)', 
         border: '1px solid rgba(0,0,0,0.05)',
         p: 8,
         textAlign: 'center' 
       }}>
         <CircularProgress size={40} sx={{ mb: 2 }} />
         <Typography color="text.secondary" fontWeight={600}>
-          Memuat audit logs...
+          Memuat log audit...
         </Typography>
       </Paper>
     );
@@ -64,8 +100,8 @@ const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPer
   if (!logs || logs.length === 0) {
     return (
       <Paper sx={{ 
-        borderRadius: 4, 
-        boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
+        borderRadius: 3, 
+        boxShadow: '0 2px 12px rgba(0,0,0,0.06)', 
         border: '1px solid rgba(0,0,0,0.05)',
         p: 8,
         textAlign: 'center' 
@@ -92,35 +128,36 @@ const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPer
 
   return (
     <Paper sx={{ 
-      borderRadius: 4, 
-      boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
+      borderRadius: 3, 
+      boxShadow: '0 2px 12px rgba(0,0,0,0.06)', 
       border: '1px solid rgba(0,0,0,0.05)',
       overflow: 'hidden'
     }}>
-      <TableContainer sx={{ maxHeight: 600 }}>
-        <Table stickyHeader>
+      <TableContainer sx={{ maxHeight: 600, overflowX: 'hidden' }}>
+        <Table stickyHeader size="small" sx={{ width: '100%', tableLayout: 'fixed' }}>
           <TableHead>
             <TableRow>
-              <TableCell sx={headerCellSx}>
+              <TableCell sx={{ ...headerCellSx, width: '16%' }}>
                 Entitas
               </TableCell>
-              <TableCell sx={headerCellSx}>
+              <TableCell sx={{ ...headerCellSx, width: '20%' }}>
                 Aksi
               </TableCell>
-              <TableCell sx={headerCellSx}>
+              <TableCell sx={{ ...headerCellSx, width: '18%', display: { xs: 'none', lg: 'table-cell' } }}>
                 ID Entitas
               </TableCell>
-              <TableCell sx={headerCellSx}>
+              <TableCell sx={{ ...headerCellSx, width: '24%', display: { xs: 'none', sm: 'table-cell' } }}>
                 Aktor
               </TableCell>
-              <TableCell sx={headerCellSx}>
-                IP Address
+              <TableCell sx={{ ...headerCellSx, width: '16%', display: { xs: 'none', md: 'table-cell' } }}>
+                Alamat IP
               </TableCell>
-              <TableCell sx={headerCellSx}>
+              <TableCell sx={{ ...headerCellSx, width: '18%' }}>
                 Waktu
               </TableCell>
               <TableCell sx={{ 
                 ...headerCellSx,
+                width: 58,
                 textAlign: 'center'
               }}>
                 Detail
@@ -141,7 +178,7 @@ const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPer
                   <TableCell>
                     <Chip
                       icon={getEntityIcon(log.entityType)}
-                      label={log.entityType}
+                      label={ENTITY_LABELS[log.entityType] || log.entityType}
                       size="small"
                       color={log.entityType === 'USER' ? 'primary' : 'secondary'}
                       variant="outlined"
@@ -150,13 +187,13 @@ const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPer
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={log.action.replace(/_/g, ' ')}
+                      label={ACTION_LABELS[log.action] || log.action.replace(/_/g, ' ')}
                       size="small"
                       color={getActionColor(log.action)}
                       sx={{ fontWeight: 600 }}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
                     <Typography 
                       variant="body2" 
                       sx={{ 
@@ -173,8 +210,8 @@ const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPer
                       {log.entityId}
                     </Typography>
                   </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
                       <Avatar sx={{ 
                         width: 24, 
                         height: 24, 
@@ -185,7 +222,7 @@ const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPer
                       </Avatar>
                       <Box>
                         <Typography variant="body2" fontWeight={700} sx={{ fontSize: '0.875rem' }}>
-                          {log.actorName || 'Unknown'}
+                          {log.actorName || 'Tidak diketahui'}
                         </Typography>
                         <Typography 
                           variant="caption" 
@@ -200,7 +237,7 @@ const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPer
                       </Box>
                     </Box>
                   </TableCell>
-                  <TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     <Typography 
                       variant="caption" 
                       sx={{ 
@@ -222,13 +259,9 @@ const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPer
                     </Typography>
                   </TableCell>
                   <TableCell align="center">
-                    <Tooltip title="Lihat Detail">
-                      <IconButton 
-                        size="small" 
-                        onClick={() => onShowDetails(log)}
-                        color="primary"
-                      >
-                        <Info fontSize="small" />
+                    <Tooltip title="Buka menu aksi">
+                      <IconButton size="small" onClick={(event) => openActionMenu(event, log)} aria-label="Buka menu aksi log audit">
+                        <MoreVert />
                       </IconButton>
                     </Tooltip>
                   </TableCell>
@@ -238,6 +271,19 @@ const AuditLogList = ({ logs = [], loading = false, onShowDetails, page, rowsPer
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Menu
+        anchorEl={actionAnchorEl}
+        open={Boolean(actionAnchorEl)}
+        onClose={closeActionMenu}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+      >
+        <MenuItem onClick={showSelectedDetail}>
+          <ListItemIcon><Info fontSize="small" /></ListItemIcon>
+          Lihat detail
+        </MenuItem>
+      </Menu>
       
       {/* Pagination */}
       {totalLogs > 0 && (

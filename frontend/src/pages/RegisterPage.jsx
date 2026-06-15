@@ -45,7 +45,7 @@ const steps = [
   },
   {
     label: 'Verifikasi',
-    description: 'Upload dokumen KTM',
+    description: 'Unggah dokumen KTM',
     icon: <VerifiedUser />,
   },
 ];

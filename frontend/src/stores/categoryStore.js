@@ -29,7 +29,7 @@ const useCategoryStore = create((set) => ({
       set({ categories, loading: false });
       return categories;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to fetch categories' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal memuat kategori' });
       throw error;
     }
   },
@@ -42,7 +42,7 @@ const useCategoryStore = create((set) => ({
       set({ categories, loading: false });
       return categories;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to search categories' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal mencari kategori' });
       throw error;
     }
   },
@@ -55,7 +55,7 @@ const useCategoryStore = create((set) => ({
       set({ category, loading: false });
       return category;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to fetch category' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal memuat kategori' });
       throw error;
     }
   },
@@ -68,7 +68,7 @@ const useCategoryStore = create((set) => ({
       set({ category, loading: false });
       return category;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to fetch category' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal memuat kategori' });
       throw error;
     }
   },
@@ -81,7 +81,7 @@ const useCategoryStore = create((set) => ({
       set({ stats, loading: false });
       return stats;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to fetch category stats' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal memuat statistik kategori' });
       throw error;
     }
   },
@@ -94,7 +94,7 @@ const useCategoryStore = create((set) => ({
       set({ categories, loading: false });
       return categories;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to fetch categories with reports' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal memuat kategori beserta laporan' });
       throw error;
     }
   },

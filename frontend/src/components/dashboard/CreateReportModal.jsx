@@ -53,7 +53,7 @@ const steps = [
   },
   {
     label: 'Lampiran',
-    description: 'Upload file pendukung (opsional)'
+    description: 'Unggah berkas pendukung (opsional)'
   }
 ];
 
@@ -357,7 +357,7 @@ const CreateReportModal = React.memo(({ open, onClose, categories, onSubmit }) =
             <UploadArea component="label" sx={{ pointerEvents: isCompressing ? 'none' : 'auto', opacity: isCompressing ? 0.7 : 1 }}>
               <CloudUpload sx={{ fontSize: 40, color: 'primary.main' }} />
               <Typography variant="subtitle1" fontWeight={600}>
-                {isCompressing ? 'Mengompresi Gambar...' : 'Upload File Pendukung'}
+                {isCompressing ? 'Mengompresi Gambar...' : 'Unggah Berkas Pendukung'}
               </Typography>
               {isCompressing && <LinearProgress sx={{ width: '80%', mt: 1, borderRadius: 2 }} />}
               {!isCompressing && (

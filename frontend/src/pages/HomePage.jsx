@@ -48,7 +48,7 @@ import UBHLogo from '../components/ui/UBHLogo';
 const steps = [
   {
     icon: <HowToReg fontSize="large" color="primary" />,
-    title: '1. Registrasi & Login',
+    title: '1. Registrasi & Masuk',
     description: 'Daftarkan diri Anda dengan data yang valid. Akun Anda akan diverifikasi oleh admin.',
   },
   {

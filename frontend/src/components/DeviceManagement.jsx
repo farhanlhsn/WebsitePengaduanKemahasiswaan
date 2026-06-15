@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Paper, Typography, Button, IconButton, Chip, Grid,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Alert, CircularProgress, Card, CardContent, Divider
+  Alert, CircularProgress, CardContent, Menu, MenuItem, ListItemIcon
 } from '@mui/material';
 import {
   DevicesOther, Smartphone, Computer, Tablet, 
-  LogoutOutlined, DeleteOutline, AccessTime, LocationOn
+  LogoutOutlined, AccessTime, MoreVert
 } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
 import useAuthStore from '../stores/authStore';
@@ -26,6 +26,8 @@ const DeviceManagement = ({ open, onClose }) => {
   const [confirmDialog, setConfirmDialog] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [logoutAllDialog, setLogoutAllDialog] = useState(false);
+  const [actionAnchorEl, setActionAnchorEl] = useState(null);
+  const [actionDevice, setActionDevice] = useState(null);
 
   useEffect(() => {
     if (open) {
@@ -77,6 +79,24 @@ const DeviceManagement = ({ open, onClose }) => {
     } catch (error) {
       console.error('Failed to logout all other devices:', error);
     }
+  };
+
+  const openDeviceMenu = (event, device) => {
+    setActionAnchorEl(event.currentTarget);
+    setActionDevice(device);
+  };
+
+  const closeDeviceMenu = () => {
+    setActionAnchorEl(null);
+    setActionDevice(null);
+  };
+
+  const confirmDeviceLogout = () => {
+    const device = actionDevice;
+    closeDeviceMenu();
+    if (!device) return;
+    setSelectedDevice(device);
+    setConfirmDialog(true);
   };
 
   const currentDevice = devices.find(device => device.isCurrent);
@@ -185,7 +205,7 @@ const DeviceManagement = ({ open, onClose }) => {
                     startIcon={<LogoutOutlined />}
                     onClick={() => setLogoutAllDialog(true)}
                   >
-                    Logout Semua
+                    Keluar dari Semua
                   </Button>
                 </Box>
 
@@ -217,20 +237,26 @@ const DeviceManagement = ({ open, onClose }) => {
                           </Box>
                         </Grid>
                         <Grid item>
-                          <IconButton
-                            color="error"
-                            onClick={() => {
-                              setSelectedDevice(device);
-                              setConfirmDialog(true);
-                            }}
-                          >
-                            <LogoutOutlined />
+                          <IconButton onClick={(event) => openDeviceMenu(event, device)} aria-label={`Buka menu aksi ${device.deviceName || 'perangkat'}`}>
+                            <MoreVert />
                           </IconButton>
                         </Grid>
                       </Grid>
                     </CardContent>
                   </GlassCard>
                 ))}
+                <Menu
+                  anchorEl={actionAnchorEl}
+                  open={Boolean(actionAnchorEl)}
+                  onClose={closeDeviceMenu}
+                  anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                  transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                >
+                  <MenuItem onClick={confirmDeviceLogout} sx={{ color: 'error.main' }}>
+                    <ListItemIcon><LogoutOutlined fontSize="small" color="error" /></ListItemIcon>
+                    Keluarkan perangkat
+                  </MenuItem>
+                </Menu>
               </>
             )}
 
@@ -254,7 +280,7 @@ const DeviceManagement = ({ open, onClose }) => {
 
       {/* Logout Device Confirmation */}
       <Dialog open={confirmDialog} onClose={() => setConfirmDialog(false)}>
-        <DialogTitle>Logout Perangkat</DialogTitle>
+        <DialogTitle>Keluar dari Perangkat</DialogTitle>
         <DialogContent>
           <Typography>
             Apakah Anda yakin ingin mengeluarkan perangkat "{selectedDevice?.deviceName || 'Tidak Dikenal'}" dari akun Anda?
@@ -263,14 +289,14 @@ const DeviceManagement = ({ open, onClose }) => {
         <DialogActions>
           <Button onClick={() => setConfirmDialog(false)}>Batal</Button>
           <Button onClick={handleLogoutDevice} color="error" variant="contained">
-            Logout
+            Keluar
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Logout All Other Devices Confirmation */}
       <Dialog open={logoutAllDialog} onClose={() => setLogoutAllDialog(false)}>
-        <DialogTitle>Logout Semua Perangkat Lain</DialogTitle>
+        <DialogTitle>Keluar dari Semua Perangkat Lain</DialogTitle>
         <DialogContent>
           <Typography>
             Apakah Anda yakin ingin mengeluarkan semua perangkat lain dari akun Anda? 
@@ -280,7 +306,7 @@ const DeviceManagement = ({ open, onClose }) => {
         <DialogActions>
           <Button onClick={() => setLogoutAllDialog(false)}>Batal</Button>
           <Button onClick={handleLogoutAllOther} color="error" variant="contained">
-            Logout Semua
+            Keluar dari Semua
           </Button>
         </DialogActions>
       </Dialog>

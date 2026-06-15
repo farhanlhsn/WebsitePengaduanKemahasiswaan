@@ -64,7 +64,7 @@ const AdminDashboardPage = () => {
     <Fade in timeout={300}>
       <Box>
         <AdminSectionHeader
-          title="Dashboard"
+          title="Dasbor"
           subtitle="Ringkasan sistem dan statistik keseluruhan"
           onMobileMenuClick={onMobileMenuClick}
           onRefresh={refresh}
@@ -73,11 +73,11 @@ const AdminDashboardPage = () => {
           dashboardStats={dashboardStats}
           loading={dashboardLoading || userLoading || reportLoading}
         />
-        <Grid container spacing={3} sx={{ mt: 2 }}>
-          <Grid size={{ xs: 12, lg: 8, xl: 9 }} sx={{ '@media (min-width: 1920px)': { minHeight: 500 } }}>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, lg: 8, xl: 9 }}>
             <StatusChart data={chartData} />
           </Grid>
-          <Grid size={{ xs: 12, lg: 4, xl: 3 }} sx={{ '@media (min-width: 1920px)': { minHeight: 500 } }}>
+          <Grid size={{ xs: 12, lg: 4, xl: 3 }}>
             <AdminNotifications
               users={users}
               reports={reports}

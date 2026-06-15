@@ -268,7 +268,7 @@ const SettingsPage = ({ isEmbedded = false }) => {
                       onChange={handleSettingChange('notifications', 'reportUpdates')}
                     />
                   }
-                  label="Update Status Laporan"
+                  label="Pembaruan Status Laporan"
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -417,11 +417,11 @@ const SettingsPage = ({ isEmbedded = false }) => {
                     </Box>
                   </Stack>
                   {!device.isCurrent && (
-                    <Tooltip title="Logout dari perangkat ini">
+                    <Tooltip title="Keluar dari perangkat ini">
                       <IconButton
                         onClick={() => setConfirmDialog({
                           open: true,
-                          title: 'Logout dari Perangkat',
+                          title: 'Keluar dari Perangkat',
                           message: `Apakah Anda yakin ingin logout dari ${device.deviceName || 'perangkat ini'}?`,
                           action: () => handleLogoutFromDevice(device.id)
                         })}
@@ -441,13 +441,13 @@ const SettingsPage = ({ isEmbedded = false }) => {
                 startIcon={<Logout />}
                 onClick={() => setConfirmDialog({
                   open: true,
-                  title: 'Logout dari Semua Perangkat',
+                  title: 'Keluar dari Semua Perangkat',
                   message: 'Apakah Anda yakin ingin logout dari semua perangkat lain?',
                   action: handleLogoutFromAllDevices
                 })}
                 sx={{ mt: 2, borderRadius: 2 }}
               >
-                Logout dari Semua Perangkat Lain
+                Keluar dari Semua Perangkat Lain
               </Button>
             )}
           </AccordionDetails>
