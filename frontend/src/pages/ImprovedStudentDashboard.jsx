@@ -156,16 +156,16 @@ export default React.memo(function ImprovedStudentDashboard() {
             <Box sx={{ mb: 4 }}>
               {/* --- GRID YANG SUDAH DIPERBAIKI --- */}
               <Grid container spacing={3}>
-                <Grid item xs={12} sm={6} lg={3}>
+                <Grid item xs={12} sm={6} md={3}>
                   <EnhancedStatCard title={t('dashboard.total_reports')} value={memoizedStats.totalReports} icon={<Assignment />} color="#2E7D32" animateValue />
                 </Grid>
-                <Grid item xs={12} sm={6} lg={3}>
+                <Grid item xs={12} sm={6} md={3}>
                   <EnhancedStatCard title={t('dashboard.pending')} value={memoizedStats.pendingReports} icon={<PendingActions />} color="#FF9800" animateValue />
                 </Grid>
-                <Grid item xs={12} sm={6} lg={3}>
+                <Grid item xs={12} sm={6} md={3}>
                   <EnhancedStatCard title={t('dashboard.in_progress')} value={memoizedStats.inProgressReports} icon={<HourglassEmpty />} color="#2196F3" animateValue />
                 </Grid>
-                <Grid item xs={12} sm={6} lg={3}>
+                <Grid item xs={12} sm={6} md={3}>
                   <EnhancedStatCard title={t('dashboard.resolved')} value={memoizedStats.completedReports} icon={<CheckCircle />} color="#4CAF50" animateValue showProgress progressValue={memoizedStats.completionRate} />
                 </Grid>
               </Grid>

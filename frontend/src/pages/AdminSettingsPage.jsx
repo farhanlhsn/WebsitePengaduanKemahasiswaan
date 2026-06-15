@@ -286,8 +286,13 @@ const AdminSettingsPage = () => {
                               <Chip label="Saat ini" size="small" color="primary" sx={{ ml: 1, height: 20, fontSize: '0.7rem' }} />
                             )}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Akses: {formatLastAccess(device.lastAccess)}
+                          {(device.location || device.ipAddress) && (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              📍 {device.location || 'Lokasi tidak diketahui'} {device.ipAddress ? `(IP: ${device.ipAddress})` : ''}
+                            </Typography>
+                          )}
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            ⏱ Akses: {formatLastAccess(device.lastAccess)}
                           </Typography>
                         </Box>
                       </Stack>

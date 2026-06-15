@@ -15,10 +15,10 @@ class AuthServices {
         where: { email: data.email }
       });
 
-      if (!user) throw new Error('User not found');
+      if (!user) throw new Error('email/password salah');
       
       const isPasswordValid = await bcrypt.compare(data.password, user.password);
-      if (!isPasswordValid) throw new Error('Invalid password');
+      if (!isPasswordValid) throw new Error('email/password salah');
       if (!user.isVerified) throw new Error('User is not verified');
 
       // Get device information

@@ -43,6 +43,7 @@ import {
   People
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
+import useAuthStore from '../stores/authStore';
 import UBHLogo from '../components/ui/UBHLogo';
 
 const steps = [
@@ -163,6 +164,14 @@ const faqs = [
 export default function HomePage() {
   const theme = useTheme();
   const [expandedFaq, setExpandedFaq] = useState(false);
+  const { isAuthenticated, user } = useAuthStore();
+
+  const getDashboardLink = () => {
+    if (['ADMIN', 'SUPERADMIN'].includes(user?.role)) {
+      return '/admin';
+    }
+    return '/dashboard';
+  };
 
   const handleFaqChange = (panel) => (event, isExpanded) => {
     setExpandedFaq(isExpanded ? panel : false);
@@ -260,7 +269,7 @@ export default function HomePage() {
               }}>
                 <Button
                   component={Link}
-                  to="/login"
+                  to={isAuthenticated ? getDashboardLink() : "/login"}
                   variant="contained"
                   size="large"
                   startIcon={<ReportProblem />}
@@ -278,7 +287,7 @@ export default function HomePage() {
                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                   }}
                 >
-                  Buat Laporan Sekarang
+                  {isAuthenticated ? 'Ke Dashboard' : 'Buat Laporan Sekarang'}
                 </Button>
               </Box>
 
