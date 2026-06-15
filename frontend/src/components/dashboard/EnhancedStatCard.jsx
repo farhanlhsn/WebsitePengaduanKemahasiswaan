@@ -6,9 +6,9 @@ import AnimatedCounter from '../ui/AnimatedCounter';
 import GlassCard from '../ui/GlassCard';
 
 const StyledStatCard = styled(GlassCard)(({ theme, cardcolor }) => ({
-  padding: theme.spacing(3),
+  padding: theme.spacing(2.5),
   height: '100%',
-  minHeight: 180,
+  minHeight: 160,
   position: 'relative',
   overflow: 'hidden',
   background: `linear-gradient(135deg, 
@@ -140,7 +140,7 @@ const EnhancedStatCard = React.memo(({
                 }}
               />
               <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                {Math.round(progressValue)}% completion
+                {Math.round(progressValue)}% selesai
               </Typography>
             </Box>
           )}

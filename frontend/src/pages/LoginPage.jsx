@@ -31,17 +31,17 @@ import {
 export default function LoginPage() {
   const navigate = useNavigate();
   const theme = useTheme();
-  const { login, loading, error, clearError, isAuthenticated, user } = useAuthStore();
+  const { login, loading, error, clearError, isLoggedIn, user } = useAuthStore();
   
   React.useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isLoggedIn && user) {
       if (['ADMIN', 'SUPERADMIN'].includes(user.role)) {
         navigate('/admin');
       } else {
         navigate('/dashboard');
       }
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isLoggedIn, user, navigate]);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',

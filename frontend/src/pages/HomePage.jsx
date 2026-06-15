@@ -164,7 +164,7 @@ const faqs = [
 export default function HomePage() {
   const theme = useTheme();
   const [expandedFaq, setExpandedFaq] = useState(false);
-  const { isAuthenticated, user } = useAuthStore();
+  const { isLoggedIn, user } = useAuthStore();
 
   const getDashboardLink = () => {
     if (['ADMIN', 'SUPERADMIN'].includes(user?.role)) {
@@ -269,7 +269,7 @@ export default function HomePage() {
               }}>
                 <Button
                   component={Link}
-                  to={isAuthenticated ? getDashboardLink() : "/login"}
+                  to={isLoggedIn ? getDashboardLink() : "/login"}
                   variant="contained"
                   size="large"
                   startIcon={<ReportProblem />}
@@ -287,7 +287,7 @@ export default function HomePage() {
                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                   }}
                 >
-                  {isAuthenticated ? 'Ke Dashboard' : 'Buat Laporan Sekarang'}
+                  {isLoggedIn ? 'Ke Dashboard' : 'Buat Laporan Sekarang'}
                 </Button>
               </Box>
 

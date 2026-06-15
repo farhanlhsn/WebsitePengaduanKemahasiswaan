@@ -67,7 +67,7 @@ const AdminReportsPage = () => {
   );
 
   const bulkActions = useMemo(
-    () => [{ id: 'update-status', label: 'Update Status', icon: <Edit /> }],
+    () => [{ id: 'update-status', label: 'Ubah Status', icon: <Edit /> }],
     []
   );
 
@@ -158,12 +158,12 @@ const AdminReportsPage = () => {
                 onChange={(e) => setSelectedStatus(e.target.value)}
                 label="Status"
               >
-                <MenuItem value="PENDING">Menunggu (Pending)</MenuItem>
-                <MenuItem value="IN_REVIEW">Sedang Ditinjau (In Review)</MenuItem>
-                <MenuItem value="IN_PROGRESS">Sedang Diproses (In Progress)</MenuItem>
-                <MenuItem value="RESOLVED">Selesai (Resolved)</MenuItem>
-                <MenuItem value="REJECTED">Ditolak (Rejected)</MenuItem>
-                <MenuItem value="CANCELED">Dibatalkan (Canceled)</MenuItem>
+                <MenuItem value="PENDING">Menunggu</MenuItem>
+                <MenuItem value="IN_REVIEW">Sedang Ditinjau</MenuItem>
+                <MenuItem value="IN_PROGRESS">Sedang Diproses</MenuItem>
+                <MenuItem value="RESOLVED">Selesai</MenuItem>
+                <MenuItem value="REJECTED">Ditolak</MenuItem>
+                <MenuItem value="CANCELED">Dibatalkan</MenuItem>
               </Select>
             </FormControl>
           </DialogContent>

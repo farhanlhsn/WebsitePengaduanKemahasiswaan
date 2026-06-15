@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Container, Paper, Typography, Button, Grid, Switch, Divider, Stack,
+  Box, Container, Typography, Button, Grid, Switch,
   TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   Alert, CircularProgress, Card, CardContent, FormControlLabel,
   Select, MenuItem, FormControl, InputLabel, Accordion, AccordionSummary,
-  AccordionDetails, List, ListItem, ListItemText, ListItemSecondaryAction,
+  AccordionDetails, List, ListItem, Stack,
   Chip, IconButton, Tooltip
 } from '@mui/material';
 import {
-  ArrowBack, Notifications, Security, Language, Palette,
-  Delete, Logout, ExpandMore, Smartphone, Computer, Tablet,
-  Save, Visibility, VisibilityOff, Key, Email, Phone
+  ArrowBack, Notifications, Security, Language,
+  Logout, ExpandMore, Smartphone, Computer, Tablet,
+  Save, Visibility, VisibilityOff, Key
 } from '@mui/icons-material';
-import { alpha, useTheme } from '@mui/material/styles';
 import useAuthStore from '../stores/authStore';
 import useUserStore from '../stores/userStore';
 import useSettingsStore from '../stores/settingsStore';
@@ -20,7 +19,6 @@ import { useNavigate } from 'react-router-dom';
 import { changePassword } from '../services/api';
 
 const SettingsPage = ({ isEmbedded = false }) => {
-  const theme = useTheme();
   const navigate = useNavigate();
   const { user, devices, logout, logoutDevice, getUserDevices } = useAuthStore();
   const { error, clearError } = useUserStore();
@@ -99,19 +97,6 @@ const SettingsPage = ({ isEmbedded = false }) => {
     } catch (error) {
       console.error('Failed to logout from all devices:', error);
     }
-  };
-
-  const handleDeleteAccount = () => {
-    setConfirmDialog({
-      open: true,
-      title: 'Hapus Akun',
-      message: 'Apakah Anda yakin ingin menghapus akun? Tindakan ini tidak dapat dibatalkan dan semua data Anda akan hilang.',
-      action: () => {
-        // Implementasi delete account
-        console.log('Delete account');
-        setConfirmDialog({ open: false, title: '', message: '', action: null });
-      }
-    });
   };
 
   const handleChangePassword = async () => {
@@ -234,7 +219,7 @@ const SettingsPage = ({ isEmbedded = false }) => {
                 <Stack direction="row" alignItems="center" spacing={2}>
                   <Notifications color="primary" />
                   <Typography variant="h6" fontWeight={600}>
-                    Notifikasi
+                    Notifikasi Sistem
                   </Typography>
                 </Stack>
               </AccordionSummary>
@@ -244,7 +229,7 @@ const SettingsPage = ({ isEmbedded = false }) => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={localSettings.notifications.email}
+                          checked={localSettings.notifications?.email || false}
                           onChange={handleSettingChange('notifications', 'email')}
                         />
                       }
@@ -255,100 +240,19 @@ const SettingsPage = ({ isEmbedded = false }) => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={localSettings.notifications.push}
+                          checked={localSettings.notifications?.push || false}
                           onChange={handleSettingChange('notifications', 'push')}
                         />
                       }
                       label="Push Notifikasi"
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={localSettings.notifications.reportUpdates}
-                          onChange={handleSettingChange('notifications', 'reportUpdates')}
-                        />
-                      }
-                      label="Update Status Laporan"
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={localSettings.notifications.newFeatures}
-                          onChange={handleSettingChange('notifications', 'newFeatures')}
-                        />
-                      }
-                      label="Fitur Baru"
-                    />
-                  </Grid>
-                </Grid>
-              </AccordionDetails>
-            </Accordion>
-
-            {/* Privacy Settings */}
-            <Accordion sx={{ mb: 2, borderRadius: 2 }}>
-              <AccordionSummary expandIcon={<ExpandMore />}>
-                <Stack direction="row" alignItems="center" spacing={2}>
-                  <Security color="primary" />
-                  <Typography variant="h6" fontWeight={600}>
-                    Privasi & Keamanan
-                  </Typography>
-                </Stack>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} sm={6}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={localSettings.privacy.showProfile}
-                          onChange={handleSettingChange('privacy', 'showProfile')}
-                        />
-                      }
-                      label="Tampilkan Profil Publik"
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={localSettings.privacy.showReports}
-                          onChange={handleSettingChange('privacy', 'showReports')}
-                        />
-                      }
-                      label="Tampilkan Laporan Saya"
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={localSettings.privacy.allowTracking}
-                          onChange={handleSettingChange('privacy', 'allowTracking')}
-                        />
-                      }
-                      label="Izinkan Tracking untuk Analitik"
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Button
-                      variant="outlined"
-                      startIcon={<Key />}
-                      onClick={() => setPasswordDialog(true)}
-                      sx={{ borderRadius: 2 }}
-                    >
-                      Ubah Password
-                    </Button>
-                  </Grid>
                 </Grid>
               </AccordionDetails>
             </Accordion>
 
             {/* Language & Theme Settings */}
-            <Accordion sx={{ mb: 2, borderRadius: 2 }}>
+            <Accordion defaultExpanded sx={{ mb: 2, borderRadius: 2 }}>
               <AccordionSummary expandIcon={<ExpandMore />}>
                 <Stack direction="row" alignItems="center" spacing={2}>
                   <Language color="primary" />
@@ -363,7 +267,7 @@ const SettingsPage = ({ isEmbedded = false }) => {
                     <FormControl fullWidth>
                       <InputLabel>Bahasa</InputLabel>
                       <Select
-                        value={localSettings.language}
+                        value={localSettings.language || 'id'}
                         label="Bahasa"
                         onChange={handleSettingChange('', 'language')}
                       >
@@ -376,7 +280,7 @@ const SettingsPage = ({ isEmbedded = false }) => {
                     <FormControl fullWidth>
                       <InputLabel>Tema</InputLabel>
                       <Select
-                        value={localSettings.theme}
+                        value={localSettings.theme || 'light'}
                         label="Tema"
                         onChange={handleSettingChange('', 'theme')}
                       >
@@ -390,28 +294,32 @@ const SettingsPage = ({ isEmbedded = false }) => {
               </AccordionDetails>
             </Accordion>
 
-            {/* Danger Zone */}
-            <Card sx={{ borderRadius: 3, border: '2px solid', borderColor: 'error.main', bgcolor: alpha(theme.palette.error.main, 0.05), mb: 3 }}>
-              <CardContent>
-                <Typography variant="h6" fontWeight={600} color="error.main" gutterBottom>
-                  Zona Berbahaya
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Tindakan berikut tidak dapat dibatalkan. Harap berhati-hati.
-                </Typography>
-                <Box sx={{ mt: 2 }}>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<Delete />}
-                    onClick={handleDeleteAccount}
-                    sx={{ borderRadius: 2 }}
-                  >
-                    Hapus Akun Permanen
-                  </Button>
+            {/* Security Settings */}
+            <Accordion sx={{ mb: 2, borderRadius: 2 }}>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <Security color="primary" />
+                  <Typography variant="h6" fontWeight={600}>
+                    Keamanan Akun
+                  </Typography>
+                </Stack>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="textSecondary" gutterBottom>
+                    Pastikan akun Anda selalu menggunakan password yang kuat.
+                  </Typography>
                 </Box>
-              </CardContent>
-            </Card>
+                <Button
+                  variant="outlined"
+                  startIcon={<Key />}
+                  onClick={() => setPasswordDialog(true)}
+                  sx={{ borderRadius: 2 }}
+                >
+                  Ubah Password
+                </Button>
+              </AccordionDetails>
+            </Accordion>
           </Grid>
 
           <Grid item xs={12} md={4}>
@@ -421,7 +329,7 @@ const SettingsPage = ({ isEmbedded = false }) => {
                 <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
                   <Smartphone color="primary" />
                   <Typography variant="h6" fontWeight={600}>
-                    Perangkat Tersambung
+                    Perangkat Aktif
                   </Typography>
                 </Stack>
                 <List disablePadding>
@@ -480,7 +388,7 @@ const SettingsPage = ({ isEmbedded = false }) => {
                     })}
                     sx={{ mt: 2 }}
                   >
-                    Logout dari Semua Perangkat Lain
+                    Logout Perangkat Lain
                   </Button>
                 )}
               </CardContent>

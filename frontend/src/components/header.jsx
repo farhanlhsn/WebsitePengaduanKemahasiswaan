@@ -18,7 +18,7 @@ import UBHLogo from './ui/UBHLogo';
 
 export default function Header() {
   const theme = useTheme();
-  const { isAuthenticated, user } = useAuthStore();
+  const { isLoggedIn, user } = useAuthStore();
 
   const getDashboardLink = () => {
     if (['ADMIN', 'SUPERADMIN'].includes(user?.role)) {
@@ -118,27 +118,8 @@ export default function Header() {
             >
               Bantuan
             </Button>
-            <Button 
-              component={Link} 
-              to="/help" 
-              color="primary" 
-              variant="text"
-              startIcon={<HelpOutline />}
-              sx={{
-                borderRadius: 3,
-                px: 3,
-                py: 1.5,
-                fontWeight: 600,
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                  transform: 'translateY(-1px)'
-                },
-                transition: 'all 0.3s ease'
-              }}
-            >
-              Bantuan
-            </Button>
-            {isAuthenticated ? (
+
+            {isLoggedIn ? (
               <Button 
                 component={Link} 
                 to={getDashboardLink()} 
@@ -160,7 +141,7 @@ export default function Header() {
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
               >
-                Dashboard
+                Dasbor
               </Button>
             ) : (
               <>
@@ -255,8 +236,8 @@ export default function Header() {
                 <HelpOutline />
               </IconButton>
             </Tooltip>
-            {isAuthenticated ? (
-              <Tooltip title="Dashboard" arrow>
+            {isLoggedIn ? (
+              <Tooltip title="Dasbor" arrow>
                 <IconButton 
                   component={Link} 
                   to={getDashboardLink()} 

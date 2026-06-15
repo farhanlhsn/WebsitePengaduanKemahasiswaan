@@ -43,10 +43,10 @@ const AdminDashboardStats = ({
       value: safeUserStats.total || 0,
       icon: <People />,
       color: '#2E7D32',
-      subtitle: `${safeUserStats.verified || 0} verified, ${safeUserStats.unverified || 0} pending`,
+      subtitle: `${safeUserStats.verified || 0} terverifikasi, ${safeUserStats.unverified || 0} menunggu`,
     },
     {
-      title: 'Unverified Users',
+      title: 'Pengguna Belum Verifikasi',
       value: safeUserStats.unverified || 0,
       icon: <PersonAdd />,
       color: '#F57C00',
@@ -57,7 +57,7 @@ const AdminDashboardStats = ({
       value: safeReportStats.total || 0,
       icon: <Assignment />,
       color: '#1976D2',
-      subtitle: `${resolutionRate}% resolved`,
+      subtitle: `${resolutionRate}% terselesaikan`,
     },
     {
       title: 'Laporan Selesai',
@@ -67,14 +67,14 @@ const AdminDashboardStats = ({
       subtitle: 'Tingkat penyelesaian',
     },
     {
-      title: 'In Review',
+      title: 'Sedang Ditinjau',
       value: safeReportStats.inReview || 0,
       icon: <Schedule />,
       color: '#0288D1',
-      subtitle: 'Sedang direview',
+      subtitle: 'Sedang ditinjau',
     },
     {
-      title: 'In Progress',
+      title: 'Sedang Diproses',
       value: safeReportStats.inProgress || 0,
       icon: <Schedule />,
       color: '#F57C00',
@@ -88,11 +88,11 @@ const AdminDashboardStats = ({
       subtitle: `${safeCategoryStats.active || 0} aktif`,
     },
     {
-      title: 'Pending',
+      title: 'Menunggu',
       value: safeReportStats.pending || 0,
       icon: <PendingActions />,
       color: '#ED6C02',
-      subtitle: 'Menunggu review',
+      subtitle: 'Menunggu ditinjau',
     }
   ];
 

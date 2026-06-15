@@ -53,17 +53,17 @@ const steps = [
 export default function RegisterPage() {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { registerStudent, loading, error, clearError, isAuthenticated, user } = useAuthStore();
+  const { registerStudent, loading, error, clearError, isLoggedIn, user } = useAuthStore();
   
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isLoggedIn && user) {
       if (['ADMIN', 'SUPERADMIN'].includes(user.role)) {
         navigate('/admin');
       } else {
         navigate('/dashboard');
       }
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isLoggedIn, user, navigate]);
   const [activeStep, setActiveStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);

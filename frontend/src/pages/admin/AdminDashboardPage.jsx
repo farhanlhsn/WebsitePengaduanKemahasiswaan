@@ -63,7 +63,7 @@ const AdminDashboardPage = () => {
     <Fade in timeout={300}>
       <Box>
         <AdminSectionHeader
-          title="Dashboard"
+          title="Dasbor"
           subtitle="Ringkasan sistem dan statistik keseluruhan"
           onMobileMenuClick={onMobileMenuClick}
           onRefresh={refresh}

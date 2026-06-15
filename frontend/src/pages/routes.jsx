@@ -144,7 +144,7 @@ export const router = createBrowserRouter([
       { path: "users/:id", element: wrapAdmin(AdminUsersPage) },
       { path: "unverified-users", element: wrapAdmin(UnverifiedUsersPage) },
       { path: "reports", element: wrapAdmin(AdminReportsPage) },
-      // Note: /admin/reports/:id is OUTSIDE the layout because it has its own full-page UI.
+      { path: "reports/:id", element: wrapAdmin(AdminReportDetailPage, "Memuat detail laporan...") },
       { path: "chat", element: wrapAdmin(AdminChatPage) },
       { path: "audit-logs", element: wrapAdmin(AuditLogPage) },
       { path: "analytics", element: wrapAdmin(AdminAnalyticsPage) },
@@ -154,10 +154,6 @@ export const router = createBrowserRouter([
       { path: "settings", element: wrapAdmin(AdminSettingsPage) },
       { path: "help", element: wrapAdmin(AdminHelpPageWrapped) },
     ],
-  },
-  {
-    path: "/admin/reports/:id",
-    element: <OptimizedAuthWrapper><AdminReportDetailPage /></OptimizedAuthWrapper>,
   },
 
   {

@@ -146,8 +146,8 @@ const AdminSettingsPage = () => {
     <Fade in timeout={300}>
       <Box>
         <AdminSectionHeader
-          title="Pengaturan Admin"
-          subtitle="Kelola preferensi akun admin dan antarmuka aplikasi Anda"
+          title="Pengaturan"
+          subtitle="Kelola preferensi akun dan pengaturan aplikasi Anda"
           onMobileMenuClick={onMobileMenuClick}
           showRefresh={false}
           showNotifications={false}
