@@ -507,6 +507,7 @@ const UnverifiedUsersPage = () => {
                 <img 
                   src={ktmImage} 
                   alt="KTM" 
+                  crossOrigin="use-credentials"
                   style={{ 
                     maxWidth: '100%', 
                     height: 'auto',

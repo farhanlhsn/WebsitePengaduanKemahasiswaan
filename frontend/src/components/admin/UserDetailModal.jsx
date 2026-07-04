@@ -218,6 +218,7 @@ const UserDetailModal = ({ open, onClose, user, onAction, isSuperAdmin }) => {
                     <img
                       src={`${BACKEND_UPLOAD_URL}${user.ktmPath}`}
                       alt="Foto KTM"
+                      crossOrigin="use-credentials"
                       style={{
                         maxWidth: '100%',
                         maxHeight: '250px',
@@ -306,6 +307,7 @@ const UserDetailModal = ({ open, onClose, user, onAction, isSuperAdmin }) => {
             <img
               src={`${BACKEND_UPLOAD_URL}${user.ktmPath}`}
               alt="Foto KTM diperbesar"
+              crossOrigin="use-credentials"
               style={{
                 maxWidth: '95vw',
                 maxHeight: '95vh',

@@ -89,7 +89,7 @@ const useAuthStore = create(
           set({ loading: false });
           return response;
         } catch (error) {
-          const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Registration failed';
+          const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Registration failed';
           set({ loading: false, error: errorMessage });
           throw error;
         }

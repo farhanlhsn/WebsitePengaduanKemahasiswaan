@@ -289,6 +289,7 @@ const ChatInterface = ({
             component="img"
             src={`${BACKEND_UPLOAD_URL}${attachment.filePath}`} 
             alt={attachment.fileName}
+            crossOrigin="use-credentials"
             sx={{
               display: 'block',
               maxWidth: '100%',
@@ -758,6 +759,7 @@ const ChatInterface = ({
                 <img 
                   src={`${BACKEND_UPLOAD_URL}${previewFile.filePath}`} 
                   alt={previewFile.fileName}
+                  crossOrigin="use-credentials"
                   style={{ maxWidth: '100%', maxHeight: '400px' }}
                 />
               ) : (

@@ -56,17 +56,17 @@ function matchesMagic(buffer, mime) {
 }
 
 function validateFileDescriptor(file, allowedMap) {
-  if (!file) return { ok: false, error: 'No file uploaded' };
+  if (!file) return { ok: false, error: 'Tidak ada file yang diunggah' };
 
   const mime = file.mimetype;
   const allowedExts = allowedMap[mime];
   if (!allowedExts) {
-    return { ok: false, error: 'File type not allowed' };
+    return { ok: false, error: 'Tipe file tidak diizinkan' };
   }
 
   const ext = path.extname(file.originalname || '').toLowerCase();
   if (!allowedExts.includes(ext)) {
-    return { ok: false, error: 'File extension does not match MIME type' };
+    return { ok: false, error: 'Ekstensi file tidak sesuai dengan tipe file' };
   }
 
   return { ok: true, mime, ext };
@@ -78,7 +78,7 @@ async function validateFileOnDisk(filePath, mime) {
     const buffer = Buffer.alloc(16);
     await handle.read(buffer, 0, 16, 0);
     if (!matchesMagic(buffer, mime)) {
-      return { ok: false, error: 'File content does not match declared type' };
+      return { ok: false, error: 'Isi file tidak sesuai dengan format gambar yang valid. Pastikan file yang diunggah adalah foto/gambar asli.' };
     }
     return { ok: true };
   } finally {
@@ -134,6 +134,7 @@ function createValidateUploadedMiddleware(allowedMap) {
       const { deleteFileFromDisk } = require('./fileDisk');
       const files = req.files || (req.file ? [req.file] : []);
       await Promise.allSettled(files.map((f) => deleteFileFromDisk(f.path)));
+      error.statusCode = 400; // Set statusCode to 400 so errorHandler returns 400 Bad Request
       next(error);
     }
   };
