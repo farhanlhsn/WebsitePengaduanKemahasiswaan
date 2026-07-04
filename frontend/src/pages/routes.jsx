@@ -152,6 +152,7 @@ export const router = createBrowserRouter([
       { path: "users/:id", element: wrapAdmin(AdminUsersPage) },
       { path: "unverified-users", element: wrapAdmin(UnverifiedUsersPage) },
       { path: "reports", element: wrapAdmin(AdminReportsPage) },
+
       { path: "chat", element: wrapAdmin(AdminChatPage) },
       { path: "audit-logs", element: wrapAdmin(AuditLogPage) },
       { path: "analytics", element: wrapAdmin(AdminAnalyticsPage) },

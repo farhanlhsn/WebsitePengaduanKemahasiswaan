@@ -65,7 +65,9 @@ const useAuthStore = create(
           
           return response;
         } catch (error) {
-          const errorMessage = error.response?.error || error.response?.data?.message || 'Gagal masuk ke akun';
+          const errorMessage = error.response?.status === 401
+            ? 'Email/password salah'
+            : (error.response?.data?.message || 'Login failed');
           
           // Ensure complete cleanup on login failure
           clearAccessToken();

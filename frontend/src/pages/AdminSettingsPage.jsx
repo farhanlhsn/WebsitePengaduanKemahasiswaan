@@ -146,8 +146,8 @@ const AdminSettingsPage = () => {
     <Fade in timeout={300}>
       <Box>
         <AdminSectionHeader
-          title="Pengaturan Admin"
-          subtitle="Kelola preferensi akun admin dan antarmuka aplikasi Anda"
+          title="Pengaturan"
+          subtitle="Kelola preferensi akun dan pengaturan aplikasi Anda"
           onMobileMenuClick={onMobileMenuClick}
           showRefresh={false}
         />
@@ -285,8 +285,13 @@ const AdminSettingsPage = () => {
                               <Chip label="Saat ini" size="small" color="primary" sx={{ ml: 1, height: 20, fontSize: '0.7rem' }} />
                             )}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Akses: {formatLastAccess(device.lastAccess)}
+                          {(device.location || device.ipAddress) && (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              📍 {device.location || 'Lokasi tidak diketahui'} {device.ipAddress ? `(IP: ${device.ipAddress})` : ''}
+                            </Typography>
+                          )}
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            ⏱ Akses: {formatLastAccess(device.lastAccess)}
                           </Typography>
                         </Box>
                       </Stack>

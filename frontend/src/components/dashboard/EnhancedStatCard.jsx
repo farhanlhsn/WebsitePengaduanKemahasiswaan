@@ -1,99 +1,187 @@
 import React from 'react';
-import { Box, LinearProgress, Paper, Typography } from '@mui/material';
-import { TrendingDown, TrendingUp } from '@mui/icons-material';
-import { alpha } from '@mui/material/styles';
+import { Box, Typography, IconButton, LinearProgress, Paper } from '@mui/material';
+import { TrendingUp, TrendingDown } from '@mui/icons-material';
+import { alpha, styled } from '@mui/material/styles';
 import AnimatedCounter from '../ui/AnimatedCounter';
+import GlassCard from '../ui/GlassCard';
 
-const EnhancedStatCard = React.memo(({
-  title,
-  value,
-  icon,
-  color = '#2E7D32',
-  trend,
-  trendValue,
-  showProgress = false,
+const StyledStatCard = styled(GlassCard)(({ theme, cardcolor }) => ({
+  padding: theme.spacing(2.5),
+  height: '100%',
+  minHeight: 160,
+  position: 'relative',
+  overflow: 'hidden',
+  background: `linear-gradient(135deg, 
+    ${alpha(cardcolor, 0.05)} 0%, 
+    ${alpha(cardcolor, 0.02)} 100%)`,
+  border: `1px solid ${alpha(cardcolor, 0.1)}`,
+  
+  // Animated background pattern
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    width: 100,
+    height: 100,
+    borderRadius: '50%',
+    background: `radial-gradient(circle, ${alpha(cardcolor, 0.1)} 0%, transparent 70%)`,
+    animation: 'float 6s ease-in-out infinite',
+  },
+  
+  '@keyframes float': {
+    '0%, 100%': { transform: 'translateY(0px) rotate(0deg)' },
+    '50%': { transform: 'translateY(-20px) rotate(180deg)' },
+  },
+}));
+
+const IconContainer = styled(Box)(({ theme, cardcolor }) => ({
+  width: 64,
+  height: 64,
+  borderRadius: 16,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: `linear-gradient(135deg, ${cardcolor}, ${alpha(cardcolor, 0.8)})`,
+  boxShadow: `0 8px 24px ${alpha(cardcolor, 0.3)}`,
+  color: 'white',
+  marginBottom: theme.spacing(2),
+  transition: 'all 0.3s ease',
+  
+  '&:hover': {
+    transform: 'scale(1.1) rotate(5deg)',
+    boxShadow: `0 12px 32px ${alpha(cardcolor, 0.4)}`,
+  },
+}));
+
+const EnhancedStatCard = React.memo(({ 
+  title, 
+  value, 
+  icon, 
+  color = '#2E7D32', 
+  trend, 
+  trendValue, 
+  showProgress = false, 
   progressValue = 0,
   subtitle,
   prefix = '',
   suffix = '',
-  animateValue = true,
+  animateValue = true
 }) => {
   const isPositiveTrend = trend === 'up';
-
+  
   return (
-    <Paper
-      variant="outlined"
-      sx={{
-        p: 2,
-        height: '100%',
-        minHeight: 126,
-        borderRadius: 3,
-        borderColor: alpha(color, 0.2),
-        boxShadow: 'none',
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5 }}>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="body2" color="text.secondary" fontWeight={650} sx={{ mb: 0.5 }}>
-            {title}
-          </Typography>
-          {animateValue ? (
-            <AnimatedCounter
-              end={typeof value === 'number' ? value : Number.parseInt(value, 10) || 0}
-              prefix={prefix}
-              suffix={suffix}
-              variant="h4"
-              fontWeight={800}
-              sx={{ color, fontSize: { xs: '1.75rem', sm: '2rem' }, lineHeight: 1.2 }}
-            />
-          ) : (
-            <Typography variant="h4" fontWeight={800} sx={{ color, fontSize: { xs: '1.75rem', sm: '2rem' } }}>
-              {prefix}{value}{suffix}
+    <StyledStatCard variant="glass" cardcolor={color}>
+      <Box sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, mb: 2 }}>
+          <Box sx={{ flex: 1, pr: 1 }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                mb: 1, 
+                fontWeight: 500,
+                fontSize: '0.875rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}
+            >
+              {title}
             </Typography>
-          )}
+            
+            {animateValue ? (
+              <AnimatedCounter
+                end={typeof value === 'number' ? value : parseInt(value) || 0}
+                prefix={prefix}
+                suffix={suffix}
+                variant="h3"
+                fontWeight={800}
+                sx={{ 
+                  color: color,
+                  letterSpacing: '-0.02em',
+                  fontSize: { xs: '2rem', sm: '2.5rem' }
+                }}
+              />
+            ) : (
+              <Typography 
+                variant="h3" 
+                fontWeight={800} 
+                sx={{ 
+                  color: color,
+                  letterSpacing: '-0.02em',
+                  fontSize: { xs: '2rem', sm: '2.5rem' }
+                }}
+              >
+                {prefix}{value}{suffix}
+              </Typography>
+            )}
+          </Box>
+          
+          <IconContainer cardcolor={color}>
+            {React.cloneElement(icon, { sx: { fontSize: 28 } })}
+          </IconContainer>
         </Box>
 
-        <Box
-          sx={{
-            width: 42,
-            height: 42,
-            flexShrink: 0,
-            borderRadius: 2,
-            display: 'grid',
-            placeItems: 'center',
-            bgcolor: alpha(color, 0.1),
-            color,
-          }}
-        >
-          {React.cloneElement(icon, { sx: { fontSize: 23 } })}
-        </Box>
-      </Box>
-
-      {showProgress && (
-        <Box sx={{ mt: 1.25 }}>
-          <LinearProgress
-            variant="determinate"
-            value={Math.max(0, Math.min(100, progressValue))}
-            sx={{ height: 5, borderRadius: 3, bgcolor: alpha(color, 0.1), '& .MuiLinearProgress-bar': { bgcolor: color } }}
-          />
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-            {Math.round(progressValue)}% terselesaikan
-          </Typography>
-        </Box>
-      )}
-
-      {(trendValue || subtitle) && (
-        <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-          {trendValue && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
-              {isPositiveTrend ? <TrendingUp fontSize="small" color="success" /> : <TrendingDown fontSize="small" color="error" />}
-              <Typography variant="caption" fontWeight={700}>{trendValue}</Typography>
+        <Box sx={{ mt: 'auto' }}>
+          {showProgress && (
+            <Box sx={{ mb: 2 }}>
+              <LinearProgress 
+                variant="determinate" 
+                value={progressValue}
+                sx={{ 
+                  height: 8, 
+                  borderRadius: 4,
+                  bgcolor: alpha(color, 0.1),
+                  '& .MuiLinearProgress-bar': {
+                    bgcolor: color,
+                    borderRadius: 4,
+                    background: `linear-gradient(90deg, ${color}, ${alpha(color, 0.8)})`,
+                  }
+                }}
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                {Math.round(progressValue)}% selesai
+              </Typography>
             </Box>
           )}
-          {subtitle && <Typography variant="caption" color="text.secondary">{subtitle}</Typography>}
+
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {trendValue && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                {isPositiveTrend ? (
+                  <TrendingUp fontSize="small" sx={{ color: '#4CAF50' }} />
+                ) : (
+                  <TrendingDown fontSize="small" sx={{ color: '#F44336' }} />
+                )}
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    color: isPositiveTrend ? '#4CAF50' : '#F44336',
+                    fontWeight: 600,
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  {trendValue}
+                </Typography>
+              </Box>
+            )}
+            
+            {subtitle && (
+              <Typography 
+                variant="caption" 
+                color="text.secondary" 
+                sx={{ 
+                  fontWeight: 500,
+                  fontSize: '0.75rem'
+                }}
+              >
+                {subtitle}
+              </Typography>
+            )}
+          </Box>
         </Box>
-      )}
-    </Paper>
+      </Box>
+    </StyledStatCard>
   );
 });
 

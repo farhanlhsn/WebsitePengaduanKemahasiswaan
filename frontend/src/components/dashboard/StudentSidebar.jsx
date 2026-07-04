@@ -33,7 +33,7 @@ import {
   Person,
 } from '@mui/icons-material';
 import { alpha, styled, useTheme } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
 import { useTranslation } from '../../stores/settingsStore';
 import useChatStore from '../../stores/chatStore';
@@ -174,10 +174,31 @@ const StudentSidebar = ({
 
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  const location = useLocation();
+
   const handleClick = (item) => {
     if (item.disabled) return;
-    if (item.action) item.action();
-    if (item.path) navigate(item.path);
+    
+    const isDashboardPath = location.pathname === '/dashboard' || location.pathname === '/dashboard/';
+    
+    if (isDashboardPath) {
+      if (item.action) item.action();
+      if (item.path) navigate(item.path);
+    } else {
+      // If we click profile, settings, or help, redirect to their standalone routes
+      if (item.id === 'profile') {
+        navigate('/profile');
+      } else if (item.id === 'settings') {
+        navigate('/settings');
+      } else if (item.id === 'help') {
+        navigate('/help');
+      } else if (['dashboard', 'reports', 'chat'].includes(item.id)) {
+        navigate('/dashboard', { state: { activeMenu: item.id } });
+      } else {
+        if (item.action) item.action();
+        if (item.path) navigate(item.path);
+      }
+    }
     if (isMobile && onClose) onClose();
   };
 

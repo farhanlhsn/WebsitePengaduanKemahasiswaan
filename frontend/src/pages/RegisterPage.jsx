@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Button, 
@@ -15,7 +15,7 @@ import {
   alpha, 
   CircularProgress
 } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
 import { 
   ArrowBack,
@@ -52,7 +52,18 @@ const steps = [
 
 export default function RegisterPage() {
   const theme = useTheme();
-  const { registerStudent, loading, error, clearError } = useAuthStore();
+  const navigate = useNavigate();
+  const { registerStudent, loading, error, clearError, isLoggedIn, user } = useAuthStore();
+  
+  useEffect(() => {
+    if (isLoggedIn && user) {
+      if (['ADMIN', 'SUPERADMIN'].includes(user.role)) {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
+    }
+  }, [isLoggedIn, user, navigate]);
   const [activeStep, setActiveStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);

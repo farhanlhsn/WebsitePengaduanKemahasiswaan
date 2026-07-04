@@ -14,6 +14,7 @@ import useUserStore from '../stores/userStore';
 import useAuthStore from '../stores/authStore';
 import useChatStore from '../stores/chatStore';
 import { useTranslation } from '../stores/settingsStore';
+import { useLocation } from 'react-router-dom';
 
 import StudentSidebar from '../components/dashboard/StudentSidebar';
 import EnhancedStatCard from '../components/dashboard/EnhancedStatCard';
@@ -47,6 +48,15 @@ export default React.memo(function ImprovedStudentDashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState('dashboard');
   const [selectedReport, setSelectedReport] = useState(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.activeMenu) {
+      setActiveMenu(location.state.activeMenu);
+      // Clear navigation state to prevent issues on page refresh/reload
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
   
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const savedState = localStorage.getItem('sidebar-open');
@@ -187,11 +197,22 @@ export default React.memo(function ImprovedStudentDashboard() {
         return (
           <>
             {commonHeader(t('dashboard.title'), t('dashboard.subtitle'))}
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2, mb: 2.5 }}>
-              <EnhancedStatCard title={t('dashboard.total_reports')} value={memoizedStats.totalReports} icon={<Assignment />} color="#1976D2" subtitle="Seluruh pengaduan Anda" animateValue />
-              <EnhancedStatCard title={t('dashboard.pending')} value={memoizedStats.pendingReports} icon={<PendingActions />} color="#F57C00" subtitle="Menunggu verifikasi" animateValue />
-              <EnhancedStatCard title={t('dashboard.in_progress')} value={memoizedStats.inProgressReports} icon={<HourglassEmpty />} color="#2196F3" subtitle="Sedang ditindaklanjuti" animateValue />
-              <EnhancedStatCard title={t('dashboard.resolved')} value={memoizedStats.completedReports} icon={<CheckCircle />} color="#388E3C" showProgress progressValue={memoizedStats.completionRate} animateValue />
+<Box sx={{ mb: 4 }}>
+              {/* --- GRID YANG SUDAH DIPERBAIKI --- */}
+              <Grid container spacing={2}>
+                <Grid item xs={6} sm={6} md={3}>
+                  <EnhancedStatCard title={t('dashboard.total_reports')} value={memoizedStats.totalReports} icon={<Assignment />} color="#2E7D32" animateValue />
+                </Grid>
+                <Grid item xs={6} sm={6} md={3}>
+                  <EnhancedStatCard title={t('dashboard.pending')} value={memoizedStats.pendingReports} icon={<PendingActions />} color="#FF9800" animateValue />
+                </Grid>
+                <Grid item xs={6} sm={6} md={3}>
+                  <EnhancedStatCard title={t('dashboard.in_progress')} value={memoizedStats.inProgressReports} icon={<HourglassEmpty />} color="#2196F3" animateValue />
+                </Grid>
+                <Grid item xs={6} sm={6} md={3}>
+                  <EnhancedStatCard title={t('dashboard.resolved')} value={memoizedStats.completedReports} icon={<CheckCircle />} color="#4CAF50" animateValue showProgress progressValue={memoizedStats.completionRate} />
+                </Grid>
+              </Grid>
             </Box>
             <Box sx={{ width: '100%', mx: 0, px: { xs: 0, sm: 0 } }}>
               <ImprovedReportsTable reports={reports} loading={loading} categories={categories} statusFilter={statusFilter} categoryFilter={categoryFilter} searchQuery={searchQuery} onStatusChange={handleStatusChange} onCategoryChange={handleCategoryChange} onSearchChange={handleSearchChange} onLoadMore={handleLoadMore} hasNextPage={pagination.hasNextPage} onCreateReport={() => setModalOpen(true)} onOpenDetail={setSelectedReport} />

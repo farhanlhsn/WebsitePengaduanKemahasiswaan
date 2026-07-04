@@ -126,15 +126,15 @@ const ProfileStrip = styled(Box)(({ theme }) => ({
 /* ── Menu definitions ────────────────────────────────────────────────── */
 
 const MAIN_MENU = [
-  { id: 'dashboard',        text: 'Dasbor',           icon: <Dashboard />,    path: '/admin' },
+  { id: 'dashboard',        text: 'Dasbor',              icon: <Dashboard />,    path: '/admin' },
   { id: 'users',            text: 'Manajemen Pengguna',  icon: <People />,       path: '/admin/users' },
-  { id: 'unverified-users', text: 'Pengguna Belum Terverifikasi',    icon: <PersonAdd />,    path: '/admin/unverified-users' },
+  { id: 'unverified-users', text: 'Pengguna Belum Verifikasi', icon: <PersonAdd />, path: '/admin/unverified-users' },
   { id: 'reports',          text: 'Semua Laporan',       icon: <Assignment />,   path: '/admin/reports' },
-  { id: 'chat',             text: 'Percakapan',   icon: <Chat />,         path: '/admin/chat' },
-  { id: 'analytics',        text: 'Analitik',           icon: <Analytics />,    path: '/admin/analytics' },
+  { id: 'chat',             text: 'Chat & Komunikasi',   icon: <Chat />,         path: '/admin/chat' },
+  { id: 'analytics',        text: 'Analitik',            icon: <Analytics />,    path: '/admin/analytics' },
   { id: 'categories',       text: 'Kategori Laporan',    icon: <Category />,     path: '/admin/categories', superAdminOnly: true },
   { id: 'admin-management', text: 'Kelola Admin',        icon: <SupervisorAccount />, path: '/admin/admins',  superAdminOnly: true },
-  { id: 'audit-logs',       text: 'Log Audit',          icon: <History />,      path: '/admin/audit-logs', superAdminOnly: true },
+  { id: 'audit-logs',       text: 'Riwayat Audit',       icon: <History />,      path: '/admin/audit-logs', superAdminOnly: true },
   { id: 'system',           text: 'Sistem & Keamanan',   icon: <Security />,     path: '/admin/system' },
 ];
 

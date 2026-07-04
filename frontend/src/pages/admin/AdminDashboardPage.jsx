@@ -7,14 +7,13 @@ import useReportStore from '../../stores/reportStore';
 import useCategoryStore from '../../stores/categoryStore';
 import { getAdminDashboardStats } from '../../services/api';
 import AdminDashboardStats from '../../components/admin/AdminDashboardStats';
-import AdminNotifications from '../../components/admin/AdminNotifications';
 import StatusChart from '../../components/dashboard/StatusChart';
 import AdminSectionHeader from './AdminSectionHeader';
 
 const AdminDashboardPage = () => {
   const theme = useTheme();
   const { onMobileMenuClick } = useOutletContext() ?? {};
-  const { users, loading: userLoading, error: userError, getAllUsers } = useUserStore();
+  const { loading: userLoading, error: userError, getAllUsers } = useUserStore();
   const { reports, loading: reportLoading, error: reportError, getAllReports } = useReportStore();
   const { getCategories } = useCategoryStore();
 
@@ -73,16 +72,9 @@ const AdminDashboardPage = () => {
           dashboardStats={dashboardStats}
           loading={dashboardLoading || userLoading || reportLoading}
         />
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, lg: 8, xl: 9 }}>
+        <Grid container spacing={3} sx={{ mt: 2 }}>
+          <Grid size={{ xs: 12 }} sx={{ '@media (min-width: 1920px)': { minHeight: 500 } }}>
             <StatusChart data={chartData} />
-          </Grid>
-          <Grid size={{ xs: 12, lg: 4, xl: 3 }}>
-            <AdminNotifications
-              users={users}
-              reports={reports}
-              loading={userLoading || reportLoading}
-            />
           </Grid>
         </Grid>
         {(userError || reportError) && (

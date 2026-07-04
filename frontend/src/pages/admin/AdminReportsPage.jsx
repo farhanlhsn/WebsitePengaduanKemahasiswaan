@@ -1,59 +1,24 @@
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { Box, Fade, Alert, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Button, Snackbar } from '@mui/material';
 import { Visibility, Edit, Restore } from '@mui/icons-material';
-import { useOutletContext, useSearchParams } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import useReportStore from '../../stores/reportStore';
 import AdminDataTable from '../../components/admin/AdminDataTable';
 import AdminSectionHeader from './AdminSectionHeader';
-import AdminReportDetailModal from '../../components/admin/AdminReportDetailModal';
 
 const AdminReportsPage = () => {
+  const navigate = useNavigate();
   const { onMobileMenuClick } = useOutletContext() ?? {};
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { reports, loading, error, getAllReports, getReportById, restoreReport, bulkUpdateReportStatus } = useReportStore();
+  const { reports, loading, error, getAllReports, restoreReport, bulkUpdateReportStatus } = useReportStore();
 
   const [selectedIds, setSelectedIds] = useState([]);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [selectedReport, setSelectedReport] = useState(null);
-  const [detailOpen, setDetailOpen] = useState(false);
 
   useEffect(() => {
     getAllReports({ includeDeleted: true }, false).catch((e) => console.error(e));
   }, [getAllReports]);
-
-  useEffect(() => {
-    const reportId = searchParams.get('report');
-    if (!reportId) return;
-
-    const reportFromList = reports.find((item) => String(item.id) === String(reportId));
-    if (reportFromList) {
-      setSelectedReport(reportFromList);
-      setDetailOpen(true);
-      return;
-    }
-
-    let active = true;
-    getReportById(reportId, true)
-      .then((report) => {
-        if (!active) return;
-        setSelectedReport(report);
-        setDetailOpen(true);
-      })
-      .catch(() => {});
-    return () => { active = false; };
-  }, [searchParams, reports, getReportById]);
-
-  const closeDetail = useCallback(() => {
-    setDetailOpen(false);
-    setSelectedReport(null);
-    if (searchParams.has('report')) {
-      const nextParams = new URLSearchParams(searchParams);
-      nextParams.delete('report');
-      setSearchParams(nextParams, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
 
   const tableData = useMemo(
     () =>
@@ -69,11 +34,11 @@ const AdminReportsPage = () => {
 
   const columns = useMemo(
     () => [
-      { field: 'title', headerName: 'Judul', sortable: true, width: '28%' },
-      { field: 'status', headerName: 'Status', type: 'status', sortable: true, width: '17%' },
-      { field: 'category', headerName: 'Kategori', sortable: true, width: '18%' },
-      { field: 'user', headerName: 'Pelapor', type: 'reporter', sortable: true, width: '20%' },
-      { field: 'createdAt', headerName: 'Tanggal', type: 'date', sortable: true, width: '17%' },
+      { field: 'title', headerName: 'Judul', sortable: true },
+      { field: 'status', headerName: 'Status', type: 'status', sortable: true },
+      { field: 'category', headerName: 'Kategori', sortable: true },
+      { field: 'user', headerName: 'Pelapor', type: 'reporter', sortable: true },
+      { field: 'createdAt', headerName: 'Tanggal', type: 'date', sortable: true },
     ],
     []
   );
@@ -102,16 +67,13 @@ const AdminReportsPage = () => {
   );
 
   const bulkActions = useMemo(
-    () => [{ id: 'update-status', label: 'Perbarui Status', icon: <Edit /> }],
+    () => [{ id: 'update-status', label: 'Ubah Status', icon: <Edit /> }],
     []
   );
 
   const onRowAction = useCallback(
     async (action, row) => {
-      if (action === 'detail') {
-        setSelectedReport(row);
-        setDetailOpen(true);
-      }
+      if (action === 'detail') navigate(`/admin/reports/${row.id}`);
       if (action === 'restore') {
         try {
           await restoreReport(row.id);
@@ -121,7 +83,7 @@ const AdminReportsPage = () => {
         }
       }
     },
-    [restoreReport]
+    [navigate, restoreReport]
   );
 
   const onBulkAction = useCallback((action, ids) => {
@@ -197,8 +159,8 @@ const AdminReportsPage = () => {
                 label="Status"
               >
                 <MenuItem value="PENDING">Menunggu</MenuItem>
-                <MenuItem value="IN_REVIEW">Ditinjau</MenuItem>
-                <MenuItem value="IN_PROGRESS">Diproses</MenuItem>
+                <MenuItem value="IN_REVIEW">Sedang Ditinjau</MenuItem>
+                <MenuItem value="IN_PROGRESS">Sedang Diproses</MenuItem>
                 <MenuItem value="RESOLVED">Selesai</MenuItem>
                 <MenuItem value="REJECTED">Ditolak</MenuItem>
                 <MenuItem value="CANCELED">Dibatalkan</MenuItem>
@@ -217,15 +179,6 @@ const AdminReportsPage = () => {
             </Button>
           </DialogActions>
         </Dialog>
-
-
-        <AdminReportDetailModal
-          open={detailOpen}
-          reportId={selectedReport?.id}
-          initialReport={selectedReport}
-          onClose={closeDetail}
-          onUpdated={(updated) => setSelectedReport(updated)}
-        />
 
         {/* Snackbar Notifikasi */}
         <Snackbar

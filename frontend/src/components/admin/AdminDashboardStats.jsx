@@ -1,62 +1,155 @@
 import React from 'react';
-import { Box, LinearProgress, Paper } from '@mui/material';
-import { Assignment, CheckCircle, People, PersonAdd } from '@mui/icons-material';
+import { Grid, Box, Typography, LinearProgress } from '@mui/material';
+import { 
+  People, Assignment, CheckCircle, PendingActions, 
+  Schedule, Chat, Category, PersonAdd
+} from '@mui/icons-material';
 import EnhancedStatCard from '../dashboard/EnhancedStatCard';
 
-const AdminDashboardStats = ({ dashboardStats = null, loading = false }) => {
-  const userStats = dashboardStats?.users || { total: 0, verified: 0, unverified: 0 };
-  const reportStats = dashboardStats?.reports || { total: 0, resolved: 0 };
-  const resolutionRate = reportStats.total > 0
-    ? Math.round((reportStats.resolved / reportStats.total) * 100)
+const AdminDashboardStats = ({ 
+  dashboardStats = null, 
+  loading = false 
+}) => {
+  // Extract stats from comprehensive dashboard stats
+  const safeUserStats = dashboardStats?.users || {
+    total: 0,
+    verified: 0,
+    unverified: 0,
+    deleted: 0
+  };
+
+  const safeReportStats = dashboardStats?.reports || {
+    total: 0,
+    resolved: 0,
+    pending: 0,
+    inProgress: 0,
+    inReview: 0,
+    rejected: 0
+  };
+
+  const safeCategoryStats = dashboardStats?.categories || {
+    total: 0,
+    active: 0
+  };
+
+  // Calculate resolution rate
+  const resolutionRate = safeReportStats.total > 0 
+    ? ((safeReportStats.resolved / safeReportStats.total) * 100).toFixed(1)
     : 0;
 
-  const stats = [
+  const statsData = [
     {
       title: 'Total Pengguna',
-      value: userStats.total || 0,
+      value: safeUserStats.total || 0,
       icon: <People />,
       color: '#2E7D32',
-      subtitle: `${userStats.verified || 0} terverifikasi`,
+      subtitle: `${safeUserStats.verified || 0} terverifikasi, ${safeUserStats.unverified || 0} menunggu`,
     },
     {
-      title: 'Belum Terverifikasi',
-      value: userStats.unverified || 0,
+      title: 'Pengguna Belum Verifikasi',
+      value: safeUserStats.unverified || 0,
       icon: <PersonAdd />,
       color: '#F57C00',
-      subtitle: 'Perlu diperiksa',
+      subtitle: 'Perlu verifikasi',
     },
     {
       title: 'Total Laporan',
-      value: reportStats.total || 0,
+      value: safeReportStats.total || 0,
       icon: <Assignment />,
       color: '#1976D2',
-      subtitle: 'Seluruh pengaduan',
+      subtitle: `${resolutionRate}% terselesaikan`,
     },
     {
       title: 'Laporan Selesai',
-      value: reportStats.resolved || 0,
+      value: safeReportStats.resolved || 0,
       icon: <CheckCircle />,
       color: '#388E3C',
-      showProgress: true,
-      progressValue: resolutionRate,
+      subtitle: 'Tingkat penyelesaian',
     },
+    {
+      title: 'Sedang Ditinjau',
+      value: safeReportStats.inReview || 0,
+      icon: <Schedule />,
+      color: '#0288D1',
+      subtitle: 'Sedang ditinjau',
+    },
+    {
+      title: 'Sedang Diproses',
+      value: safeReportStats.inProgress || 0,
+      icon: <Schedule />,
+      color: '#F57C00',
+      subtitle: 'Dalam proses',
+    },
+    {
+      title: 'Total Kategori',
+      value: safeCategoryStats.total || 0,
+      icon: <Category />,
+      color: '#7B1FA2',
+      subtitle: `${safeCategoryStats.active || 0} aktif`,
+    },
+    {
+      title: 'Menunggu',
+      value: safeReportStats.pending || 0,
+      icon: <PendingActions />,
+      color: '#ED6C02',
+      subtitle: 'Menunggu ditinjau',
+    }
   ];
 
   if (loading) {
     return (
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2 }}>
-        {[...Array(4)].map((_, index) => (
-          <Paper key={index} variant="outlined" sx={{ height: 126, borderRadius: 3, display: 'grid', placeItems: 'center' }}>
-            <LinearProgress sx={{ width: '55%' }} />
-          </Paper>
+      <Grid container spacing={3}>
+        {[...Array(8)].map((_, index) => (
+          <Grid item xs={12} sm={6} lg={3} key={index}>
+            <Box sx={{ 
+              height: 180, 
+              borderRadius: 4, 
+              bgcolor: 'grey.100',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <LinearProgress sx={{ width: '60%' }} />
+            </Box>
+          </Grid>
         ))}
-      </Box>
+      </Grid>
     );
   }
 
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2, mb: 2.5 }}>
-      {stats.map((stat) => <EnhancedStatCard key={stat.title} {...stat} animateValue />)}
+    <Box>
+      {/* High Priority Stats - Larger cards for important metrics */}
+      <Box sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+        gap: 3,
+        mb: 4
+      }}>
+        {statsData.map((stat, index) => (
+          <Box 
+            key={index} 
+            sx={{
+              height: 200,
+              width: '100%',
+              display: 'flex',
+              '& > div': { width: '100%', height: '100%' }
+            }}
+          >
+            <EnhancedStatCard
+              title={stat.title}
+              value={stat.value}
+              icon={stat.icon}
+              color={stat.color}
+              subtitle={stat.subtitle}
+              showProgress={stat.showProgress}
+              progressValue={stat.progressValue}
+              animateValue={true}
+            />
+          </Box>
+        ))}
+      </Box>
+
     </Box>
   );
 };
