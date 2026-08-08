@@ -83,6 +83,18 @@ const useAuthStore = create(
         }
       },
 
+      loginSSO: async () => {
+        // Placeholder for future SSO integration
+        set({ loading: true, error: null });
+        try {
+          // Await future vendor integration
+          throw new Error('Fitur SSO sedang dalam pengembangan');
+        } catch (error) {
+          set({ error: error.response?.data?.message || error.message, loading: false });
+          throw error;
+        }
+      },
+
       // Register Student
       registerStudent: async (userData, ktm) => {
         try {
