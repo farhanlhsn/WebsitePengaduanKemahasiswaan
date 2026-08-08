@@ -52,18 +52,18 @@ exports.registerStudent = async (req, res) => {
     const { name, email, password, nim } = req.body;
     
     if (!name || !email || !password || !nim) {
-      return res.status(400).json({ 
-        error: 'Missing required fields',
-        message: 'Name, email, password, and NIM are required' 
+      return res.status(400).json({
+        status: 'error',
+        message: 'Name, email, password, and NIM are required'
       });
     }
-    
+
     // Validasi email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ 
-        error: 'Invalid email format',
-        message: 'Please provide a valid email address' 
+      return res.status(400).json({
+        status: 'error',
+        message: 'Please provide a valid email address'
       });
     }
 
@@ -71,29 +71,29 @@ exports.registerStudent = async (req, res) => {
     if (!isAllowedDomain(email)) {
       const domains = getAllowedDomains();
       return res.status(400).json({
-        error: 'Email domain tidak diizinkan',
+        status: 'error',
         message: domains.length > 0
           ? `Hanya email kampus yang diperbolehkan (contoh: @${domains[0]})`
           : 'Email domain tidak valid'
       });
     }
-    
+
     // Validasi password strength
     const passwordCheck = validatePassword(password);
     if (!passwordCheck.valid) {
-      return res.status(400).json({ 
-        error: 'Password tidak memenuhi syarat',
+      return res.status(400).json({
+        status: 'error',
         message: passwordCheck.errors.join('. '),
         details: passwordCheck.errors
       });
     }
-    
+
     // Validasi NIM format (sesuaikan dengan format NIM kampus)
     const nimRegex = /^\d{8,}$/; // Minimal 8 digit angka
     if (!nimRegex.test(nim)) {
-      return res.status(400).json({ 
-        error: 'Invalid NIM format',
-        message: 'NIM must contain at least 8 digits' 
+      return res.status(400).json({
+        status: 'error',
+        message: 'NIM must contain at least 8 digits'
       });
     }
     
@@ -126,29 +126,29 @@ exports.registerStudent = async (req, res) => {
     // Handle specific errors
     if (error.message.includes('Unique constraint')) {
       if (error.message.includes('email')) {
-        return res.status(400).json({ 
-          error: 'Email already exists',
-          message: 'An account with this email already exists' 
+        return res.status(400).json({
+          status: 'error',
+          message: 'An account with this email already exists'
         });
       }
       if (error.message.includes('nim')) {
-        return res.status(400).json({ 
-          error: 'NIM already exists',
-          message: 'An account with this NIM already exists' 
+        return res.status(400).json({
+          status: 'error',
+          message: 'An account with this NIM already exists'
         });
       }
     }
-    
+
     if (error.message.includes('uploading file')) {
-      return res.status(400).json({ 
-        error: 'File upload failed',
-        message: error.message 
+      return res.status(400).json({
+        status: 'error',
+        message: error.message
       });
     }
-    
-    res.status(500).json({ 
-      error: 'Registration failed',
-      message: 'An error occurred during registration. Please try again.' 
+
+    res.status(500).json({
+      status: 'error',
+      message: 'An error occurred during registration. Please try again.'
     });
   }
 };
@@ -184,7 +184,7 @@ exports.login = async (req, res) => {
     });
   } catch (error) {
     log.warn('Login failed', { email: req.body?.email, reason: error.message });
-    res.status(401).json({ error: 'Login failed', message: error.message });
+    res.status(401).json({ status: 'error', message: error.message || 'Login failed' });
   }
 };
 
@@ -219,7 +219,7 @@ exports.logout = async (req, res) => {
 
 exports.refreshToken = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
-  if (!refreshToken) return res.sendStatus(401);
+  if (!refreshToken) return res.status(401).json({ status: 'error', message: 'No refresh token provided' });
 
   try {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
@@ -236,7 +236,7 @@ exports.refreshToken = async (req, res) => {
     if (!user || user.deletedAt) {
       await prisma.refreshToken.deleteMany({ where: { userId: decoded.userId } });
       clearRefreshCookie(res);
-      return res.sendStatus(403);
+      return res.status(403).json({ status: 'error', message: 'User not found or deleted' });
     }
 
     const newAccessToken = jwt.sign(
@@ -300,7 +300,7 @@ exports.refreshToken = async (req, res) => {
         where: { userId: decoded.userId, deviceId: decoded.deviceId },
       });
       clearRefreshCookie(res);
-      return res.sendStatus(403);
+      return res.status(403).json({ status: 'error', message: 'Invalid token reuse detected' });
     }
 
     res.cookie('refreshToken', newRefreshToken, {
@@ -323,7 +323,7 @@ exports.refreshToken = async (req, res) => {
   } catch (error) {
     log.warn('Refresh token failed', { error: error.message });
     clearRefreshCookie(res);
-    res.sendStatus(403);
+    res.status(403).json({ status: 'error', message: 'Refresh token failed' });
   }
 };
 
@@ -354,7 +354,7 @@ exports.getUserDevices = async (req, res) => {
     });
   } catch (error) {
     log.error('Get user devices failed', { userId: req.user?.userId, error: error.message });
-    res.status(500).json({ error: 'Failed to retrieve devices' });
+    res.status(500).json({ status: 'error', message: 'Failed to retrieve devices' });
   }
 };
 
@@ -362,9 +362,9 @@ exports.logoutDevice = async (req, res) => {
   try {
     const userId = req.user.userId;
     const { id } = req.params;
-    
+
     await authServices.logoutDeviceById(userId, id);
-    
+
     log.info('Logout device success', { userId, deviceRecordId: id });
     res.json({
       status: 'success',
@@ -372,7 +372,7 @@ exports.logoutDevice = async (req, res) => {
     });
   } catch (error) {
     log.error('Logout device failed', { userId: req.user?.userId, deviceRecordId: req.params?.id, error: error.message });
-    res.status(500).json({ error: 'Failed to logout device' });
+    res.status(500).json({ status: 'error', message: 'Failed to logout device' });
   }
 };
 
@@ -380,18 +380,18 @@ exports.logoutAllOtherDevices = async (req, res) => {
   try {
     const userId = req.user.userId;
     const refreshToken = req.cookies.refreshToken;
-    
+
     if (!refreshToken) {
       log.warn('Logout other devices: no refresh token');
-      return res.status(401).json({ error: 'No refresh token found' });
+      return res.status(401).json({ status: 'error', message: 'No refresh token found' });
     }
-    
+
     // Get current device ID from token
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     const currentDeviceId = decoded.deviceId;
-    
+
     await authServices.logoutAllOtherDevices(userId, currentDeviceId);
-    
+
     log.info('Logout other devices success', { userId, currentDeviceId });
     res.json({
       status: 'success',
@@ -399,6 +399,6 @@ exports.logoutAllOtherDevices = async (req, res) => {
     });
   } catch (error) {
     log.error('Logout other devices failed', { userId: req.user?.userId, error: error.message });
-    res.status(500).json({ error: 'Failed to logout other devices' });
+    res.status(500).json({ status: 'error', message: 'Failed to logout other devices' });
   }
 };
