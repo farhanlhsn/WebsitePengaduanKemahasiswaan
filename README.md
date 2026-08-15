@@ -33,9 +33,13 @@ WebsitePengaduanKemahasiswaan/
 │   │   ├── controllers/     # Logic handler (auth, report, chat, dll.)
 │   │   ├── routes/          # Endpoint API
 │   │   ├── services/        # Business logic layer
-│   │   ├── middlewares/     # Auth, error handler, device tracking, dll.
+│   │   ├── middlewares/     # Auth, error handler, rate limiter, device tracking, dll.
+│   │   ├── sockets/         # Handler Socket.IO (chat real-time)
+│   │   ├── jobs/            # Scheduled jobs (cleanup)
 │   │   ├── utils/           # Helper & utility functions
 │   │   └── config/          # Konfigurasi aplikasi
+│   ├── tests/               # Unit & integration tests (Jest)
+│   ├── scripts/             # Script operasional (seed e2e, rotate secrets)
 │   ├── uploads/             # File lampiran yang diunggah
 │   └── logs/                # Log file (Winston)
 │
@@ -53,8 +57,12 @@ WebsitePengaduanKemahasiswaan/
 │   │   ├── services/        # API service layer
 │   │   ├── stores/          # State management (Zustand)
 │   │   └── utils/           # Utility functions
+│   ├── tests/               # Component tests (Vitest) & E2E (Playwright)
 │   └── index.html
 │
+├── docs/                    # Dokumen proyek (SRS, SDD, runbook, plan)
+├── docker-compose.yml       # Deployment development
+├── docker-compose.prod.yml  # Deployment production
 └── README.md
 ```
 
@@ -80,7 +88,7 @@ WebsitePengaduanKemahasiswaan/
 ### Sisi Admin
 - **Dashboard Admin** — Ringkasan statistik dan visualisasi data pengaduan (Recharts)
 - **Manajemen Laporan** — Tindaklanjuti, ubah status, lihat detail & riwayat chat
-- **Bulk Operations** — Aksi massal terhadap beberapa laporan sekaligus
+- **Bulk Operations** — Aksi massal untuk laporan (ubah status, hapus, restore), pengguna (verifikasi, hapus, restore), dan kategori; tervalidasi per-item sesuai scope
 - **Verifikasi Pengguna** — Verifikasi akun mahasiswa baru berdasarkan KTM
 - **Manajemen Kategori** — CRUD kategori pengaduan
 - **Admin Governance** — Promote/demote admin, grant/revoke assignment kategori (SuperAdmin)
@@ -105,6 +113,7 @@ Sistem menyediakan 23 kategori bawaan, antara lain: Kekerasan Seksual, Sarana da
 | `/v1/api/chat` | Pesan/chat per laporan |
 | `/v1/api/audit-logs` | Log audit |
 | `/v1/api/admin` | Dashboard admin |
+| `/v1/api/admin-governance` | Governance admin: promote/demote, grant/revoke assignment (SuperAdmin) |
 | `/v1/api/bulk-operations` | Operasi massal |
 | `/api/health/live` | Liveness probe |
 | `/api/health/ready` | Readiness probe (DB + Redis reachable) |
@@ -172,12 +181,15 @@ Validasi MIME, ekstensi, dan magic bytes. Nama file disimpan acak; nama asli dis
 |---|---|---|---|
 | Kelola mahasiswa (verify/reject/delete) | — | ✅ | ✅ |
 | Kelola admin tier | — | ❌ | ✅ |
+| Bulk ops user (verify/delete/restore) | — | ✅ (hanya target MAHASISWA, per-item) | ✅ |
+| Bulk ops kategori | — | ❌ | ✅ |
+| Export CSV pengguna | — | ❌ | ✅ |
 | Cleanup / permanent delete user | — | ❌ | ✅ |
 | CRUD kategori | — | ❌ | ✅ |
 | Lihat laporan | Milik sendiri | Kategori assignment | Semua |
 | Dashboard statistik | Milik sendiri | Scoped kategori + metadata `scope` | Global |
 
-Admin tanpa assignment kategori melihat daftar kosong. Superadmin terakhir tidak dapat dihapus/didemosi.
+Admin tanpa assignment kategori melihat daftar kosong. Superadmin terakhir tidak dapat dihapus/didemosi (dilindungi advisory lock terhadap request konkuren).
 
 ## ⚙️ Instalasi & Menjalankan
 
@@ -250,20 +262,30 @@ Frontend berjalan di `http://localhost:5173` (default Vite).
 |---|---|
 | `VITE_API_URL` | Base URL API, contoh `http://localhost:6060/v1/api` |
 | `VITE_SOCKET_URL` | Base URL Socket.IO jika berbeda dari API |
+| `VITE_ENABLE_SSO` | Tampilkan tombol SSO di login/register (`true`/`false`; backend SSO belum tersedia — biarkan `false`) |
+| `VITE_SSO_PROVIDER`, `VITE_SSO_PROVIDER_NAME` | Provider & label tombol SSO (hanya relevan bila SSO aktif) |
 
 ## 🔒 Keamanan
 
-- Autentikasi berbasis JWT dengan mekanisme refresh token + `tokenVersion` revocation
+- Autentikasi berbasis JWT dengan mekanisme refresh token + `tokenVersion` revocation; algoritma di-pin ke `HS256`
+- Refresh token: rotasi tiap pemakaian, deteksi reuse (reuse → cabut semua token device tersebut), disimpan sebagai hash SHA-256 di DB, cookie `httpOnly` + `SameSite=Strict`
 - RBAC 3-tier (Mahasiswa / Admin / SuperAdmin) dengan category assignment
-- Chat access policy: `canAccessReport()` di REST dan Socket.IO
-- Upload chat scoped ke report (`ChatPendingUpload` + token binding)
+- Chat access policy: `canAccessReport()` di REST dan Socket.IO (revalidasi per event)
+- Anonimitas pelapor: identitas disembunyikan bahkan dari SuperAdmin — di REST, Socket.IO (event typing/join/leave/read memakai pseudonim `reporter`), export CSV, dan audit log
+- Proteksi mass-assignment: update user hanya menerima whitelist field (`name/email/nim`); perubahan role/password melalui endpoint khusus
+- Bulk operations tervalidasi per-item: governance policy untuk user ops, scoping kategori assignment untuk report ops, state machine + alasan wajib untuk REJECTED/CANCELED, limit 100 item
+- Transisi status laporan atomik (conditional update) dengan state machine terpusat; guard "superadmin terakhir" memakai advisory lock PostgreSQL
+- Registrasi wajib upload KTM (validasi MIME + magic bytes); verifikasi akun menolak tanpa KTM; ganti email butuh password lama + invalidasi semua sesi
+- Upload chat scoped ke report (`ChatPendingUpload` + token binding); pesan idempoten via `clientMessageId`
 - Device fingerprinting & tracking untuk keamanan sesi
-- Rate limiting global + granular (Redis-backed)
-- Password hashing menggunakan bcryptjs
-- CORS dikonfigurasi secara ketat
+- Rate limiting global + granular per endpoint (Redis-backed; IP dihitung via `trust proxy`, bukan header mentah)
+- Password hashing menggunakan bcryptjs; password policy saat registrasi/reset
+- Sanitasi input: allowlist `sanitize-html` di server + DOMPurify di client
+- CORS dikonfigurasi secara ketat; Helmet + CSP & HSTS di production
 - Kompresi gambar otomatis saat upload (Sharp)
-- Audit logging untuk akuntabilitas
-- Anonimitas pelapor: identitas disembunyikan bahkan dari SuperAdmin
+- Audit logging untuk akuntabilitas (termasuk aksi governance, change password, cleanup)
+- Password reset via email: token acak 32-byte di-hash, kedaluwarsa 1 jam, sekali pakai, anti-enumerasi
+- Dependency audit bersih (0 known vulnerability)
 
 > **Catatan:** Read receipt chat menggunakan flag `isRead` tunggal per pesan (bukan per-user).
 
