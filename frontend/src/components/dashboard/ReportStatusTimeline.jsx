@@ -8,9 +8,11 @@ import {
   Cancel,
   BlockOutlined,
 } from '@mui/icons-material';
+import { getStatusConfig } from '../../utils/statusConfig';
 
 const FLOW = ['PENDING', 'IN_REVIEW', 'IN_PROGRESS', 'RESOLVED'];
 
+// Ikon tetap lokal di timeline; label berasal dari konfigurasi terpusat.
 const ICONS = {
   PENDING: HourglassEmpty,
   IN_REVIEW: RateReview,
@@ -18,15 +20,6 @@ const ICONS = {
   RESOLVED: CheckCircle,
   REJECTED: Cancel,
   CANCELED: BlockOutlined,
-};
-
-const LABELS = {
-  PENDING: 'Menunggu',
-  IN_REVIEW: 'Ditinjau',
-  IN_PROGRESS: 'Diproses',
-  RESOLVED: 'Selesai',
-  REJECTED: 'Ditolak',
-  CANCELED: 'Dibatalkan',
 };
 
 /**
@@ -47,7 +40,7 @@ export default function ReportStatusTimeline({ status, statusHistory = [] }) {
         icon={<Icon />}
         sx={{ borderRadius: 2 }}
       >
-        Laporan {LABELS[status]}
+        Laporan {getStatusConfig(status).label}
       </Alert>
     );
   }
@@ -94,7 +87,7 @@ export default function ReportStatusTimeline({ status, statusHistory = [] }) {
                   ) : null
                 }
               >
-                {LABELS[stage]}
+                {getStatusConfig(stage).label}
               </StepLabel>
             </Step>
           );

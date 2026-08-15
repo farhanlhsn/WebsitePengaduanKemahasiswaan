@@ -10,10 +10,14 @@
  *
  * Lock otomatis lepas saat transaksi commit/rollback (pg_advisory_xact_lock).
  *
+ * Catatan implementasi: `pg_advisory_xact_lock` mengembalikan void. Pakai
+ * `$executeRaw` (bukan `$queryRaw`) karena `$queryRaw` mencoba deserialize
+ * baris hasil dan gagal pada kolom bertipe void.
+ *
  * @param {Prisma.TransactionClient} tx - client transaksi Prisma
  */
 async function acquireSuperAdminGuardLock(tx) {
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('superadmin_guard'))`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('superadmin_guard'))`;
 }
 
 module.exports = { acquireSuperAdminGuardLock };

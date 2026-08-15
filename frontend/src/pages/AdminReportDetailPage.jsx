@@ -26,6 +26,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ReportStatusTimeline from '../components/dashboard/ReportStatusTimeline';
 import ReportAttachmentCard from '../components/report/ReportAttachmentCard';
 import ReportReporterInfo from '../components/report/ReportReporterInfo';
+import { STATUS_CONFIG } from '../utils/statusConfig';
 
 const THEME_COLORS = {
   primary: "#43A047",
@@ -38,14 +39,22 @@ const THEME_COLORS = {
   textSecondary: "#757575",
 };
 
-const STATUS_CONFIG = {
-  PENDING: { label: 'Menunggu Verifikasi Admin', color: THEME_COLORS.pending, icon: <Pending /> },
-  IN_REVIEW: { label: 'Ditinjau', color: THEME_COLORS.pending, icon: <HourglassEmpty /> },
-  IN_PROGRESS: { label: 'Diproses', color: THEME_COLORS.pending, icon: <HourglassEmpty /> },
-  RESOLVED: { label: 'Selesai', color: THEME_COLORS.resolved, icon: <CheckCircle /> },
-  REJECTED: { label: 'Ditolak', color: THEME_COLORS.rejected, icon: <ErrorIcon /> },
-  CANCELED: { label: 'Dibatalkan', color: THEME_COLORS.canceled, icon: <Cancel /> },
+// Ikon status tetap lokal di halaman ini; label & warna berasal dari
+// konfigurasi terpusat (utils/statusConfig.js).
+const STATUS_ICONS = {
+  PENDING: <Pending />,
+  IN_REVIEW: <HourglassEmpty />,
+  IN_PROGRESS: <HourglassEmpty />,
+  RESOLVED: <CheckCircle />,
+  REJECTED: <ErrorIcon />,
+  CANCELED: <Cancel />,
+  DELETED: <Cancel />,
+  ACTIVE: <CheckCircle />,
 };
+
+// Transisi status yang dapat dipilih admin. DELETED/ACTIVE dari konfigurasi
+// terpusat bukan transisi laporan, sehingga tidak ditawarkan di menu.
+const ACTIONABLE_STATUSES = ['PENDING', 'IN_REVIEW', 'IN_PROGRESS', 'RESOLVED', 'REJECTED', 'CANCELED'];
 
 const cardStyle = {
   bgcolor: THEME_COLORS.paper,
@@ -284,7 +293,7 @@ const AdminReportDetailPage = () => {
                   {report?.closedAt && (
                     <InfoItem icon={<CheckCircle />} label="Tanggal Ditutup" value={fmt(report?.closedAt)} color={THEME_COLORS.resolved} />
                   )}
-                  <InfoItem icon={st.icon} label="Status Saat Ini" value={st.label} color={st.color} />
+                  <InfoItem icon={STATUS_ICONS[report?.status] || STATUS_ICONS.PENDING} label="Status Saat Ini" value={st.label} color={st.color} />
                 </Stack>
                 <Divider sx={{ my: 1 }} />
                 {actionError && <Alert severity="error" sx={{ my: 1, borderRadius: 2 }}>{actionError}</Alert>}
@@ -315,12 +324,15 @@ const AdminReportDetailPage = () => {
                   <Menu anchorEl={statusMenuAnchor} open={Boolean(statusMenuAnchor)} onClose={() => setStatusMenuAnchor(null)}
                     PaperProps={{ elevation: 0, sx: { filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.1))', mt: 1.5, width: 250, borderRadius: 2 } }}
                     transformOrigin={{ horizontal: 'center', vertical: 'top' }} anchorOrigin={{ horizontal: 'center', vertical: 'bottom' }}>
-                    {Object.entries(STATUS_CONFIG).map(([k, c]) => (
-                      <MenuItem key={k} onClick={() => handleStatusChange(k)} selected={report?.status === k} disabled={report?.status === k} sx={{ py: 1.2, mx: 0.5, borderRadius: 1 }}>
-                        <ListItemIcon sx={{ color: c.color }}>{c.icon}</ListItemIcon>
-                        <Typography variant="body2" fontWeight={600}>{c.label}</Typography>
-                      </MenuItem>
-                    ))}
+                    {ACTIONABLE_STATUSES.map((k) => {
+                      const c = STATUS_CONFIG[k];
+                      return (
+                        <MenuItem key={k} onClick={() => handleStatusChange(k)} selected={report?.status === k} disabled={report?.status === k} sx={{ py: 1.2, mx: 0.5, borderRadius: 1 }}>
+                          <ListItemIcon sx={{ color: c.color }}>{STATUS_ICONS[k]}</ListItemIcon>
+                          <Typography variant="body2" fontWeight={600}>{c.label}</Typography>
+                        </MenuItem>
+                      );
+                    })}
                   </Menu>
 
                   {report?.deletedAt ? (

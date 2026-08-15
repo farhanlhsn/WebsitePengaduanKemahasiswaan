@@ -30,7 +30,7 @@ const SoftDeleteHelper = require('../../../src/utils/softDelete');
 
 function makeTx({ remaining }) {
   return {
-    $queryRaw: jest.fn().mockResolvedValue([]),
+    $executeRaw: jest.fn().mockResolvedValue(0),
     user: {
       count: jest.fn().mockResolvedValue(remaining),
       update: jest.fn().mockResolvedValue({ id: 1, deletedAt: new Date() }),
@@ -53,7 +53,7 @@ describe('deleteUser last-superadmin guard (audit B2)', () => {
     await userServices.deleteUser(1);
 
     expect(mockPrisma.$transaction).toHaveBeenCalled();
-    expect(currentTx.$queryRaw).toHaveBeenCalled();
+    expect(currentTx.$executeRaw).toHaveBeenCalled();
     expect(currentTx.user.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 1 } })
     );
