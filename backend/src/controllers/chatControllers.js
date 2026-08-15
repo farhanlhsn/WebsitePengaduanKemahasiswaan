@@ -50,7 +50,8 @@ class ChatControllers {
       const result = await chatServices.getMessagesByReportId(
         reportId,
         parseInt(page),
-        parseInt(limit)
+        parseInt(limit),
+        req.user.userId
       );
 
       const reportCtx = result.report;

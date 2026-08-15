@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
-import { Box, Fade, Alert, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Button, Snackbar } from '@mui/material';
-import { Visibility, Edit, Restore } from '@mui/icons-material';
+import { Box, Fade, Alert, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Button, Snackbar, Chip, Tooltip } from '@mui/material';
+import { Visibility, Edit, Restore, AssignmentInd } from '@mui/icons-material';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import useReportStore from '../../stores/reportStore';
 import AdminDataTable from '../../components/admin/AdminDataTable';
@@ -10,7 +10,7 @@ import getApiErrorMessage from '../../utils/getApiErrorMessage';
 
 const AdminReportsPage = () => {
   const { onMobileMenuClick } = useOutletContext() ?? {};
-  const { reports, loading, error, getAllReports, restoreReport, bulkUpdateReportStatus } = useReportStore();
+  const { reports, loading, error, getAllReports, getMyAssignedReports, restoreReport, bulkUpdateReportStatus } = useReportStore();
 
   const [selectedIds, setSelectedIds] = useState([]);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
@@ -21,6 +21,17 @@ const AdminReportsPage = () => {
   // (konsisten dengan /admin/reports/:id yang di-redirect ke sini).
   const [searchParams, setSearchParams] = useSearchParams();
   const detailReportId = searchParams.get('report');
+
+  // Filter "ditugaskan kepada saya" via query param `?assigned=me` agar bisa
+  // di-bookmark/dibagikan. Saat aktif, daftar diambil dari getMyAssignedReports.
+  const assignedToMe = searchParams.get('assigned') === 'me';
+
+  const toggleAssignedToMe = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    if (assignedToMe) next.delete('assigned');
+    else next.set('assigned', 'me');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, assignedToMe]);
 
   const openReportDetail = useCallback((reportId) => {
     const next = new URLSearchParams(searchParams);
@@ -35,9 +46,14 @@ const AdminReportsPage = () => {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  const fetchReports = useCallback(() => {
+    const fetcher = assignedToMe ? getMyAssignedReports : getAllReports;
+    return fetcher({ includeDeleted: true }, false).catch((e) => console.error(e));
+  }, [assignedToMe, getMyAssignedReports, getAllReports]);
+
   useEffect(() => {
-    getAllReports({ includeDeleted: true }, false).catch((e) => console.error(e));
-  }, [getAllReports]);
+    fetchReports();
+  }, [fetchReports]);
 
   const tableData = useMemo(
     () =>
@@ -46,6 +62,9 @@ const AdminReportsPage = () => {
         status: r.deletedAt ? 'DELETED' : r.status,
         category: r.category?.name,
         user: r.user?.name,
+        // Info penugas hanya tersedia bila sudah pernah di-merge dari aksi
+        // assign (endpoint daftar laporan tidak mengembalikan field ini).
+        assignedTo: r.assignedTo?.name || '-',
         isAnonymous: !!r.isAnonymous,
       })),
     [reports]
@@ -57,6 +76,7 @@ const AdminReportsPage = () => {
       { field: 'status', headerName: 'Status', type: 'status', sortable: true },
       { field: 'category', headerName: 'Kategori', sortable: true },
       { field: 'user', headerName: 'Pelapor', type: 'reporter', sortable: true },
+      { field: 'assignedTo', headerName: 'Petugas', sortable: true },
       { field: 'createdAt', headerName: 'Tanggal', type: 'date', sortable: true },
     ],
     []
@@ -142,8 +162,28 @@ const AdminReportsPage = () => {
           title="Manajemen Laporan"
           subtitle="Kelola dan tindak lanjuti semua laporan pengaduan"
           onMobileMenuClick={onMobileMenuClick}
-          onRefresh={() => getAllReports({ includeDeleted: true }, false)}
+          onRefresh={fetchReports}
         />
+
+        {/* Quick filter: laporan yang ditugaskan kepada admin yang sedang login */}
+        <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Tooltip title="Tampilkan hanya laporan yang ditugaskan kepada Anda">
+            <Chip
+              icon={<AssignmentInd />}
+              label="Ditugaskan kepada saya"
+              color={assignedToMe ? 'primary' : 'default'}
+              variant={assignedToMe ? 'filled' : 'outlined'}
+              onClick={toggleAssignedToMe}
+              sx={{ fontWeight: 650 }}
+            />
+          </Tooltip>
+          {assignedToMe && (
+            <Button size="small" onClick={toggleAssignedToMe} sx={{ fontWeight: 650 }}>
+              Tampilkan semua laporan
+            </Button>
+          )}
+        </Box>
+
         <AdminDataTable
           data={tableData}
           columns={columns}
@@ -153,17 +193,19 @@ const AdminReportsPage = () => {
           actions={actions}
           bulkActions={bulkActions}
           filters={filters}
-          title="Daftar Laporan"
+          title={assignedToMe ? 'Laporan yang Ditugaskan kepada Saya' : 'Daftar Laporan'}
           selectable
         />
         {error && <Alert severity="error" sx={{ mt: 3, borderRadius: 2 }}>{error}</Alert>}
 
-        {/* Popup detail laporan (?report=<id>) */}
+        {/* Popup detail laporan (?report=<id>). Perubahan status/prioritas/
+            penugasan dari modal sudah di-merge ke store oleh aksi terkait,
+            jadi tidak perlu refetch penuh di sini. */}
         <AdminReportDetailModal
           open={Boolean(detailReportId)}
           reportId={detailReportId}
+          initialReport={reports.find((r) => String(r.id) === String(detailReportId)) || null}
           onClose={closeReportDetail}
-          onUpdated={() => getAllReports({ includeDeleted: true }, false)}
         />
 
         {/* Dialog Pembaruan Status Massal */}

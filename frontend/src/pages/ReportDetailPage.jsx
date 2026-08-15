@@ -46,11 +46,7 @@ import {
   School,
   Email,
   Today,
-  CheckCircle,
-  HourglassEmpty,
   Cancel,
-  Error,
-  Pending,
   Chat,
   Menu as MenuIcon,
   Send,
@@ -72,45 +68,13 @@ import ReportStatusTimeline from "../components/dashboard/ReportStatusTimeline";
 import ReportAttachmentCard from "../components/report/ReportAttachmentCard";
 import ReportReporterInfo from "../components/report/ReportReporterInfo";
 import ReportInfoSidebar from "../components/report/ReportInfoSidebar";
+import { getStatusConfig } from "../utils/statusConfig";
 
 const THEME_COLORS = {
   primary: "#43A047",
-  pending: "#FFA726",
-  resolved: "#43A047",
-  rejected: "#F44336",
-  canceled: "#BDBDBD",
   background: "#F8F9FA",
   paper: "#FFFFFF",
   textSecondary: "#757575",
-};
-
-const STATUS_CONFIG = {
-  PENDING: {
-    label: "Menunggu Verifikasi Admin",
-    color: THEME_COLORS.pending,
-    icon: <Pending />,
-  },
-  IN_REVIEW: {
-    label: "Ditinjau",
-    color: THEME_COLORS.pending,
-    icon: <HourglassEmpty />,
-  },
-  IN_PROGRESS: {
-    label: "Diproses",
-    color: THEME_COLORS.pending,
-    icon: <HourglassEmpty />,
-  },
-  RESOLVED: {
-    label: "Selesai",
-    color: THEME_COLORS.resolved,
-    icon: <CheckCircle />,
-  },
-  REJECTED: { label: "Ditolak", color: THEME_COLORS.rejected, icon: <Error /> },
-  CANCELED: {
-    label: "Dibatalkan",
-    color: THEME_COLORS.canceled,
-    icon: <Cancel />,
-  },
 };
 
 const cardStyle = {
@@ -349,7 +313,7 @@ const ReportDetailPage = () => {
       </Box>
     );
 
-  const currentStatus = STATUS_CONFIG[report.status] || STATUS_CONFIG.PENDING;
+  const currentStatus = getStatusConfig(report.status);
 
   return (
     <Box sx={{ display: "flex", bgcolor: THEME_COLORS.background }}>
@@ -442,6 +406,38 @@ const ReportDetailPage = () => {
                     Status Laporan
                   </Typography>
                   <ReportStatusTimeline status={report.status} />
+                  {report.status === "REJECTED" &&
+                    report.rejectedReason &&
+                    report.rejectedReason.trim() !== "" && (
+                      <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>
+                        <Typography variant="body2" component="span" fontWeight={700}>
+                          Alasan ditolak:{" "}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          component="span"
+                          sx={{ wordBreak: "break-word" }}
+                        >
+                          {report.rejectedReason}
+                        </Typography>
+                      </Alert>
+                    )}
+                  {report.status === "CANCELED" &&
+                    report.canceledReason &&
+                    report.canceledReason.trim() !== "" && (
+                      <Alert severity="warning" sx={{ mt: 2, borderRadius: 2 }}>
+                        <Typography variant="body2" component="span" fontWeight={700}>
+                          Alasan dibatalkan:{" "}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          component="span"
+                          sx={{ wordBreak: "break-word" }}
+                        >
+                          {report.canceledReason}
+                        </Typography>
+                      </Alert>
+                    )}
                 </Paper>
 
                 <Paper sx={{ ...cardStyle, width: "100%" }}>

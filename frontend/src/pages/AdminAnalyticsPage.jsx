@@ -19,6 +19,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import useReportStore from '../stores/reportStore';
 import GlassCard from '../components/ui/GlassCard';
 import AdminSectionHeader from './admin/AdminSectionHeader';
+import { STATUS_CONFIG } from '../utils/statusConfig';
 
 // ─── Stat Card ─────────────────────────────────────────────────────────────────
 const StatCard = ({ title, value, icon, color, subtitle }) => {
@@ -202,12 +203,12 @@ const AdminAnalyticsPage = () => {
   const topCategories = useMemo(() => dashboardStats?.categories?.topCategories || [], [dashboardStats]);
 
   const statusData = useMemo(() => [
-    { name: 'Menunggu',  value: filteredStats.pending,    color: '#FFB74D' },
-    { name: 'Review',     value: filteredStats.inReview,   color: '#64B5F6' },
-    { name: 'Proses',     value: filteredStats.inProgress, color: '#9575CD' },
-    { name: 'Selesai',    value: filteredStats.resolved,   color: '#81C784' },
-    { name: 'Ditolak',    value: filteredStats.rejected,   color: '#E57373' },
-    { name: 'Dibatalkan', value: filteredStats.canceled,   color: '#B0BEC5' },
+    { name: STATUS_CONFIG.PENDING.label,     value: filteredStats.pending,    color: STATUS_CONFIG.PENDING.color },
+    { name: STATUS_CONFIG.IN_REVIEW.label,   value: filteredStats.inReview,   color: STATUS_CONFIG.IN_REVIEW.color },
+    { name: STATUS_CONFIG.IN_PROGRESS.label, value: filteredStats.inProgress, color: STATUS_CONFIG.IN_PROGRESS.color },
+    { name: STATUS_CONFIG.RESOLVED.label,    value: filteredStats.resolved,   color: STATUS_CONFIG.RESOLVED.color },
+    { name: STATUS_CONFIG.REJECTED.label,    value: filteredStats.rejected,   color: STATUS_CONFIG.REJECTED.color },
+    { name: STATUS_CONFIG.CANCELED.label,    value: filteredStats.canceled,   color: STATUS_CONFIG.CANCELED.color },
   ].filter(d => d.value > 0), [filteredStats]);
 
   const resolutionRate = useMemo(() =>

@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Box, Grid, Fade, Alert } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
 import { useOutletContext } from 'react-router-dom';
 import useUserStore from '../../stores/userStore';
 import useReportStore from '../../stores/reportStore';
@@ -9,9 +8,9 @@ import { getAdminDashboardStats } from '../../services/api';
 import AdminDashboardStats from '../../components/admin/AdminDashboardStats';
 import StatusChart from '../../components/dashboard/StatusChart';
 import AdminSectionHeader from './AdminSectionHeader';
+import { STATUS_CONFIG } from '../../utils/statusConfig';
 
 const AdminDashboardPage = () => {
-  const theme = useTheme();
   const { onMobileMenuClick } = useOutletContext() ?? {};
   const { loading: userLoading, error: userError, getAllUsers } = useUserStore();
   const { reports, loading: reportLoading, error: reportError, getAllReports } = useReportStore();
@@ -40,6 +39,7 @@ const AdminDashboardPage = () => {
   useEffect(() => { refresh(); }, [refresh]);
 
   // Build chart data from latest reports.
+  // Label & warna status terpusat di utils/statusConfig.
   const chartData = useMemo(() => {
     const counts = {
       pending: reports.filter((r) => r.status === 'PENDING').length,
@@ -50,14 +50,14 @@ const AdminDashboardPage = () => {
       canceled: reports.filter((r) => r.status === 'CANCELED').length,
     };
     return [
-      { name: 'Menunggu', value: counts.pending, color: theme.palette.warning.main },
-      { name: 'Ditinjau', value: counts.inReview, color: theme.palette.info.main },
-      { name: 'Diproses', value: counts.inProgress, color: theme.palette.secondary.main },
-      { name: 'Selesai', value: counts.resolved, color: theme.palette.success.main },
-      { name: 'Ditolak', value: counts.rejected, color: theme.palette.error.main },
-      { name: 'Dibatalkan', value: counts.canceled, color: theme.palette.grey[500] },
+      { name: STATUS_CONFIG.PENDING.label, value: counts.pending, color: STATUS_CONFIG.PENDING.color },
+      { name: STATUS_CONFIG.IN_REVIEW.label, value: counts.inReview, color: STATUS_CONFIG.IN_REVIEW.color },
+      { name: STATUS_CONFIG.IN_PROGRESS.label, value: counts.inProgress, color: STATUS_CONFIG.IN_PROGRESS.color },
+      { name: STATUS_CONFIG.RESOLVED.label, value: counts.resolved, color: STATUS_CONFIG.RESOLVED.color },
+      { name: STATUS_CONFIG.REJECTED.label, value: counts.rejected, color: STATUS_CONFIG.REJECTED.color },
+      { name: STATUS_CONFIG.CANCELED.label, value: counts.canceled, color: STATUS_CONFIG.CANCELED.color },
     ].filter((it) => it.value > 0);
-  }, [reports, theme]);
+  }, [reports]);
 
   return (
     <Fade in timeout={300}>

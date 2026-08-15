@@ -174,6 +174,12 @@ export default React.memo(function ImprovedStudentDashboard() {
     }
   }, [createReport, getUserReports, getUserStatsById, user?.id]);
 
+  // Setelah mahasiswa mengedit laporannya (masih PENDING), muat ulang daftar
+  // dengan filter yang sedang aktif agar tabel menampilkan data terbaru.
+  const handleReportEdited = useCallback(() => {
+    fetchFilteredReports(statusFilter, categoryFilter, searchQuery);
+  }, [fetchFilteredReports, statusFilter, categoryFilter, searchQuery]);
+
 
   if (loading && reports.length === 0) {
     return <LoadingSpinner fullScreen message="Memuat dasbor..." />;
@@ -303,6 +309,7 @@ export default React.memo(function ImprovedStudentDashboard() {
         open={Boolean(selectedReport)}
         report={selectedReport}
         onClose={closeReportDetail}
+        onEdited={handleReportEdited}
         onOpenChat={async (report) => {
           if (!report) return;
           await selectReport(report);

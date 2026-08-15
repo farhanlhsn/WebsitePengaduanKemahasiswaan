@@ -158,6 +158,43 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+/**
+ * GET /users/preferences/me — ambil preferensi pengguna (tema, bahasa,
+ * notifikasi). Mengembalikan {} bila belum pernah disimpan.
+ */
+exports.getMyPreferences = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const preferences = await userServices.getPreferences(userId);
+    res.status(200).json(ResponseFormatter.success(preferences || {}, 'Preferences retrieved'));
+  } catch (error) {
+    log.warn('getMyPreferences error', { error: error.message });
+    res.status(500).json(ResponseFormatter.error('Failed to get preferences', 500));
+  }
+};
+
+/**
+ * PUT /users/preferences/me — simpan preferensi pengguna per akun (persisten,
+ * bukan hanya localStorage). Body: objek JSON bebas (theme, language,
+ * notifications, dst.).
+ */
+exports.updateMyPreferences = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const preferences = req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+      ? req.body
+      : null;
+    if (!preferences) {
+      return res.status(400).json(ResponseFormatter.error('Body harus berupa objek preferensi', 400));
+    }
+    const saved = await userServices.updatePreferences(userId, preferences);
+    res.status(200).json(ResponseFormatter.success(saved, 'Preferences saved'));
+  } catch (error) {
+    log.warn('updateMyPreferences error', { error: error.message });
+    res.status(400).json(ResponseFormatter.error('Failed to save preferences', 400));
+  }
+};
+
 exports.updateUser = async (req, res) => {
   try {
     const userId = parseInt(req.params.id);

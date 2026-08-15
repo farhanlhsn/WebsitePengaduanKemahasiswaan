@@ -105,6 +105,29 @@ class UserServices {
     }
   }
 
+  /**
+   * Ambil preferensi pengguna (tema, bahasa, notifikasi). Null bila belum ada.
+   */
+  async getPreferences(userId) {
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(userId) },
+      select: { preferences: true },
+    });
+    return user?.preferences ?? null;
+  }
+
+  /**
+   * Simpan preferensi pengguna per akun (mengganti nilai lama).
+   */
+  async updatePreferences(userId, preferences) {
+    const user = await prisma.user.update({
+      where: { id: parseInt(userId) },
+      data: { preferences },
+      select: { preferences: true },
+    });
+    return user.preferences;
+  }
+
   async deleteUser(userId) {
     try {
       // Audit B2: untuk target SUPERADMIN, cek guard last-superadmin harus

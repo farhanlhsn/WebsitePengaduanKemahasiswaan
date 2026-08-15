@@ -22,10 +22,28 @@ const MESSAGE_INCLUDE = {
       sender: { select: { name: true } },
     },
   },
+  // Audit M2: read receipt per-user. Dibaca siapa saja pesan ini.
+  reads: { select: { userId: true } },
 };
 
+/**
+ * Hitung flag `isRead` relatif terhadap `viewerId` (read receipt per-user):
+ *  - Pesan milik viewer      -> true bila pihak LAIN sudah membacanya.
+ *  - Pesan dari pihak lain   -> true bila VIEWER sudah membacanya.
+ * Mengganti semantics lama (flag tunggal bersama) yang membuat unread hilang
+ * untuk semua admin begitu satu admin membaca.
+ */
+function computePerUserRead(message, viewerId) {
+  const reads = Array.isArray(message.reads) ? message.reads : [];
+  const uid = parseInt(viewerId);
+  if (message.senderId === uid) {
+    return reads.some((r) => r.userId !== uid);
+  }
+  return reads.some((r) => r.userId === uid);
+}
+
 class ChatServices {
-  async getMessagesByReportId(reportId, page = 1, limit = 50) {
+  async getMessagesByReportId(reportId, page = 1, limit = 50, viewerId = null) {
     try {
       const offset = (page - 1) * limit;
 
@@ -50,9 +68,19 @@ class ChatServices {
         where: { reportId: parseInt(reportId), deletedAt: null },
       });
 
+      // Audit M2: isRead kini dihitung per viewer, lalu field `reads` dibuang
+      // agar payload tetap ramping dan bentuk response tidak berubah.
+      const shapedMessages = messages.map((m) => {
+        const { reads, ...rest } = m;
+        return {
+          ...rest,
+          isRead: viewerId != null ? computePerUserRead({ ...rest, reads }, viewerId) : m.isRead,
+        };
+      });
+
       return {
         report,
-        messages,
+        messages: shapedMessages,
         pagination: {
           page,
           limit,
@@ -242,15 +270,29 @@ class ChatServices {
     }
 
     try {
-      await prisma.message.updateMany({
+      const rid = parseInt(reportId);
+      const uid = parseInt(userId);
+
+      // Audit M2: tandai dibaca per-user via MessageRead (bukan flag isRead
+      // bersama). Ambil pesan pihak lain yang BELUM dibaca user ini, lalu
+      // buat baris MessageRead (skipDuplicates agar idempoten).
+      const unread = await prisma.message.findMany({
         where: {
-          reportId: parseInt(reportId),
-          senderId: { not: parseInt(userId) },
-          isRead: false,
+          reportId: rid,
+          senderId: { not: uid },
           deletedAt: null,
+          reads: { none: { userId: uid } },
         },
-        data: { isRead: true },
+        select: { id: true },
       });
+
+      if (unread.length > 0) {
+        await prisma.messageRead.createMany({
+          data: unread.map((m) => ({ messageId: m.id, userId: uid })),
+          skipDuplicates: true,
+        });
+      }
+
       return { success: true };
     } catch (error) {
       throw new Error(`Failed to mark messages as read: ${error.message}`);
@@ -285,9 +327,10 @@ class ChatServices {
 
       const unreadCount = await prisma.message.count({
         where: {
-          isRead: false,
           senderId: { not: parseInt(userId) },
           deletedAt: null,
+          // Audit M2: unread per-user — pesan yang belum dibaca user ini.
+          reads: { none: { userId: parseInt(userId) } },
           report: { deletedAt: null, ...reportFilter },
         },
       });
@@ -357,9 +400,10 @@ class ChatServices {
             select: {
               messages: {
                 where: {
-                  isRead: false,
                   senderId: { not: parseInt(userId) },
                   deletedAt: null,
+                  // Audit M2: unread per-user.
+                  reads: { none: { userId: parseInt(userId) } },
                 },
               },
             },

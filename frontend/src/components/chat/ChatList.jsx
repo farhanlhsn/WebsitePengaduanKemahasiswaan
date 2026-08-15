@@ -13,6 +13,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
 import useChatStore from '../../stores/chatStore';
 import useAuthStore from '../../stores/authStore';
+import { getStatusConfig } from '../../utils/statusConfig';
 
 const ChatListContainer = styled(Box)(({ theme }) => ({
   height: '100%',
@@ -65,18 +66,8 @@ const ReportListItem = styled(ListItem)(({ theme, selected }) => ({
 }));
 
 const StatusIndicator = ({ status }) => {
-  const theme = useTheme();
-  
-  const statusConfig = {
-    PENDING: { color: theme.palette.warning.main, label: 'Menunggu' },
-    IN_REVIEW: { color: theme.palette.info.main, label: 'Review' },
-    IN_PROGRESS: { color: theme.palette.primary.main, label: 'Progress' },
-    RESOLVED: { color: theme.palette.success.main, label: 'Selesai' },
-    REJECTED: { color: theme.palette.error.main, label: 'Ditolak' },
-    CANCELED: { color: theme.palette.grey[500], label: 'Canceled' },
-  };
-
-  const config = statusConfig[status] || statusConfig.PENDING;
+  // Label & warna status terpusat di utils/statusConfig.
+  const config = getStatusConfig(status);
 
   return (
     <Chip

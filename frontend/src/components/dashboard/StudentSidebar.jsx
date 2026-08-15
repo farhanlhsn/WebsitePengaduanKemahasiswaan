@@ -166,7 +166,7 @@ const StudentSidebar = ({
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { t } = useTranslation();
-  const { unreadCount } = useChatStore();
+  const { totalUnread } = useChatStore();
   const [deviceModalOpen, setDeviceModalOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
@@ -223,7 +223,7 @@ const StudentSidebar = ({
       text: t('sidebar.chat'), 
       icon: <Chat />, 
       action: () => onMenuChange('chat'), 
-      badge: unreadCount > 0 ? unreadCount : null,
+      badge: totalUnread > 0 ? totalUnread : null,
       description: t('sidebar.desc.chat')
     },
   ];

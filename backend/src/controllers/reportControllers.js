@@ -447,7 +447,7 @@ exports.updateReportStatus = async (req, res) => {
       ));
     }
     
-    const result = await ReportServices.updateReportStatus(id, status, oldStatus);
+    const result = await ReportServices.updateReportStatus(id, status, oldStatus, reason);
     
     // Create audit log
     try {

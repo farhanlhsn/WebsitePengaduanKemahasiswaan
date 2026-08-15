@@ -47,6 +47,8 @@ router.put('/verify/:id', isAdminMiddleware, [param('id').isInt().withMessage('i
 router.put('/reject/:id', isAdminMiddleware, [param('id').isInt().withMessage('id must be an integer'), body('reason').trim().notEmpty().withMessage('Reason is required')], validate, userController.rejectStudent);  // PUT /api/users/reject/123
 router.get('/search/:email', isAdminMiddleware, [param('email').isEmail().withMessage('Invalid email')], validate, userController.getUserByEmail);  // GET /api/users/search/:email (admin only)
 router.put('/profile/me', [body('name').optional().isString(), body('email').optional().isEmail(), body('nim').optional({ checkFalsy: true }).isString().isLength({ min: 8 })], validate, userController.updateProfile); // PUT /api/users/profile/me
+router.get('/preferences/me', userController.getMyPreferences);   // GET /api/users/preferences/me
+router.put('/preferences/me', userController.updateMyPreferences); // PUT /api/users/preferences/me
 router.put('/:id', isAdminMiddleware, [param('id').isInt().withMessage('id must be an integer'), body('name').optional().isString(), body('email').optional().isEmail(), body('nim').optional().isString().isLength({ min: 8 })], validate, userController.updateUser);            // PUT /api/users/123
 router.delete('/:id', isAdminMiddleware, [param('id').isInt().withMessage('id must be an integer')], validate, userController.deleteUser);         // DELETE /api/users/123 (soft delete)
 router.post('/:id/restore', isAdminMiddleware, [param('id').isInt().withMessage('id must be an integer')], validate, userController.restoreUser);  // POST /api/users/123/restore

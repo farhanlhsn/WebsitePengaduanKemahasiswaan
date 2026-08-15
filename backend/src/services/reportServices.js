@@ -91,6 +91,8 @@ class ReportServices {
           createdAt: true,
           updatedAt: true,
           closedAt: true,
+          rejectedReason: true,
+          canceledReason: true,
           deletedAt: true,
         }
       }, includeDeleted);
@@ -325,7 +327,7 @@ class ReportServices {
     }
   }
 
-  async updateReportStatus(id, status, expectedStatus = undefined) {
+  async updateReportStatus(id, status, expectedStatus = undefined, reason = null) {
     try {
       // Defense-in-depth: status is the only mutable input here. We rebuild the
       // update payload explicitly rather than spreading caller-provided data,
@@ -337,9 +339,13 @@ class ReportServices {
       // transisi dan penulisan. Jika status sudah diubah proses lain,
       // update mempengaruhi 0 baris dan kita menolak dengan 409.
       const CLOSED_STATUSES = ['RESOLVED', 'REJECTED', 'CANCELED'];
+      const trimmedReason = reason && String(reason).trim() ? String(reason).trim() : null;
       const data = {
         ...updates,
         ...(CLOSED_STATUSES.includes(status) ? { closedAt: new Date() } : {}),
+        // Audit: alasan penutupan kini persist di laporan (bukan hanya audit log).
+        ...(status === 'REJECTED' ? { rejectedReason: trimmedReason } : {}),
+        ...(status === 'CANCELED' ? { canceledReason: trimmedReason } : {}),
       };
 
       const where = { id, deletedAt: null };
@@ -361,6 +367,8 @@ class ReportServices {
           status: true,
           updatedAt: true,
           closedAt: true,
+          rejectedReason: true,
+          canceledReason: true,
           userId: true,
           title: true,
           registrationNumber: true,

@@ -28,8 +28,10 @@ import {
 } from '@mui/material';
 import {
   GetApp,
+  Inbox,
   MoreVert,
   Refresh,
+  SearchOff,
   VisibilityOff,
 } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
@@ -178,6 +180,26 @@ const AdminDataTable = ({
 
   const visibleActions = (row) => actions.filter((action) => !action.show || action.show(row));
 
+  const isSourceEmpty = !loading && Array.isArray(data) && data.length === 0;
+
+  const EmptyState = () => (
+    <Box sx={{ py: 5, textAlign: 'center' }}>
+      {isSourceEmpty ? (
+        <>
+          <Inbox sx={{ fontSize: 44, color: 'text.disabled', mb: 1 }} />
+          <Typography fontWeight={700}>Tidak ada data</Typography>
+          <Typography variant="body2" color="text.secondary">Belum ada data yang dapat ditampilkan saat ini.</Typography>
+        </>
+      ) : (
+        <>
+          <SearchOff sx={{ fontSize: 44, color: 'text.disabled', mb: 1 }} />
+          <Typography fontWeight={700}>Data tidak ditemukan</Typography>
+          <Typography variant="body2" color="text.secondary">Coba ubah kata kunci atau filter.</Typography>
+        </>
+      )}
+    </Box>
+  );
+
   const renderCellContent = (row, column) => {
     const value = getNestedValue(row, column.field);
     switch (column.type) {
@@ -227,10 +249,7 @@ const AdminDataTable = ({
           <Skeleton width="55%" /><Skeleton width="80%" /><Skeleton width="45%" />
         </Paper>
       )) : paginatedData.length === 0 ? (
-        <Box sx={{ py: 5, textAlign: 'center' }}>
-          <Typography fontWeight={700}>Data tidak ditemukan</Typography>
-          <Typography variant="body2" color="text.secondary">Coba ubah kata kunci atau filter.</Typography>
-        </Box>
+        <EmptyState />
       ) : paginatedData.map((row) => (
         <Paper key={row.id} variant="outlined" sx={{ p: 1.5, mb: 1.25, borderRadius: 2.25 }}>
           <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -294,8 +313,8 @@ const AdminDataTable = ({
       </Box>
 
       {isMobile ? <MobileList /> : (
-        <TableContainer sx={{ maxHeight: 600, overflowX: 'hidden' }}>
-          <Table stickyHeader size="small" sx={{ width: '100%', tableLayout: 'fixed' }}>
+        <TableContainer sx={{ maxHeight: 600, overflowX: 'auto' }}>
+          <Table stickyHeader size="small" sx={{ width: '100%', minWidth: 720, tableLayout: 'fixed' }}>
             <TableHead>
               <TableRow>
                 {selectable && (
@@ -338,9 +357,8 @@ const AdminDataTable = ({
                 </TableRow>
               )) : paginatedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length + (selectable ? 1 : 0) + (actions.length ? 1 : 0)} align="center" sx={{ py: 6 }}>
-                    <Typography fontWeight={700}>Data tidak ditemukan</Typography>
-                    <Typography variant="body2" color="text.secondary">Coba ubah kata kunci atau filter.</Typography>
+                  <TableCell colSpan={columns.length + (selectable ? 1 : 0) + (actions.length ? 1 : 0)} align="center" sx={{ py: 1 }}>
+                    <EmptyState />
                   </TableCell>
                 </TableRow>
               ) : paginatedData.map((row) => (
