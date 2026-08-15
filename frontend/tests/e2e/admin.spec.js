@@ -36,14 +36,17 @@ test.describe('Admin report processing', () => {
     await loginViaUI(page, E2E_USERS.admin, /\/admin/);
   });
 
-  test('admin dapat membuka detail laporan dan mengubah status', async ({ page }) => {
+  test('admin dapat membuka detail laporan dalam popup dan mengubah status', async ({ page }) => {
     test.skip(!reportId, 'Fixture report tidak tersedia');
 
     await page.goto(`/admin/reports/${reportId}`);
-    await expect(page.getByText(/detail|laporan/i).first()).toBeVisible({ timeout: 20_000 });
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible({ timeout: 20_000 });
+    await expect(page).toHaveURL(new RegExp(`/admin/reports\?report=${reportId}`));
 
-    await page.getByRole('button', { name: /^status$/i }).click();
-    await page.getByRole('menuitem', { name: /ditinjau/i }).click();
-    await expect(page.getByText(/ditinjau/i).first()).toBeVisible({ timeout: 15_000 });
+    await dialog.getByLabel('Status').click();
+    await page.getByRole('option', { name: 'Ditinjau' }).click();
+    await dialog.getByRole('button', { name: /simpan status/i }).click();
+    await expect(dialog.getByText(/ditinjau/i).first()).toBeVisible({ timeout: 15_000 });
   });
 });

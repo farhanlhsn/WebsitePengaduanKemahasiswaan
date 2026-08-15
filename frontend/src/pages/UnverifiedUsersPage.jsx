@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   Box,
-  Container,
   Typography,
   Button,
   Paper,
@@ -16,7 +15,6 @@ import {
   Chip,
   Avatar,
   IconButton,
-  Tooltip,
   Alert,
   Snackbar,
   Dialog,
@@ -27,16 +25,20 @@ import {
   Fade,
   TablePagination,
   TextField,
-  CircularProgress
+  CircularProgress,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { 
   CheckCircle, 
   Visibility, 
-  Refresh,
   PersonAdd,
   HowToReg,
-  Cancel
+  Cancel,
+  MoreVert
 } from '@mui/icons-material';
 import { 
   getUnverifiedStudents, 
@@ -72,6 +74,8 @@ const UnverifiedUsersPage = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [userToReject, setUserToReject] = useState(null);
   const [rejectLoading, setRejectLoading] = useState(false);
+  const [actionAnchorEl, setActionAnchorEl] = useState(null);
+  const [actionUser, setActionUser] = useState(null);
   const { onMobileMenuClick } = useOutletContext() ?? {};
 
   const [snackbar, setSnackbar] = useState({
@@ -86,7 +90,7 @@ const UnverifiedUsersPage = () => {
       const result = await getUnverifiedStudents();
       setUsers(result.unverifiedStudents || []);
     } catch (error) {
-      showSnackbar(`Failed to load unverified users: ${getApiErrorMessage(error)}`, 'error');
+showSnackbar('Gagal memuat pengguna yang belum terverifikasi: ' + getApiErrorMessage(error), 'error');
     } finally {
       setLoading(false);
     }
@@ -117,22 +121,22 @@ const UnverifiedUsersPage = () => {
   const handleVerifyOne = async (userId) => {
     try {
       await verifyStudent(userId);
-      showSnackbar('User verified successfully', 'success');
+      showSnackbar('Pengguna berhasil diverifikasi', 'success');
       loadUnverifiedUsers();
       setSelectedUsers([]);
     } catch (error) {
-      showSnackbar(`Failed to verify user: ${getApiErrorMessage(error)}`, 'error');
+showSnackbar('Gagal memverifikasi pengguna: ' + getApiErrorMessage(error), 'error');
     }
   };
 
   const handleBulkVerify = async () => {
     try {
       const result = await bulkVerifyUsers(selectedUsers);
-      showSnackbar(`Successfully verified ${result.verified} users`, 'success');
+      showSnackbar(`Berhasil memverifikasi ${result.verified} pengguna`, 'success');
       loadUnverifiedUsers();
       setSelectedUsers([]);
     } catch (error) {
-      showSnackbar(`Failed to bulk verify: ${getApiErrorMessage(error)}`, 'error');
+showSnackbar('Gagal melakukan verifikasi massal: ' + getApiErrorMessage(error), 'error');
     }
   };
 
@@ -142,7 +146,7 @@ const UnverifiedUsersPage = () => {
       setSelectedUser(user);
       setViewUserDialog(true);
     } catch (error) {
-      showSnackbar(`Failed to load user details: ${getApiErrorMessage(error)}`, 'error');
+showSnackbar('Gagal memuat detail pengguna: ' + getApiErrorMessage(error), 'error');
     }
   };
 
@@ -178,10 +182,30 @@ const UnverifiedUsersPage = () => {
   };
 
   const handleViewKTM = (ktmPath) => {
-    // Assuming KTM path is relative to uploads folder
     const fullPath = `http://localhost:6060${ktmPath}`;
     setKtmImage(fullPath);
     setKtmDialogOpen(true);
+  };
+
+  const handleActionMenuOpen = (event, user) => {
+    event.stopPropagation();
+    setActionAnchorEl(event.currentTarget);
+    setActionUser(user);
+  };
+
+  const handleActionMenuClose = () => {
+    setActionAnchorEl(null);
+    setActionUser(null);
+  };
+
+  const handleSelectedAction = (action) => {
+    const user = actionUser;
+    handleActionMenuClose();
+    if (!user) return;
+
+    if (action === 'detail') handleViewUser(user.id);
+    if (action === 'reject') handleRejectClick(user);
+    if (action === 'verify') handleVerifyOne(user.id);
   };
 
   const showSnackbar = (message, severity = 'success') => {
@@ -216,11 +240,10 @@ const UnverifiedUsersPage = () => {
           subtitle="Kelola dan verifikasi pengguna baru yang mendaftar"
           onMobileMenuClick={onMobileMenuClick}
           onRefresh={loadUnverifiedUsers}
-          showNotifications={false}
         />
 
         {/* Stats */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid container spacing={2} sx={{ mb: 2.5 }}>
           <Grid size={{ xs: 12, sm: 6, md: 6 }}>
             <StatCard
               title="Menunggu Verifikasi"
@@ -243,7 +266,7 @@ const UnverifiedUsersPage = () => {
 
         {/* Bulk Operations Toolbar */}
         {selectedUsers.length > 0 && (
-          <Box sx={{ mb: 3 }}>
+          <Box sx={{ mb: 2 }}>
             <BulkOperationsToolbar
               selectedCount={selectedUsers.length}
               type="users"
@@ -254,19 +277,20 @@ const UnverifiedUsersPage = () => {
         )}
 
         {/* Users Table */}
-        <Paper sx={{ 
-          borderRadius: 4, 
-          boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
-          border: '1px solid rgba(0,0,0,0.05)',
+        <Paper sx={{
+          borderRadius: 3,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+          border: '1px solid',
+          borderColor: 'divider',
           overflow: 'hidden'
         }}>
-          <TableContainer sx={{ maxHeight: 600 }}>
-            <Table stickyHeader>
+          <TableContainer sx={{ maxHeight: 600, overflowX: 'hidden' }}>
+            <Table stickyHeader size="small" sx={{ width: '100%', tableLayout: 'fixed' }}>
               <TableHead>
                 <TableRow>
                   <TableCell 
                     padding="checkbox"
-                    sx={headerCellSx}
+                    sx={{ ...headerCellSx, width: 48 }}
                   >
                     <Checkbox
                       checked={selectedUsers.length === users.length && users.length > 0}
@@ -274,23 +298,24 @@ const UnverifiedUsersPage = () => {
                       onChange={handleSelectAll}
                     />
                   </TableCell>
-                  <TableCell sx={headerCellSx}>
+                  <TableCell sx={{ ...headerCellSx, width: { xs: '50%', md: '28%' } }}>
                     Pengguna
                   </TableCell>
-                  <TableCell sx={headerCellSx}>
+                  <TableCell sx={{ ...headerCellSx, width: { xs: '28%', md: '16%' } }}>
                     NIM
                   </TableCell>
-                  <TableCell sx={headerCellSx}>
+                  <TableCell sx={{ ...headerCellSx, width: '28%', display: { xs: 'none', md: 'table-cell' } }}>
                     Email
                   </TableCell>
-                  <TableCell sx={headerCellSx}>
+                  <TableCell sx={{ ...headerCellSx, width: '12%', display: { xs: 'none', lg: 'table-cell' } }}>
                     KTM
                   </TableCell>
-                  <TableCell sx={headerCellSx}>
+                  <TableCell sx={{ ...headerCellSx, width: '14%', display: { xs: 'none', lg: 'table-cell' } }}>
                     Terdaftar
                   </TableCell>
-                  <TableCell sx={{ 
+                  <TableCell sx={{
                     ...headerCellSx,
+                    width: 58,
                     textAlign: 'center'
                   }}>
                     Aksi
@@ -300,13 +325,13 @@ const UnverifiedUsersPage = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                    <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
                       <Typography color="text.secondary" fontWeight={600}>Memuat data...</Typography>
                     </TableCell>
                   </TableRow>
                 ) : users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                    <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
                       <Box sx={{ py: 4 }}>
                         <CheckCircle sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
                         <Typography variant="h6" fontWeight={700} color="text.secondary">
@@ -337,11 +362,12 @@ const UnverifiedUsersPage = () => {
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                          <Avatar sx={{ 
-                            bgcolor: 'primary.main', 
-                            width: 40, 
-                            height: 40,
-                            fontWeight: 800
+                          <Avatar sx={{
+                            bgcolor: 'primary.main',
+                            width: 34,
+                            height: 34,
+                            fontWeight: 800,
+                            fontSize: '0.9rem'
                           }}>
                             {user.name?.[0]?.toUpperCase()}
                           </Avatar>
@@ -350,7 +376,7 @@ const UnverifiedUsersPage = () => {
                               {user.name}
                             </Typography>
                             <Chip 
-                              label={user.role} 
+                              label={user.role === 'STUDENT' ? 'MAHASISWA' : user.role} 
                               size="small" 
                               color="primary" 
                               variant="outlined"
@@ -359,8 +385,8 @@ const UnverifiedUsersPage = () => {
                           </Box>
                         </Box>
                       </TableCell>
-                      <TableCell>
-                        <Typography 
+                      <TableCell sx={{ overflowWrap: 'anywhere' }}>
+                        <Typography
                           variant="body2" 
                           sx={{ 
                             fontFamily: 'monospace',
@@ -375,12 +401,12 @@ const UnverifiedUsersPage = () => {
                           {user.nim}
                         </Typography>
                       </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={600}>
+                      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, overflowWrap: 'anywhere' }}>
+                        <Typography variant="body2" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
                           {user.email}
                         </Typography>
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
                         {user.ktmPath ? (
                           <Button
                             size="small"
@@ -396,42 +422,20 @@ const UnverifiedUsersPage = () => {
                           </Typography>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
                         <Typography variant="body2" fontWeight={600}>
                           {format(new Date(user.createdAt), 'dd/MM/yyyy')}
                         </Typography>
                       </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <Tooltip title="Lihat Detail">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleViewUser(user.id)}
-                              color="primary"
-                            >
-                              <Visibility fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Tolak">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleRejectClick(user)}
-                              color="error"
-                            >
-                              <Cancel fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Verifikasi">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleVerifyOne(user.id)}
-                              color="success"
-                            >
-                              <CheckCircle fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          </Box>
-                        </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          size="small"
+                          onClick={(event) => handleActionMenuOpen(event, user)}
+                          aria-label={`Buka aksi untuk ${user.name}`}
+                        >
+                          <MoreVert fontSize="small" />
+                        </IconButton>
+                      </TableCell>
                       </TableRow>
                     </Fade>
                   ))
@@ -460,6 +464,27 @@ const UnverifiedUsersPage = () => {
           />
         </Paper>
 
+        <Menu
+          anchorEl={actionAnchorEl}
+          open={Boolean(actionAnchorEl)}
+          onClose={handleActionMenuClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <MenuItem onClick={() => handleSelectedAction('detail')}>
+            <ListItemIcon><Visibility fontSize="small" color="primary" /></ListItemIcon>
+            <ListItemText>Lihat detail</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={() => handleSelectedAction('verify')}>
+            <ListItemIcon><CheckCircle fontSize="small" color="success" /></ListItemIcon>
+            <ListItemText>Verifikasi</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={() => handleSelectedAction('reject')}>
+            <ListItemIcon><Cancel fontSize="small" color="error" /></ListItemIcon>
+            <ListItemText>Tolak</ListItemText>
+          </MenuItem>
+        </Menu>
+
         {/* KTM Image Dialog */}
         <Dialog 
           open={ktmDialogOpen} 
@@ -483,6 +508,7 @@ const UnverifiedUsersPage = () => {
                 <img 
                   src={ktmImage} 
                   alt="KTM" 
+                  crossOrigin="use-credentials"
                   style={{ 
                     maxWidth: '100%', 
                     height: 'auto',
@@ -490,7 +516,7 @@ const UnverifiedUsersPage = () => {
                   }}
                   onError={(e) => {
                     e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>';
-                    e.target.alt = 'Failed to load image';
+                    e.target.alt = 'Gagal memuat gambar';
                   }}
                 />
               </Box>
@@ -555,7 +581,7 @@ const UnverifiedUsersPage = () => {
                 </Grid>
                 <Grid size={{ xs: 12 }}>
                   <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                    Role
+                    Peran
                   </Typography>
                   <Box sx={{ mt: 0.5 }}>
                     <Chip 

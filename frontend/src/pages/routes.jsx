@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate, useParams } from "react-router-dom";
 import React, { Suspense } from "react";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import ErrorBoundary from "../components/ErrorBoundary";
@@ -15,8 +15,6 @@ const WaitingVerificationPage = createLazyComponent(() => import("./WaitingVerif
 const Layout = createLazyComponent(() => import("./layout.jsx"));
 const ImprovedStudentDashboard = createLazyComponent(() => import("./ImprovedStudentDashboard.jsx"));
 const StudentChatPage = createLazyComponent(() => import("./StudentChatPage.jsx"));
-const ReportDetailPage = createLazyComponent(() => import("./ReportDetailPage.jsx"));
-const AdminReportDetailPage = createLazyComponent(() => import("./AdminReportDetailPage.jsx"));
 const AuditLogPage = createLazyComponent(() => import("./AuditLogPage.jsx"));
 const UnverifiedUsersPage = createLazyComponent(() => import("./UnverifiedUsersPage.jsx"));
 const AdminAnalyticsPage = createLazyComponent(() => import("./AdminAnalyticsPage.jsx"));
@@ -85,6 +83,16 @@ const wrapAdmin = (PageComponent, loadingMessage = "Memuat halaman admin...") =>
   </EnhancedLazyWrapper>
 );
 
+const StudentReportRedirect = () => {
+  const { id } = useParams();
+  return <Navigate replace to={`/dashboard?report=${encodeURIComponent(id || '')}`} />;
+};
+
+const AdminReportRedirect = () => {
+  const { id } = useParams();
+  return <Navigate replace to={`/admin/reports?report=${encodeURIComponent(id || '')}`} />;
+};
+
 // ── Router configuration ────────────────────────────────────────────────────
 export const router = createBrowserRouter([
   {
@@ -121,7 +129,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/report/:id",
-    element: <OptimizedAuthWrapper><ReportDetailPage /></OptimizedAuthWrapper>,
+    element: <OptimizedAuthWrapper><StudentReportRedirect /></OptimizedAuthWrapper>,
   },
   {
     path: "/profile",
@@ -144,7 +152,7 @@ export const router = createBrowserRouter([
       { path: "users/:id", element: wrapAdmin(AdminUsersPage) },
       { path: "unverified-users", element: wrapAdmin(UnverifiedUsersPage) },
       { path: "reports", element: wrapAdmin(AdminReportsPage) },
-      { path: "reports/:id", element: wrapAdmin(AdminReportDetailPage, "Memuat detail laporan...") },
+
       { path: "chat", element: wrapAdmin(AdminChatPage) },
       { path: "audit-logs", element: wrapAdmin(AuditLogPage) },
       { path: "analytics", element: wrapAdmin(AdminAnalyticsPage) },
@@ -154,6 +162,10 @@ export const router = createBrowserRouter([
       { path: "settings", element: wrapAdmin(AdminSettingsPage) },
       { path: "help", element: wrapAdmin(AdminHelpPageWrapped) },
     ],
+  },
+  {
+    path: "/admin/reports/:id",
+    element: <OptimizedAuthWrapper><AdminReportRedirect /></OptimizedAuthWrapper>,
   },
 
   {

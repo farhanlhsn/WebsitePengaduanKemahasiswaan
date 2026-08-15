@@ -31,7 +31,7 @@ const InfoItem = ({ icon, label, value, color }) => (
       </Typography>
     </Stack>
     <Typography variant="body1" fontWeight={500} sx={{ pl: "48px" }}>
-      {value || "N/A"}
+      {value || "-"}
     </Typography>
   </Box>
 );

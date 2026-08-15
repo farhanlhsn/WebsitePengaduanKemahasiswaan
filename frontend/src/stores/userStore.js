@@ -36,7 +36,7 @@ const useUserStore = create((set, get) => ({
       set({ users, loading: false });
       return users;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to fetch users' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal memuat pengguna' });
       throw error;
     }
   },
@@ -49,7 +49,7 @@ const useUserStore = create((set, get) => ({
       set({ user, loading: false });
       return user;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to fetch user' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal memuat pengguna' });
       throw error;
     }
   },
@@ -62,7 +62,7 @@ const useUserStore = create((set, get) => ({
       set({ user, loading: false });
       return user;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to fetch user' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal memuat pengguna' });
       throw error;
     }
   },
@@ -77,7 +77,7 @@ const useUserStore = create((set, get) => ({
       set({ userStats, loading: false });
       return userStats;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to fetch user stats by ID' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal memuat statistik pengguna' });
       throw error;
     }
   },
@@ -104,7 +104,7 @@ const useUserStore = create((set, get) => ({
       }));
       return updatedUser;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to update user' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal memperbarui pengguna' });
       throw error;
     }
   },
@@ -128,7 +128,7 @@ const useUserStore = create((set, get) => ({
       }));
       return updatedUser;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to update profile' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal memperbarui profil' });
       throw error;
     }
   },
@@ -148,7 +148,7 @@ const useUserStore = create((set, get) => ({
       }));
       return verifiedUser;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to verify student' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal memverifikasi mahasiswa' });
       throw error;
     }
   },
@@ -167,7 +167,7 @@ const useUserStore = create((set, get) => ({
         loading: false 
       }));
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to delete user' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal menghapus pengguna' });
       throw error;
     }
   },
@@ -190,7 +190,7 @@ const useUserStore = create((set, get) => ({
       });
       return restoredUser;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to restore user' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal memulihkan pengguna' });
       throw error;
     }
   },
@@ -207,7 +207,7 @@ const useUserStore = create((set, get) => ({
         loading: false 
       }));
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to permanently delete user' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal menghapus pengguna secara permanen' });
       throw error;
     }
   },
@@ -220,7 +220,7 @@ const useUserStore = create((set, get) => ({
       set({ loading: false });
       return result;
     } catch (error) {
-      set({ loading: false, error: error.response?.data?.error || 'Failed to cleanup old deleted users' });
+      set({ loading: false, error: error.response?.data?.error || 'Gagal membersihkan pengguna lama yang terhapus' });
       throw error;
     }
   },

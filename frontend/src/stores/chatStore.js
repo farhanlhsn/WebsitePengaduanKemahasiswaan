@@ -314,7 +314,7 @@ const useChatStore = create(
           // which will confirm the state for other users. Our state is already correct.
         } catch (error) {
           // If the API call fails, revert the state and show an error
-          set({ messages: originalMessages, error: "Failed to delete message. Please try again." });
+          set({ messages: originalMessages, error: "Gagal menghapus pesan. Silakan coba lagi." });
           throw error;
         }
       },

@@ -53,7 +53,7 @@ export default useSettingsStore;
 
 const dictionaries = {
   id: {
-    'dashboard.title': 'Dashboard',
+    'dashboard.title': 'Dasbor',
     'dashboard.subtitle': 'Selamat datang kembali! Berikut ringkasan laporan Anda.',
     'dashboard.total_reports': 'Total Laporan',
     'dashboard.pending': 'Menunggu',
@@ -61,15 +61,15 @@ const dictionaries = {
     'dashboard.resolved': 'Selesai',
     'reports.title': 'Laporan Saya',
     'reports.subtitle': 'Kelola dan pantau semua laporan yang telah Anda buat.',
-    'chat.title': 'Chat & Komunikasi',
-    'chat.subtitle': 'Komunikasi langsung dengan admin untuk laporan Anda.',
+    'chat.title': 'Percakapan',
+    'chat.subtitle': 'Berkomunikasi langsung dengan admin terkait laporan Anda.',
     'profile.title': 'Profil Saya',
     'profile.subtitle': 'Kelola informasi profil dan akun Anda.',
     'settings.title': 'Pengaturan',
     'settings.subtitle': 'Sesuaikan preferensi aplikasi Anda.',
-    'sidebar.dashboard': 'Dashboard',
+    'sidebar.dashboard': 'Dasbor',
     'sidebar.reports': 'Laporan Saya',
-    'sidebar.chat': 'Chat & Komunikasi',
+    'sidebar.chat': 'Percakapan',
     'sidebar.profile': 'Profil Saya',
     'sidebar.settings': 'Pengaturan',
     'sidebar.help': 'Pusat Bantuan',

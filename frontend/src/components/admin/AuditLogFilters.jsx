@@ -34,8 +34,8 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
   return (
     <Paper
       sx={{
-        borderRadius: 4,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+        borderRadius: 3,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
         border: '1px solid rgba(0,0,0,0.05)',
         overflow: 'hidden',
         mb: 3
@@ -44,8 +44,8 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
       {/* Header */}
       <Box
         sx={{
-          p: 3,
-          pb: 2.5,
+          p: 2,
+          pb: 1.5,
           borderBottom: '1px solid rgba(0,0,0,0.06)',
           background: (theme) =>
             `linear-gradient(135deg, 
@@ -66,7 +66,7 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
           </Avatar>
           <Box>
             <Typography variant="h6" fontWeight={700}>
-              Filter Audit Logs
+              Filter Log Audit
             </Typography>
           </Box>
         </Box>
@@ -77,8 +77,8 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
       {/* Filter Form */}
       <Box
         sx={{
-          p: 3,
-          pt: 2.5,
+          p: 2,
+          pt: 1.5,
           backgroundColor: (theme) => alpha(theme.palette.background.default, 0.6)
         }}
       >
@@ -101,10 +101,10 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
                 <Typography fontWeight={600}>Semua</Typography>
               </MenuItem>
               <MenuItem value="USER">
-                <Typography fontWeight={600}>User</Typography>
+                <Typography fontWeight={600}>Pengguna</Typography>
               </MenuItem>
               <MenuItem value="REPORT">
-                <Typography fontWeight={600}>Report</Typography>
+                <Typography fontWeight={600}>Laporan</Typography>
               </MenuItem>
               <MenuItem value="CATEGORY">
                 <Typography fontWeight={600}>Kategori</Typography>
@@ -130,16 +130,16 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
                 <Typography fontWeight={600}>Semua</Typography>
               </MenuItem>
               <MenuItem value="SOFT_DELETE">
-                <Typography fontWeight={600}>Soft Delete</Typography>
+                <Typography fontWeight={600}>Hapus Lunak</Typography>
               </MenuItem>
               <MenuItem value="RESTORE">
-                <Typography fontWeight={600}>Restore</Typography>
+                <Typography fontWeight={600}>Pulihkan</Typography>
               </MenuItem>
               <MenuItem value="HARD_DELETE">
-                <Typography fontWeight={600}>Hard Delete</Typography>
+                <Typography fontWeight={600}>Hapus Permanen</Typography>
               </MenuItem>
               <MenuItem value="UPDATE_STATUS">
-                <Typography fontWeight={600}>Update Status</Typography>
+                <Typography fontWeight={600}>Ubah Status</Typography>
               </MenuItem>
               <MenuItem value="VERIFY_MAHASISWA">
                 <Typography fontWeight={600}>Verifikasi Mahasiswa</Typography>
@@ -187,7 +187,7 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
               fullWidth
               size="small"
               type="number"
-              label="Limit"
+              label="Batas Data"
               value={filters.limit || 50}
               onChange={(e) => handleChange('limit', e.target.value)}
               inputProps={{ min: 1, max: 200 }}
@@ -226,7 +226,7 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
                   }
                 }}
               >
-                Hapus
+                Bersihkan
               </Button>
             </Box>
           </Grid>

@@ -2,11 +2,11 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box, Fade, Alert, Card, CardContent, Stack, Typography, Chip, Avatar, IconButton,
   Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Button, Select,
-  MenuItem, FormControl, InputLabel, CircularProgress, Divider, Paper
+  MenuItem, Menu, ListItemIcon, FormControl, InputLabel, CircularProgress, Divider, Paper
 } from '@mui/material';
 import {
   AdminPanelSettings, SupervisorAccount, Person, Add, Remove, ArrowUpward,
-  ArrowDownward, Star, Category as CategoryIcon
+  ArrowDownward, Star, Category as CategoryIcon, MoreVert
 } from '@mui/icons-material';
 import { useOutletContext } from 'react-router-dom';
 import { alpha, useTheme } from '@mui/material/styles';
@@ -256,7 +256,7 @@ const AdminManagementPage = () => {
 };
 
 const SectionCard = ({ icon, title, subtitle, children }) => (
-  <Card sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+  <Card variant="outlined" sx={{ borderRadius: 2.5, boxShadow: 'none' }}>
     <CardContent>
       <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.5 }}>
         {icon}
@@ -283,6 +283,16 @@ const AdminRow = ({
 }) => {
   const theme = useTheme();
   const isSuper = admin.role === 'SUPERADMIN';
+  const [actionAnchorEl, setActionAnchorEl] = useState(null);
+
+  const closeActionMenu = () => setActionAnchorEl(null);
+  const runAction = (callback) => {
+    closeActionMenu();
+    callback?.();
+  };
+
+  const hasActions = (!isSuper && (onGrant || onPromoteSuper || onDemoteAdmin))
+    || (isSuper && onDemoteSuper && !isSelf);
 
   return (
     <Paper
@@ -332,55 +342,60 @@ const AdminRow = ({
           {isSuper && (
             <Chip
               size="small"
-              label="Akses semua kategori (implisit)"
+              label="Akses ke semua kategori"
               color="warning"
               variant="outlined"
               sx={{ mt: 1 }}
             />
           )}
         </Box>
-        <Stack direction="row" spacing={1}>
-          {!isSuper && onGrant && (
-            <Tooltip title="Berikan kategori">
-              <span>
-                <IconButton onClick={onGrant} disabled={disabled} color="primary">
-                  <Add />
-                </IconButton>
-              </span>
-            </Tooltip>
-          )}
-          {!isSuper && onPromoteSuper && (
-            <Tooltip title="Promosi ke Super Admin">
-              <span>
-                <IconButton onClick={onPromoteSuper} disabled={disabled} color="warning">
-                  <ArrowUpward />
-                </IconButton>
-              </span>
-            </Tooltip>
-          )}
-          {!isSuper && onDemoteAdmin && (
-            <Tooltip title="Demosi ke Mahasiswa">
-              <span>
-                <IconButton onClick={onDemoteAdmin} disabled={disabled} color="error">
-                  <ArrowDownward />
-                </IconButton>
-              </span>
-            </Tooltip>
-          )}
-          {isSuper && onDemoteSuper && (
-            <Tooltip title={isSelf ? 'Tidak bisa demosi diri sendiri' : 'Demosi ke Admin'}>
+        {hasActions && (
+          <>
+            <Tooltip title="Buka menu aksi">
               <span>
                 <IconButton
-                  onClick={onDemoteSuper}
-                  disabled={disabled || isSelf}
-                  color="error"
+                  onClick={(event) => setActionAnchorEl(event.currentTarget)}
+                  disabled={disabled}
+                  aria-label={`Buka menu aksi ${admin.name}`}
                 >
-                  <ArrowDownward />
+                  <MoreVert />
                 </IconButton>
               </span>
             </Tooltip>
-          )}
-        </Stack>
+            <Menu
+              anchorEl={actionAnchorEl}
+              open={Boolean(actionAnchorEl)}
+              onClose={closeActionMenu}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            >
+              {!isSuper && onGrant && (
+                <MenuItem onClick={() => runAction(onGrant)}>
+                  <ListItemIcon><Add fontSize="small" /></ListItemIcon>
+                  Berikan kategori
+                </MenuItem>
+              )}
+              {!isSuper && onPromoteSuper && (
+                <MenuItem onClick={() => runAction(onPromoteSuper)}>
+                  <ListItemIcon><ArrowUpward fontSize="small" color="warning" /></ListItemIcon>
+                  Promosikan menjadi Super Admin
+                </MenuItem>
+              )}
+              {!isSuper && onDemoteAdmin && (
+                <MenuItem onClick={() => runAction(onDemoteAdmin)} sx={{ color: 'error.main' }}>
+                  <ListItemIcon><ArrowDownward fontSize="small" color="error" /></ListItemIcon>
+                  Ubah menjadi mahasiswa
+                </MenuItem>
+              )}
+              {isSuper && onDemoteSuper && !isSelf && (
+                <MenuItem onClick={() => runAction(onDemoteSuper)} sx={{ color: 'error.main' }}>
+                  <ListItemIcon><ArrowDownward fontSize="small" color="error" /></ListItemIcon>
+                  Ubah menjadi admin
+                </MenuItem>
+              )}
+            </Menu>
+          </>
+        )}
       </Stack>
     </Paper>
   );

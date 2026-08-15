@@ -144,7 +144,7 @@ const AuditLogDetailModal = ({ open, onClose, log }) => {
             {label.toUpperCase()}
           </Typography>
           <Typography variant="body1" fontWeight="500" noWrap={!fullWidth} title={String(value)}>
-            {value || 'N/A'}
+            {value || '-'}
           </Typography>
           {subValue && (
              <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace', mt: 0.5, display: 'block' }}>
@@ -210,17 +210,17 @@ const AuditLogDetailModal = ({ open, onClose, log }) => {
               <Grid size={{ xs: 12, sm: 6 }}>
                 <InfoCard 
                   icon={<AdminPanelSettings />}
-                  label="Actor" 
+                  label="Pelaku" 
                   value={log.actorName ? log.actorName : `ID: ${log.actorId}`}
-                  subValue={`Role: ${log.actorRole}`}
+                  subValue={`Peran: ${log.actorRole}`}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <InfoCard 
                   icon={<Dns />}
-                  label="Network" 
+                  label="Jaringan" 
                   value={log.ip}
-                  subValue="IP Address"
+                  subValue="Alamat IP"
                 />
               </Grid>
             </Grid>
@@ -229,7 +229,7 @@ const AuditLogDetailModal = ({ open, onClose, log }) => {
           <Grid size={{ xs: 12 }}>
             <InfoCard 
               icon={<Computer />}
-              label="User Agent" 
+              label="Agen Pengguna" 
               value={log.userAgent}
               fullWidth
             />

@@ -202,7 +202,7 @@ const AdminAnalyticsPage = () => {
   const topCategories = useMemo(() => dashboardStats?.categories?.topCategories || [], [dashboardStats]);
 
   const statusData = useMemo(() => [
-    { name: 'Pending',    value: filteredStats.pending,    color: '#FFB74D' },
+    { name: 'Menunggu',  value: filteredStats.pending,    color: '#FFB74D' },
     { name: 'Review',     value: filteredStats.inReview,   color: '#64B5F6' },
     { name: 'Proses',     value: filteredStats.inProgress, color: '#9575CD' },
     { name: 'Selesai',    value: filteredStats.resolved,   color: '#81C784' },
@@ -232,7 +232,6 @@ const AdminAnalyticsPage = () => {
           subtitle="Pantau performa sistem secara real-time"
           onMobileMenuClick={onMobileMenuClick}
           onRefresh={loadAnalytics}
-          showNotifications={false}
           action={
             <GlassCard variant="glass" sx={{ p: 0.5, display: 'flex', gap: 0.5 }}>
               {TIME_RANGES.map(r => (

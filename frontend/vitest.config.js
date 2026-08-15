@@ -21,7 +21,11 @@ export default defineConfig({
           include: ['tests/component/**/*.test.{js,jsx}'],
           browser: {
             enabled: true,
-            provider: playwright(),
+            provider: playwright({
+              launchOptions: process.env.PLAYWRIGHT_EXECUTABLE_PATH
+                ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH }
+                : {},
+            }),
             instances: [{ browser: 'chromium' }],
             headless: true,
           },

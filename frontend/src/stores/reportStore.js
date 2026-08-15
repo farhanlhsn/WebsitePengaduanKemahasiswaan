@@ -39,7 +39,7 @@ const useReportStore = create((set, get) => ({
       }));
       return report;
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to create report';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Gagal membuat laporan';
       set({ loading: false, error: errorMessage });
       throw error;
     }
@@ -51,7 +51,7 @@ const useReportStore = create((set, get) => ({
       const attachments = await apiUploadAttachments(reportId, files);
       return attachments;
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to upload attachments';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Gagal mengunggah lampiran';
       set({ error: errorMessage });
       throw error;
     }
@@ -91,7 +91,7 @@ const useReportStore = create((set, get) => ({
       }));
       return response;
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to fetch reports';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Gagal memuat laporan';
       set({ loading: false, error: errorMessage });
       throw error;
     }
@@ -131,7 +131,7 @@ const useReportStore = create((set, get) => ({
       }));
       return response;
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to fetch reports';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Gagal memuat laporan';
       set({ loading: false, error: errorMessage });
       throw error;
     }
@@ -145,7 +145,7 @@ const useReportStore = create((set, get) => ({
       set({ loading: false });
       return report;
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to fetch report';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Gagal memuat laporan';
       set({ loading: false, error: errorMessage });
       throw error;
     }
@@ -167,7 +167,7 @@ const useReportStore = create((set, get) => ({
       console.log(updatedReport);
       return updatedReport;
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to update report status';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Gagal memperbarui status laporan';
       set({ loading: false, error: errorMessage });
       throw error;
     }
@@ -188,7 +188,7 @@ const useReportStore = create((set, get) => ({
       }));
       return result;
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to bulk update report status';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Gagal memperbarui status laporan secara massal';
       set({ loading: false, error: errorMessage });
       throw error;
     }
@@ -206,7 +206,7 @@ const useReportStore = create((set, get) => ({
         loading: false
       }));
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to delete report';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Gagal menghapus laporan';
       set({ loading: false, error: errorMessage });
       throw error;
     }
@@ -228,7 +228,7 @@ const useReportStore = create((set, get) => ({
       });
       return report;
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to restore report';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Gagal memulihkan laporan';
       set({ loading: false, error: errorMessage });
       throw error;
     }

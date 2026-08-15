@@ -46,7 +46,7 @@ const ReportAttachmentCard = ({ attachment, onPreview, downloadUrl }) => {
             {getFileTypeIcon(attachment.fileType)}
           </Typography>
           <Box sx={{ minWidth: 0, flex: 1, overflow: "hidden" }}>
-            <Tooltip title={attachment.fileName || "Unknown file"}>
+            <Tooltip title={attachment.fileName || "Berkas tidak diketahui"}>
               <Typography
                 variant="subtitle1"
                 fontWeight={600}
@@ -56,7 +56,7 @@ const ReportAttachmentCard = ({ attachment, onPreview, downloadUrl }) => {
                   textOverflow: "ellipsis",
                 }}
               >
-                {attachment.fileName || "Unknown file"}
+                {attachment.fileName || "Berkas tidak diketahui"}
               </Typography>
             </Tooltip>
           </Box>

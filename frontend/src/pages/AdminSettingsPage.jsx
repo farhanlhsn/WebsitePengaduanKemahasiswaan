@@ -183,7 +183,6 @@ const AdminSettingsPage = () => {
           subtitle="Kelola preferensi akun dan pengaturan aplikasi Anda"
           onMobileMenuClick={onMobileMenuClick}
           showRefresh={false}
-          showNotifications={false}
         />
 
         <Grid container spacing={3}>
@@ -219,7 +218,7 @@ const AdminSettingsPage = () => {
                           onChange={handleSettingChange('notifications', 'push')}
                         />
                       }
-                      label="Push Notifikasi Dashboard"
+                      label="Notifikasi Dasbor"
                     />
                   </Grid>
                 </Grid>
@@ -330,11 +329,11 @@ const AdminSettingsPage = () => {
                         </Box>
                       </Stack>
                       {!device.isCurrent && (
-                        <Tooltip title="Logout">
+                        <Tooltip title="Keluar">
                           <IconButton
                             onClick={() => setConfirmDialog({
                               open: true,
-                              title: 'Logout dari Perangkat',
+                              title: 'Keluar dari Perangkat',
                               message: `Apakah Anda yakin ingin logout dari ${device.deviceName || 'perangkat ini'}?`,
                               action: () => handleLogoutFromDevice(device.id)
                             })}
@@ -357,13 +356,13 @@ const AdminSettingsPage = () => {
                     startIcon={<Logout />}
                     onClick={() => setConfirmDialog({
                       open: true,
-                      title: 'Logout Semua Perangkat',
-                      message: 'Logout dari semua perangkat admin selain ini?',
+                      title: 'Keluar dari Semua Perangkat',
+                      message: 'Keluar dari semua perangkat admin selain perangkat ini?',
                       action: handleLogoutFromAllDevices
                     })}
                     sx={{ mt: 2 }}
                   >
-                    Logout Perangkat Lain
+                    Keluar dari Perangkat Lain
                   </Button>
                 )}
               </CardContent>

@@ -12,47 +12,45 @@ import {
   FormControl,
   InputLabel,
   Select,
-  Typography
+  Typography,
+  ListItemIcon,
+  ListItemText,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
   MoreVert,
   CheckCircle,
   Delete,
   Restore,
-  Edit
+  Edit,
+  Close,
 } from '@mui/icons-material';
 import ConfirmDialog from '../ui/ConfirmDialog';
 
-const TYPE_LABEL = {
+const TYPE_LABELS = {
   users: 'pengguna',
   reports: 'laporan',
   categories: 'kategori',
 };
 
-const BulkOperationsToolbar = ({ 
-  selectedCount, 
-  type, // 'users', 'reports', or 'categories'
+const BulkOperationsToolbar = ({
+  selectedCount,
+  type,
   onBulkVerify,
   onBulkDelete,
   onBulkRestore,
   onBulkUpdateStatus,
-  onClearSelection
+  onClearSelection,
 }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('');
   // Fix M10: konfirmasi bulk via ConfirmDialog (bukan window.confirm English).
   const [pendingAction, setPendingAction] = useState(null);
+  const typeLabel = TYPE_LABELS[type] || 'data';
 
-  const typeLabel = TYPE_LABEL[type] || type;
-
-  const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
+  const handleMenuClose = () => setAnchorEl(null);
 
   const handleBulkAction = (action) => {
     handleMenuClose();
@@ -87,9 +85,9 @@ const BulkOperationsToolbar = ({
       run: onBulkDelete,
     },
     restore: {
-      title: `Restore ${selectedCount} ${typeLabel}`,
+      title: `Pulihkan ${selectedCount} ${typeLabel}`,
       message: `Pulihkan ${selectedCount} ${typeLabel} terpilih?`,
-      confirmLabel: 'Restore',
+      confirmLabel: 'Pulihkan',
       severity: 'warning',
       run: onBulkRestore,
     },
@@ -105,7 +103,7 @@ const BulkOperationsToolbar = ({
   const handleStatusUpdate = async () => {
     if (!selectedStatus) return;
     setStatusDialogOpen(false);
-    await onBulkUpdateStatus(selectedStatus);
+    await onBulkUpdateStatus?.(selectedStatus);
     setSelectedStatus('');
   };
 
@@ -116,136 +114,90 @@ const BulkOperationsToolbar = ({
       <Box
         sx={{
           position: 'sticky',
-          top: 0,
-          zIndex: 100,
+          top: 8,
+          zIndex: 10,
           bgcolor: 'primary.main',
-          color: 'white',
-          p: 2,
-          borderRadius: 1,
+          color: 'primary.contrastText',
+          px: 1.5,
+          py: 1,
+          borderRadius: 2,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          mb: 2
+          gap: 1,
+          boxShadow: 2,
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
           <Chip
-            label={`${selectedCount} selected`}
-            color="secondary"
-            sx={{ fontWeight: 'bold' }}
+            label={selectedCount}
+            size="small"
+            sx={{ bgcolor: 'common.white', color: 'primary.main', fontWeight: 800 }}
           />
-          <Typography variant="body2">
-            Bulk Operations Available
+          <Typography variant="body2" fontWeight={650} noWrap>
+            {typeLabel} terpilih
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          {type === 'users' && onBulkVerify && (
-            <Button
-              variant="contained"
-              color="success"
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Tooltip title="Batalkan pilihan">
+            <IconButton size="small" onClick={onClearSelection} sx={{ color: 'inherit' }}>
+              <Close fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Aksi massal">
+            <IconButton
               size="small"
-              startIcon={<CheckCircle />}
-              onClick={() => handleBulkAction('verify')}
+              onClick={(event) => setAnchorEl(event.currentTarget)}
+              sx={{ color: 'inherit' }}
+              aria-label="Buka aksi massal"
             >
-              Verify
-            </Button>
-          )}
-
-          {type === 'reports' && onBulkUpdateStatus && (
-            <Button
-              variant="contained"
-              color="info"
-              size="small"
-              startIcon={<Edit />}
-              onClick={() => handleBulkAction('updateStatus')}
-            >
-              Update Status
-            </Button>
-          )}
-
-          <Button
-            variant="contained"
-            color="error"
-            size="small"
-            startIcon={<Delete />}
-            onClick={() => handleBulkAction('delete')}
-          >
-            Delete
-          </Button>
-
-          <Button
-            variant="contained"
-            color="warning"
-            size="small"
-            startIcon={<Restore />}
-            onClick={() => handleBulkAction('restore')}
-          >
-            Restore
-          </Button>
-
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={onClearSelection}
-            sx={{ color: 'white', borderColor: 'white' }}
-          >
-            Clear
-          </Button>
-
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={handleMenuOpen}
-            sx={{ color: 'white', borderColor: 'white', minWidth: 'auto', px: 1 }}
-          >
-            <MoreVert />
-          </Button>
+              <MoreVert />
+            </IconButton>
+          </Tooltip>
         </Box>
       </Box>
 
-      {/* More Actions Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
-        <MenuItem onClick={() => handleBulkAction('delete')}>
-          <Delete fontSize="small" sx={{ mr: 1 }} />
-          Hapus Massal
-        </MenuItem>
-        <MenuItem onClick={() => handleBulkAction('restore')}>
-          <Restore fontSize="small" sx={{ mr: 1 }} />
-          Restore Massal
-        </MenuItem>
-        {type === 'users' && (
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+        {type === 'users' && onBulkVerify && (
           <MenuItem onClick={() => handleBulkAction('verify')}>
-            <CheckCircle fontSize="small" sx={{ mr: 1 }} />
-            Verifikasi Massal
+            <ListItemIcon><CheckCircle fontSize="small" color="success" /></ListItemIcon>
+            <ListItemText>Verifikasi</ListItemText>
           </MenuItem>
         )}
-        {type === 'reports' && (
+        {type === 'reports' && onBulkUpdateStatus && (
           <MenuItem onClick={() => handleBulkAction('updateStatus')}>
-            <Edit fontSize="small" sx={{ mr: 1 }} />
-            Ubah Status Massal
+            <ListItemIcon><Edit fontSize="small" color="info" /></ListItemIcon>
+            <ListItemText>Ubah status</ListItemText>
+          </MenuItem>
+        )}
+        {onBulkRestore && (
+          <MenuItem onClick={() => handleBulkAction('restore')}>
+            <ListItemIcon><Restore fontSize="small" color="warning" /></ListItemIcon>
+            <ListItemText>Pulihkan</ListItemText>
+          </MenuItem>
+        )}
+        {onBulkDelete && (
+          <MenuItem onClick={() => handleBulkAction('delete')}>
+            <ListItemIcon><Delete fontSize="small" color="error" /></ListItemIcon>
+            <ListItemText>Hapus</ListItemText>
           </MenuItem>
         )}
       </Menu>
 
-      {/* Status Update Dialog */}
-      <Dialog open={statusDialogOpen} onClose={() => setStatusDialogOpen(false)}>
+      <Dialog open={statusDialogOpen} onClose={() => setStatusDialogOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Ubah Status Laporan</DialogTitle>
-        <DialogContent sx={{ minWidth: 300 }}>
-          <FormControl fullWidth sx={{ mt: 2 }}>
+        <DialogContent>
+          <FormControl fullWidth sx={{ mt: 1 }}>
             <InputLabel>Status</InputLabel>
             <Select
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
+              onChange={(event) => setSelectedStatus(event.target.value)}
               label="Status"
             >
               <MenuItem value="PENDING">Menunggu</MenuItem>
-              <MenuItem value="IN_REVIEW">Sedang Ditinjau</MenuItem>
-              <MenuItem value="IN_PROGRESS">Sedang Diproses</MenuItem>
+              <MenuItem value="IN_REVIEW">Ditinjau</MenuItem>
+              <MenuItem value="IN_PROGRESS">Diproses</MenuItem>
               <MenuItem value="RESOLVED">Selesai</MenuItem>
               <MenuItem value="REJECTED">Ditolak</MenuItem>
               <MenuItem value="CANCELED">Dibatalkan</MenuItem>
@@ -254,12 +206,8 @@ const BulkOperationsToolbar = ({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setStatusDialogOpen(false)}>Batal</Button>
-          <Button 
-            onClick={handleStatusUpdate} 
-            variant="contained" 
-            disabled={!selectedStatus}
-          >
-            Perbarui
+          <Button onClick={handleStatusUpdate} variant="contained" disabled={!selectedStatus}>
+            Simpan
           </Button>
         </DialogActions>
       </Dialog>
@@ -279,5 +227,3 @@ const BulkOperationsToolbar = ({
 };
 
 export default BulkOperationsToolbar;
-
-

@@ -176,7 +176,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
                 </Box>
               </Grid>
               
-              <Grid xs>
+              <Grid size={{ xs: true }}>
                 <Typography variant="h5" fontWeight={800} gutterBottom sx={{ mb: 0.5 }}>
                   {user.name || 'Nama tidak tersedia'}
                 </Typography>

@@ -214,7 +214,7 @@ const useAuthStore = create(
           set({ devices, loading: false });
           return devices;
         } catch (error) {
-          const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to fetch devices';
+          const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Gagal memuat perangkat';
           set({ loading: false, error: errorMessage });
           throw error;
         }
@@ -230,7 +230,7 @@ const useAuthStore = create(
           const updatedDevices = get().devices.filter(device => device.id !== deviceId);
           set({ devices: updatedDevices, loading: false });
         } catch (error) {
-          const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to logout device';
+          const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Gagal mengeluarkan perangkat';
           set({ loading: false, error: errorMessage });
           throw error;
         }
@@ -245,7 +245,7 @@ const useAuthStore = create(
           // Refresh devices list
           await get().getUserDevices();
         } catch (error) {
-          const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to logout other devices';
+          const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Gagal mengeluarkan perangkat lain';
           set({ loading: false, error: errorMessage });
           throw error;
         }

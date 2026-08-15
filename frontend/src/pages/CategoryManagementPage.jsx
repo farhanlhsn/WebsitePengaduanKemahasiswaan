@@ -12,6 +12,8 @@ import {
   TableRow,
   IconButton,
   Tooltip,
+  Menu,
+  ListItemIcon,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -42,6 +44,7 @@ import {
   Category as CategoryIcon,
   DeleteOutline,
   VisibilityOff,
+  MoreVert,
 } from '@mui/icons-material';
 import {
   getCategories,
@@ -79,6 +82,8 @@ const CategoryManagementPage = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [actionAnchorEl, setActionAnchorEl] = useState(null);
+  const [actionCategory, setActionCategory] = useState(null);
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -96,7 +101,7 @@ const CategoryManagementPage = () => {
       const data = await getCategories(true);
       setCategories(data);
     } catch (error) {
-      showSnackbar(`Failed to load categories: ${getApiErrorMessage(error)}`, 'error');
+      showSnackbar(`Gagal memuat kategori: ${getApiErrorMessage(error)}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -217,6 +222,27 @@ const CategoryManagementPage = () => {
     }
   };
 
+  const handleActionMenuOpen = (event, category) => {
+    event.stopPropagation();
+    setActionAnchorEl(event.currentTarget);
+    setActionCategory(category);
+  };
+
+  const handleActionMenuClose = () => {
+    setActionAnchorEl(null);
+    setActionCategory(null);
+  };
+
+  const handleCategoryAction = (action) => {
+    const category = actionCategory;
+    handleActionMenuClose();
+    if (!category) return;
+    if (action === 'edit') handleEditOpen(category);
+    // Fix M10: hapus lewat ConfirmDialog, bukan eksekusi langsung.
+    if (action === 'delete') setDeleteTarget(category);
+    if (action === 'restore') handleRestore(category.id);
+  };
+
   const showSnackbar = (message, severity = 'success') => {
     setSnackbar({ open: true, message, severity });
   };
@@ -252,10 +278,10 @@ const CategoryManagementPage = () => {
       />
 
       <FormControl fullWidth>
-        <InputLabel id="category-priority-label">Prioritas Default</InputLabel>
+        <InputLabel id="category-priority-label">Prioritas Bawaan</InputLabel>
         <Select
           labelId="category-priority-label"
-          label="Prioritas Default"
+          label="Prioritas Bawaan"
           value={form.defaultPriority}
           onChange={handleFormChange('defaultPriority')}
         >
@@ -305,8 +331,8 @@ const CategoryManagementPage = () => {
     <Fade in timeout={300}>
       <Box>
         {/* Header */}
-        <Box sx={{ mb: 4 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+        <Box sx={{ mb: 2.5 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'flex-start' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 1.5, mb: 1 }}>
             <Box>
               <Typography variant="h4" fontWeight={800} gutterBottom>
                 Manajemen Kategori
@@ -315,14 +341,14 @@ const CategoryManagementPage = () => {
                 Kelola kategori laporan pengaduan
               </Typography>
             </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <Button
                 variant="outlined"
                 startIcon={<Refresh />}
                 onClick={loadCategories}
                 sx={{ borderRadius: 2, fontWeight: 600 }}
               >
-                Refresh
+                Segarkan
               </Button>
               <Button
                 variant="contained"
@@ -338,7 +364,7 @@ const CategoryManagementPage = () => {
 
         {/* Stats */}
         {stats && (
-          <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid container spacing={2} sx={{ mb: 2.5 }}>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <StatCard
                 title="Total Kategori"
@@ -363,14 +389,14 @@ const CategoryManagementPage = () => {
                 value={stats.deleted || 0}
                 icon={<DeleteOutline />}
                 color="#F44336"
-                subtitle="Soft Deleted"
+                subtitle="Dihapus sementara"
               />
             </Grid>
           </Grid>
         )}
 
         {/* Filter Status */}
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: 2 }}>
           <FormControl sx={{ minWidth: 200 }} size="small">
             <InputLabel id="status-filter-label">Status Kategori</InputLabel>
             <Select
@@ -397,18 +423,45 @@ const CategoryManagementPage = () => {
             overflow: 'hidden',
           }}
         >
-          <TableContainer sx={{ maxHeight: 600 }}>
-            <Table stickyHeader>
+          <Stack spacing={1.25} sx={{ display: { xs: 'flex', md: 'none' }, p: 1.5 }}>
+            {loading ? (
+              <Typography color="text.secondary" textAlign="center" sx={{ py: 4 }}>Memuat data...</Typography>
+            ) : paginatedCategories.length === 0 ? (
+              <Typography color="text.secondary" textAlign="center" sx={{ py: 4 }}>Tidak ada kategori</Typography>
+            ) : paginatedCategories.map((category) => (
+              <Paper key={category.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2.25 }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="subtitle2" fontWeight={750} sx={{ wordBreak: 'break-word' }}>{category.name}</Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>{category.slug}</Typography>
+                    <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                      <Chip label={PRIORITY_LABEL[category.defaultPriority] || '-'} color={PRIORITY_COLOR[category.defaultPriority] || 'default'} size="small" />
+                      <Chip label={category.deletedAt ? 'Dihapus' : 'Aktif'} color={category.deletedAt ? 'error' : 'success'} size="small" />
+                      {category.allowAnonymous && <Chip label="Anonim diizinkan" color="warning" size="small" variant="outlined" />}
+                    </Stack>
+                  </Box>
+                  <Tooltip title="Buka menu aksi">
+                    <IconButton size="small" onClick={(event) => handleActionMenuOpen(event, category)} aria-label="Buka menu aksi kategori">
+                      <MoreVert />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </Paper>
+            ))}
+          </Stack>
+
+          <TableContainer sx={{ maxHeight: 600, overflowX: 'hidden', display: { xs: 'none', md: 'block' } }}>
+            <Table stickyHeader size="small" sx={{ width: '100%', tableLayout: 'fixed' }}>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={headerCellSx}>ID</TableCell>
-                  <TableCell sx={headerCellSx}>Nama</TableCell>
-                  <TableCell sx={headerCellSx}>Slug</TableCell>
-                  <TableCell sx={headerCellSx}>Prioritas Default</TableCell>
-                  <TableCell sx={headerCellSx}>Anonim</TableCell>
-                  <TableCell sx={headerCellSx}>Status</TableCell>
-                  <TableCell sx={headerCellSx}>Dibuat</TableCell>
-                  <TableCell sx={{ ...headerCellSx, textAlign: 'center' }}>Aksi</TableCell>
+                  <TableCell sx={{ ...headerCellSx, width: 64, display: { md: 'none', lg: 'table-cell' } }}>ID</TableCell>
+                  <TableCell sx={{ ...headerCellSx, width: '26%' }}>Nama</TableCell>
+                  <TableCell sx={{ ...headerCellSx, width: '20%', display: { md: 'none', lg: 'table-cell' } }}>Slug</TableCell>
+                  <TableCell sx={{ ...headerCellSx, width: '18%' }}>Prioritas Bawaan</TableCell>
+                  <TableCell sx={{ ...headerCellSx, width: '14%', display: { md: 'none', lg: 'table-cell' } }}>Anonim</TableCell>
+                  <TableCell sx={{ ...headerCellSx, width: '14%' }}>Status</TableCell>
+                  <TableCell sx={{ ...headerCellSx, width: '14%', display: { md: 'none', lg: 'table-cell' } }}>Dibuat</TableCell>
+                  <TableCell sx={{ ...headerCellSx, width: 58, textAlign: 'center' }}>Aksi</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -439,17 +492,15 @@ const CategoryManagementPage = () => {
                           },
                         }}
                       >
-                        <TableCell>
-                          <Typography variant="body2" fontWeight={600}>
-                            {category.id}
-                          </Typography>
+                        <TableCell sx={{ display: { md: 'none', lg: 'table-cell' } }}>
+                          <Typography variant="body2" fontWeight={600}>{category.id}</Typography>
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" fontWeight={700}>
                             {category.name}
                           </Typography>
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ display: { md: 'none', lg: 'table-cell' }, overflowWrap: 'anywhere' }}>
                           <Typography
                             variant="caption"
                             sx={{
@@ -472,7 +523,7 @@ const CategoryManagementPage = () => {
                             sx={{ fontWeight: 600 }}
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ display: { md: 'none', lg: 'table-cell' } }}>
                           {category.allowAnonymous ? (
                             <Chip
                               icon={<VisibilityOff sx={{ fontSize: 14 }} />}
@@ -495,46 +546,15 @@ const CategoryManagementPage = () => {
                             sx={{ fontWeight: 600 }}
                           />
                         </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight={600}>
-                            {format(new Date(category.createdAt), 'dd/MM/yyyy')}
-                          </Typography>
+                        <TableCell sx={{ display: { md: 'none', lg: 'table-cell' } }}>
+                          <Typography variant="body2" fontWeight={600}>{format(new Date(category.createdAt), 'dd/MM/yyyy')}</Typography>
                         </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                            {!category.deletedAt ? (
-                              <>
-                                <Tooltip title="Edit">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => handleEditOpen(category)}
-                                    color="primary"
-                                  >
-                                    <Edit fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Hapus">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => setDeleteTarget(category)}
-                                    color="error"
-                                  >
-                                    <Delete fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </>
-                            ) : (
-                              <Tooltip title="Pulihkan">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleRestore(category.id)}
-                                  color="success"
-                                >
-                                  <Restore fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                          </Box>
+                        <TableCell align="center">
+                          <Tooltip title="Buka menu aksi">
+                            <IconButton size="small" onClick={(event) => handleActionMenuOpen(event, category)} aria-label="Buka menu aksi kategori">
+                              <MoreVert />
+                            </IconButton>
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
                     </Fade>
@@ -543,6 +563,30 @@ const CategoryManagementPage = () => {
               </TableBody>
             </Table>
           </TableContainer>
+
+          <Menu
+            anchorEl={actionAnchorEl}
+            open={Boolean(actionAnchorEl)}
+            onClose={handleActionMenuClose}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+          >
+            {!actionCategory?.deletedAt ? [
+              <MenuItem key="edit" onClick={() => handleCategoryAction('edit')}>
+                <ListItemIcon><Edit fontSize="small" /></ListItemIcon>
+                Ubah kategori
+              </MenuItem>,
+              <MenuItem key="delete" onClick={() => handleCategoryAction('delete')} sx={{ color: 'error.main' }}>
+                <ListItemIcon><Delete fontSize="small" color="error" /></ListItemIcon>
+                Hapus kategori
+              </MenuItem>,
+            ] : (
+              <MenuItem onClick={() => handleCategoryAction('restore')} sx={{ color: 'success.main' }}>
+                <ListItemIcon><Restore fontSize="small" color="success" /></ListItemIcon>
+                Pulihkan kategori
+              </MenuItem>
+            )}
+          </Menu>
 
           {/* Pagination */}
           <TablePagination

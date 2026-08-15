@@ -1,0 +1,76 @@
+{
+  "name": "Sistem Pengaduan Mahasiswa UBH",
+  "short_name": "Pengaduan UBH",
+  "description": "Sistem Pengaduan Kemahasiswaan Universitas Bung Hatta",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1976d2",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/optimized/logo-ubh.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/optimized/logo-ubh.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/optimized/logo-ubh.webp",
+      "sizes": "192x192",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/optimized/logo-ubh.avif",
+      "sizes": "192x192",
+      "type": "image/avif",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "lang": "id",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Buka dashboard mahasiswa",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/optimized/logo-ubh.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Buat Laporan",
+      "short_name": "Laporan",
+      "description": "Buat laporan pengaduan baru",
+      "url": "/dashboard?action=create",
+      "icons": [
+        {
+          "src": "/optimized/logo-ubh.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/optimized/logo-ubh.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Sistem Pengaduan UBH Dashboard"
+    }
+  ]
+} 

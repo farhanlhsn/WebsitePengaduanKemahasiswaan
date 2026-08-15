@@ -150,7 +150,7 @@ const AuditLogPage = () => {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
             <Box>
               <Typography variant="h4" fontWeight={800} gutterBottom>
-                Audit Logs
+                Log Audit
               </Typography>
               <Typography variant="body1" color="text.secondary">
                 Riwayat aktivitas sistem dan perubahan data
@@ -163,7 +163,7 @@ const AuditLogPage = () => {
                 onClick={handleRefresh}
                 sx={{ borderRadius: 2, fontWeight: 600 }}
               >
-                Refresh
+                Segarkan
               </Button>
               <Button
                 variant="outlined"
@@ -183,25 +183,25 @@ const AuditLogPage = () => {
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
-                title="Total Logs"
+                title="Total Log"
                 value={stats.total?.toLocaleString() || 0}
                 icon={<History />}
                 color="#2196F3"
-                subtitle="Semua Aktivitas"
+                subtitle="Seluruh Aktivitas"
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
-                title="User Actions"
+                title="Aktivitas Pengguna"
                 value={stats.byEntityType?.USER || 0}
                 icon={<Person />}
                 color="#9C27B0"
-                subtitle="Aktivitas User"
+                subtitle="Aktivitas Pengguna"
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
-                title="Report Actions"
+                title="Aktivitas Laporan"
                 value={stats.byEntityType?.REPORT || 0}
                 icon={<Assignment />}
                 color="#FF9800"
@@ -210,7 +210,7 @@ const AuditLogPage = () => {
             </Grid>
             <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
-                title="Verifications"
+                title="Verifikasi"
                 value={stats.byAction?.VERIFY_MAHASISWA || 0}
                 icon={<CheckCircle />}
                 color="#4CAF50"

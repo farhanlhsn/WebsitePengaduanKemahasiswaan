@@ -60,14 +60,14 @@ const SystemSecurityPage = () => {
       let result;
       if (cleanupType === 'users') {
         result = await cleanupOldDeletedUsers(daysOld);
-        showSnackbar(`Cleaned up ${result.deleted || 0} old deleted users`, 'success');
+        showSnackbar(`Berhasil membersihkan ${result.deleted || 0} pengguna lama yang telah dihapus`, 'success');
       } else if (cleanupType === 'audit') {
         result = await cleanupOldAuditLogs(daysOld);
-        showSnackbar(`Cleaned up ${result.deleted || 0} old audit logs`, 'success');
+        showSnackbar(`Berhasil membersihkan ${result.deleted || 0} log audit lama`, 'success');
       }
       setCleanupDialogOpen(false);
     } catch (error) {
-      showSnackbar(`Cleanup failed: ${getApiErrorMessage(error)}`, 'error');
+      showSnackbar(`Pembersihan gagal: ${getApiErrorMessage(error)}`, 'error');
     }
   };
 
@@ -84,11 +84,10 @@ const SystemSecurityPage = () => {
       <Box>
         {/* Header */}
         <AdminSectionHeader
-          title="System & Security"
-          subtitle="System maintenance and security settings"
+          title="Sistem & Keamanan"
+          subtitle="Pemeliharaan sistem dan pengaturan keamanan"
           onMobileMenuClick={onMobileMenuClick}
           showRefresh={false}
-          showNotifications={false}
         />
 
       <Grid container spacing={3}>
@@ -97,7 +96,7 @@ const SystemSecurityPage = () => {
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <Info color="primary" />
-              <Typography variant="h6">System Information</Typography>
+              <Typography variant="h6">Informasi Sistem</Typography>
             </Box>
             <Divider sx={{ mb: 2 }} />
             <List dense>
@@ -106,8 +105,8 @@ const SystemSecurityPage = () => {
                   <CheckCircle color="success" fontSize="small" />
                 </ListItemIcon>
                 <ListItemText
-                  primary="System Status"
-                  secondary="Operational"
+                  primary="Status Sistem"
+                  secondary="Beroperasi"
                 />
               </ListItem>
               <ListItem>
@@ -116,7 +115,7 @@ const SystemSecurityPage = () => {
                 </ListItemIcon>
                 <ListItemText
                   primary="Database"
-                  secondary="MySQL - Connected"
+                  secondary="MySQL - Terhubung"
                 />
               </ListItem>
               <ListItem>
@@ -124,8 +123,8 @@ const SystemSecurityPage = () => {
                   <Security fontSize="small" />
                 </ListItemIcon>
                 <ListItemText
-                  primary="Authentication"
-                  secondary="JWT with Refresh Tokens"
+                  primary="Autentikasi"
+                  secondary="JWT dengan token penyegaran"
                 />
               </ListItem>
             </List>
@@ -137,7 +136,7 @@ const SystemSecurityPage = () => {
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <Security color="primary" />
-              <Typography variant="h6">Security Features</Typography>
+              <Typography variant="h6">Fitur Keamanan</Typography>
             </Box>
             <Divider sx={{ mb: 2 }} />
             <List dense>
@@ -146,8 +145,8 @@ const SystemSecurityPage = () => {
                   <CheckCircle color="success" fontSize="small" />
                 </ListItemIcon>
                 <ListItemText
-                  primary="Audit Logging"
-                  secondary="All admin actions are logged"
+                  primary="Pencatatan Audit"
+                  secondary="Seluruh tindakan admin dicatat"
                 />
               </ListItem>
               <ListItem>
@@ -155,8 +154,8 @@ const SystemSecurityPage = () => {
                   <CheckCircle color="success" fontSize="small" />
                 </ListItemIcon>
                 <ListItemText
-                  primary="Role-Based Access"
-                  secondary="Admin middleware protection"
+                  primary="Akses Berbasis Peran"
+                  secondary="Perlindungan akses khusus administrator"
                 />
               </ListItem>
               <ListItem>
@@ -164,8 +163,8 @@ const SystemSecurityPage = () => {
                   <CheckCircle color="success" fontSize="small" />
                 </ListItemIcon>
                 <ListItemText
-                  primary="Soft Delete"
-                  secondary="Data recovery capability"
+                  primary="Penghapusan Lunak"
+                  secondary="Data masih dapat dipulihkan"
                 />
               </ListItem>
               <ListItem>
@@ -173,8 +172,8 @@ const SystemSecurityPage = () => {
                   <CheckCircle color="success" fontSize="small" />
                 </ListItemIcon>
                 <ListItemText
-                  primary="Device Tracking"
-                  secondary="Multi-device session management"
+                  primary="Pelacakan Perangkat"
+                  secondary="Pengelolaan sesi pada beberapa perangkat"
                 />
               </ListItem>
             </List>
@@ -186,16 +185,16 @@ const SystemSecurityPage = () => {
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <CleaningServices color="warning" />
-              <Typography variant="h6">Database Cleanup</Typography>
+              <Typography variant="h6">Pembersihan Basis Data</Typography>
             </Box>
             <Divider sx={{ mb: 3 }} />
 
             <Alert severity="warning" sx={{ mb: 3 }}>
               <Typography variant="body2" fontWeight="bold" gutterBottom>
-                Warning: Cleanup operations are irreversible
+                Peringatan: proses pembersihan tidak dapat dibatalkan
               </Typography>
               <Typography variant="caption">
-                Please backup your database before performing cleanup operations.
+                Buat cadangan basis data sebelum menjalankan proses pembersihan.
               </Typography>
             </Alert>
 
@@ -206,11 +205,11 @@ const SystemSecurityPage = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                       <Delete color="error" />
                       <Typography variant="subtitle1" fontWeight="bold">
-                        Cleanup Deleted Users
+                        Bersihkan Pengguna Terhapus
                       </Typography>
                     </Box>
                     <Typography variant="body2" color="textSecondary" paragraph>
-                      Permanently remove users that have been soft-deleted for more than the specified number of days.
+                      Hapus permanen pengguna yang telah dihapus secara lunak melebihi jumlah hari yang ditentukan.
                     </Typography>
                     <Button
                       variant="outlined"
@@ -218,7 +217,7 @@ const SystemSecurityPage = () => {
                       fullWidth
                       onClick={() => handleCleanupOpen('users')}
                     >
-                      Cleanup Users
+                      Bersihkan Pengguna
                     </Button>
                   </CardContent>
                 </Card>
@@ -230,11 +229,11 @@ const SystemSecurityPage = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                       <Delete color="error" />
                       <Typography variant="subtitle1" fontWeight="bold">
-                        Cleanup Audit Logs
+                        Bersihkan Log Audit
                       </Typography>
                     </Box>
                     <Typography variant="body2" color="textSecondary" paragraph>
-                      Remove audit logs older than the specified number of days to free up database space.
+                      Hapus log audit yang lebih lama dari jumlah hari yang ditentukan untuk mengosongkan ruang basis data.
                     </Typography>
                     <Button
                       variant="outlined"
@@ -242,7 +241,7 @@ const SystemSecurityPage = () => {
                       fullWidth
                       onClick={() => handleCleanupOpen('audit')}
                     >
-                      Cleanup Logs
+                      Bersihkan Log
                     </Button>
                   </CardContent>
                 </Card>
@@ -256,32 +255,32 @@ const SystemSecurityPage = () => {
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <Warning color="info" />
-              <Typography variant="h6">Best Practices</Typography>
+              <Typography variant="h6">Praktik Terbaik</Typography>
             </Box>
             <Divider sx={{ mb: 2 }} />
             <List>
               <ListItem>
                 <ListItemText
-                  primary="Regular Backups"
-                  secondary="Create database backups before major operations"
+                  primary="Pencadangan Berkala"
+                  secondary="Buat cadangan basis data sebelum operasi besar"
                 />
               </ListItem>
               <ListItem>
                 <ListItemText
-                  primary="Monitor Audit Logs"
-                  secondary="Review audit logs regularly for suspicious activities"
+                  primary="Pantau Log Audit"
+                  secondary="Tinjau log audit secara berkala untuk mendeteksi aktivitas mencurigakan"
                 />
               </ListItem>
               <ListItem>
                 <ListItemText
-                  primary="Data Retention"
-                  secondary="Keep deleted data for 90 days before permanent cleanup"
+                  primary="Retensi Data"
+                  secondary="Simpan data terhapus selama 90 hari sebelum dibersihkan permanen"
                 />
               </ListItem>
               <ListItem>
                 <ListItemText
-                  primary="Password Policy"
-                  secondary="Enforce strong passwords and regular password changes"
+                  primary="Kebijakan Kata Sandi"
+                  secondary="Terapkan kata sandi kuat dan perubahan berkala"
                 />
               </ListItem>
             </List>
@@ -292,37 +291,37 @@ const SystemSecurityPage = () => {
       {/* Cleanup Confirmation Dialog */}
       <Dialog open={cleanupDialogOpen} onClose={() => setCleanupDialogOpen(false)}>
         <DialogTitle>
-          Confirm Cleanup Operation
+          Konfirmasi Pembersihan
         </DialogTitle>
         <DialogContent>
           <Alert severity="error" sx={{ mb: 2 }}>
-            This operation is irreversible!
+            Proses ini tidak dapat dibatalkan!
           </Alert>
           <Typography variant="body2" paragraph>
             {cleanupType === 'users'
-              ? 'This will permanently delete all users that have been soft-deleted for more than the specified number of days.'
-              : 'This will permanently delete all audit logs older than the specified number of days.'}
+              ? 'Semua pengguna yang telah dihapus secara lunak melebihi jumlah hari tersebut akan dihapus permanen.'
+              : 'Semua log audit yang lebih lama dari jumlah hari tersebut akan dihapus permanen.'}
           </Typography>
           <TextField
             type="number"
-            label="Days Old"
+            label="Usia Data (hari)"
             fullWidth
             value={daysOld}
             onChange={(e) => setDaysOld(parseInt(e.target.value))}
             inputProps={{ min: 1 }}
-            helperText={`Delete items older than ${daysOld} days`}
+            helperText={`Hapus data yang berusia lebih dari ${daysOld} hari`}
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCleanupDialogOpen(false)}>
-            Cancel
+            Batal
           </Button>
           <Button
             onClick={handleCleanupSubmit}
             color="error"
             variant="contained"
           >
-            Confirm Cleanup
+            Bersihkan
           </Button>
         </DialogActions>
       </Dialog>
