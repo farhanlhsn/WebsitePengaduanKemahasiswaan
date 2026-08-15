@@ -52,11 +52,24 @@ async function ensureSuperAdmin() {
     process.env.ADMIN_NAME ||
     'Super Admin';
   const password =
-    process.env.SEED_SUPERADMIN_PASSWORD ||
-    process.env.ADMIN_PASSWORD ||
-    'superadmin12345';
+    process.env.SEED_SUPERADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
 
-  const hash = await bcrypt.hash(password, 10);
+  if (!password) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error(
+        'FATAL: SEED_SUPERADMIN_PASSWORD wajib diisi di production (tidak ada fallback).'
+      );
+      process.exit(1);
+    }
+    console.warn(
+      '[seed] SEED_SUPERADMIN_PASSWORD tidak diisi — memakai password dev default. JANGAN gunakan di production.'
+    );
+  } else if (process.env.NODE_ENV === 'production' && password.length < 12) {
+    console.error('FATAL: SEED_SUPERADMIN_PASSWORD production minimal 12 karakter.');
+    process.exit(1);
+  }
+
+  const hash = await bcrypt.hash(password || 'superadmin12345', 10);
 
   await prisma.user.upsert({
     where: { email },

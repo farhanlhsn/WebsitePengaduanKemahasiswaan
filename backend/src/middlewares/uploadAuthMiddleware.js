@@ -19,7 +19,7 @@ const uploadAuthMiddleware = async (req, res, next) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       try {
-        decoded = jwt.verify(token, process.env.JWT_SECRET);
+        decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
         authSource = 'access';
       } catch (err) {
         // Invalid/expired bearer — fall through to refresh cookie
@@ -30,7 +30,7 @@ const uploadAuthMiddleware = async (req, res, next) => {
     if (!decoded && req.cookies?.refreshToken) {
       const refreshToken = req.cookies.refreshToken;
       try {
-        const refreshDecoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        const refreshDecoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, { algorithms: ['HS256'] });
         authSource = 'refresh';
 
         const storedToken = await prisma.refreshToken.findFirst({

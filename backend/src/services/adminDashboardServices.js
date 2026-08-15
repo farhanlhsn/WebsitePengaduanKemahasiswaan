@@ -76,6 +76,11 @@ class AdminDashboardServices {
    */
   async getUsersStats(user, scope) {
     try {
+      // Audit B5: statistik pengguna global adalah domain SUPERADMIN.
+      // ADMIN kategori tidak mengelola direktori user, jadi tidak boleh
+      // melihat agregatnya (bocor di luar scope assignment).
+      if (!isSuperAdmin(user)) return null;
+
       const [total, deleted, verified, mahasiswa, admin] = await Promise.all([
         SoftDeleteHelper.count(prisma.user),
         SoftDeleteHelper.count(prisma.user, {}, true),

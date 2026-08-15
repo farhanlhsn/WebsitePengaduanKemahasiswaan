@@ -17,6 +17,7 @@ import {
 } from '../../services/adminGovernanceApi';
 import { getCategories } from '../../services/api';
 import AdminSectionHeader from './AdminSectionHeader';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 /**
  * SUPERADMIN-only governance UI:
@@ -40,6 +41,20 @@ const AdminManagementPage = () => {
   // grant-dialog state
   const [grantTarget, setGrantTarget] = useState(null);
   const [grantCategoryId, setGrantCategoryId] = useState('');
+
+  // Fix H5: dialog konfirmasi untuk aksi destruktif (demosi / revoke).
+  const [confirm, setConfirm] = useState({
+    open: false,
+    title: '',
+    message: '',
+    action: null,
+  });
+
+  const requestConfirm = (title, message, action) =>
+    setConfirm({ open: true, title, message, action });
+
+  const closeConfirm = () =>
+    setConfirm({ open: false, title: '', message: '', action: null });
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -74,10 +89,28 @@ const AdminManagementPage = () => {
   );
 
   const onPromoteSuper = (id) => wrapAction(() => promoteToSuperAdmin(id));
-  const onDemoteSuper = (id) => wrapAction(() => demoteSuperAdmin(id));
-  const onDemoteAdmin = (id) => wrapAction(() => demoteAdmin(id));
-  const onRevokeCategory = (adminId, categoryId) =>
-    wrapAction(() => revokeCategory(adminId, categoryId));
+
+  const onDemoteSuper = (id, name) =>
+    requestConfirm(
+      'Demosi Super Admin',
+      `Demosi "${name}" menjadi Admin biasa? Ia kehilangan akses penuh governance. Super Admin terakhir tidak dapat didemosi.`,
+      () => wrapAction(() => demoteSuperAdmin(id)).then(closeConfirm)
+    );
+
+  const onDemoteAdmin = (id, name) =>
+    requestConfirm(
+      'Demosi Admin',
+      `Demosi "${name}" menjadi Mahasiswa? Ia kehilangan seluruh akses admin dan assignment kategorinya.`,
+      () => wrapAction(() => demoteAdmin(id)).then(closeConfirm)
+    );
+
+  const onRevokeCategory = (adminId, categoryId, adminName, categoryName) =>
+    requestConfirm(
+      'Cabut Kategori',
+      `Cabut akses "${adminName}" dari kategori "${categoryName || `#${categoryId}`}"? Laporan kategori ini yang ditugaskan padanya akan dilepas.`,
+      () => wrapAction(() => revokeCategory(adminId, categoryId)).then(closeConfirm)
+    );
+
   const onGrantSubmit = () => {
     if (!grantTarget || !grantCategoryId) return;
     wrapAction(() => grantCategory(grantTarget.id, Number(grantCategoryId))).then(() => {
@@ -139,7 +172,7 @@ const AdminManagementPage = () => {
                       key={a.id}
                       admin={a}
                       isSelf={user.id === a.id}
-                      onDemoteSuper={() => onDemoteSuper(a.id)}
+                      onDemoteSuper={() => onDemoteSuper(a.id, a.name)}
                       disabled={actionPending}
                     />
                   ))}
@@ -163,9 +196,9 @@ const AdminManagementPage = () => {
                       key={a.id}
                       admin={a}
                       onPromoteSuper={() => onPromoteSuper(a.id)}
-                      onDemoteAdmin={() => onDemoteAdmin(a.id)}
+                      onDemoteAdmin={() => onDemoteAdmin(a.id, a.name)}
                       onGrant={() => setGrantTarget(a)}
-                      onRevokeCategory={(catId) => onRevokeCategory(a.id, catId)}
+                      onRevokeCategory={(catId, catName) => onRevokeCategory(a.id, catId, a.name, catName)}
                       disabled={actionPending}
                     />
                   ))}
@@ -206,6 +239,17 @@ const AdminManagementPage = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Fix H5: konfirmasi aksi destruktif */}
+        <ConfirmDialog
+          open={confirm.open}
+          title={confirm.title}
+          message={confirm.message}
+          severity="error"
+          loading={actionPending}
+          onConfirm={confirm.action}
+          onCancel={closeConfirm}
+        />
       </Box>
     </Fade>
   );
@@ -288,7 +332,7 @@ const AdminRow = ({
                     size="small"
                     icon={<CategoryIcon sx={{ fontSize: 14 }} />}
                     label={a.category?.name || `Cat#${a.categoryId}`}
-                    onDelete={() => onRevokeCategory(a.categoryId)}
+                    onDelete={() => onRevokeCategory(a.categoryId, a.category?.name)}
                     disabled={disabled}
                   />
                 ))

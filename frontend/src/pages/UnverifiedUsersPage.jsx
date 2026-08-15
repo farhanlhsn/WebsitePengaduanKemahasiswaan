@@ -51,6 +51,7 @@ import BulkOperationsToolbar from '../components/admin/BulkOperationsToolbar';
 import StatCard from '../components/ui/StatCard';
 import AdminSectionHeader from './admin/AdminSectionHeader';
 import { format } from 'date-fns';
+import getApiErrorMessage from '../utils/getApiErrorMessage';
 
 const UnverifiedUsersPage = () => {
   const headerCellSx = {
@@ -89,7 +90,7 @@ const UnverifiedUsersPage = () => {
       const result = await getUnverifiedStudents();
       setUsers(result.unverifiedStudents || []);
     } catch (error) {
-      showSnackbar('Gagal memuat pengguna yang belum terverifikasi: ' + error.message, 'error');
+showSnackbar('Gagal memuat pengguna yang belum terverifikasi: ' + getApiErrorMessage(error), 'error');
     } finally {
       setLoading(false);
     }
@@ -124,7 +125,7 @@ const UnverifiedUsersPage = () => {
       loadUnverifiedUsers();
       setSelectedUsers([]);
     } catch (error) {
-      showSnackbar('Gagal memverifikasi pengguna: ' + error.message, 'error');
+showSnackbar('Gagal memverifikasi pengguna: ' + getApiErrorMessage(error), 'error');
     }
   };
 
@@ -135,7 +136,7 @@ const UnverifiedUsersPage = () => {
       loadUnverifiedUsers();
       setSelectedUsers([]);
     } catch (error) {
-      showSnackbar('Gagal melakukan verifikasi massal: ' + error.message, 'error');
+showSnackbar('Gagal melakukan verifikasi massal: ' + getApiErrorMessage(error), 'error');
     }
   };
 
@@ -145,7 +146,7 @@ const UnverifiedUsersPage = () => {
       setSelectedUser(user);
       setViewUserDialog(true);
     } catch (error) {
-      showSnackbar('Gagal memuat detail pengguna: ' + error.message, 'error');
+showSnackbar('Gagal memuat detail pengguna: ' + getApiErrorMessage(error), 'error');
     }
   };
 
@@ -174,7 +175,7 @@ const UnverifiedUsersPage = () => {
         setSelectedUsers(prev => prev.filter(id => id !== userToReject.id));
       }
     } catch (error) {
-      showSnackbar('Gagal menolak pendaftaran: ' + error.message, 'error');
+      showSnackbar(`Gagal menolak pendaftaran: ${getApiErrorMessage(error)}`, 'error');
     } finally {
       setRejectLoading(false);
     }

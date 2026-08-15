@@ -1,8 +1,11 @@
+const bcrypt = require('bcryptjs');
+const prisma = require('../utils/prisma');
 const userServices = require('../services/userServices');
 const auditLogServices = require('../services/auditLogServices');
 const emailService = require('../services/emailService');
 const ResponseFormatter = require('../utils/responseFormatter');
-const { canAccessUser } = require('../utils/accessPolicy');
+const { isAllowedDomain } = require('../utils/emailValidator');
+const { canAccessUser, canViewUser } = require('../utils/accessPolicy');
 const {
   UserGovernanceError,
   assertCanManageUser,
@@ -47,11 +50,14 @@ exports.getUserById = async (req, res) => {
       return res.status(400).json(ResponseFormatter.error('Invalid user ID provided', 400));
     }
 
-    if (!canAccessUser(req.user, userId)) {
+    const user = await userServices.getUserById(userId, includeDeleted);
+
+    // Security (audit C1/B5): batasi siapa yang boleh membaca profil user ini
+    // agar userId tidak bisa dipakai deanonymisasi via direktori user.
+    if (!canViewUser(req.user, user)) {
       return res.status(403).json(ResponseFormatter.error('Access denied', 403));
     }
-    
-    const user = await userServices.getUserById(userId, includeDeleted);
+
     res.status(200).json(ResponseFormatter.success(user, 'User retrieved successfully'));
   } catch (error) {
     log.warn('getUserById error', { error: error.message });
@@ -63,20 +69,89 @@ exports.updateProfile = async (req, res) => {
   try {
     const userId = req.user.userId;
     log.info('Update profile', { userId });
-    
+
     // Only allow updating allowed fields
-    const { name, email, nim } = req.body;
+    const { name, email, nim, currentPassword } = req.body;
     const updateData = {};
     if (name) updateData.name = name;
-    if (email) updateData.email = email;
     if (nim) updateData.nim = nim;
 
+    // Audit M7: perubahan email adalah operasi sensitif — wajib konfirmasi
+    // password lama, domain kampus tetap divalidasi, dan semua sesi
+    // diinvalidasi setelahnya.
+    let emailChanged = false;
+    if (email) {
+      const current = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, password: true },
+      });
+      if (!current) {
+        return res.status(404).json(ResponseFormatter.error('User not found', 404));
+      }
+
+      emailChanged = String(email).toLowerCase() !== String(current.email).toLowerCase();
+      if (emailChanged) {
+        if (!currentPassword) {
+          return res.status(400).json(
+            ResponseFormatter.error('Password saat ini wajib diisi untuk mengubah email', 400)
+          );
+        }
+        const passwordOk = await bcrypt.compare(currentPassword, current.password);
+        if (!passwordOk) {
+          return res.status(400).json(
+            ResponseFormatter.error('Password saat ini tidak sesuai', 400)
+          );
+        }
+        if (!isAllowedDomain(email)) {
+          return res.status(400).json(
+            ResponseFormatter.error('Domain email tidak diizinkan', 400)
+          );
+        }
+      }
+      updateData.email = email;
+    }
+
+    if (!name && !nim && !email) {
+      return res.status(400).json(ResponseFormatter.error('Tidak ada data yang diubah', 400));
+    }
+
     const updatedUser = await userServices.updateUser(userId, updateData);
-    
+
+    // Invalidasi semua sesi setelah email berubah (increment tokenVersion +
+    // hapus refresh token) — dilakukan terpisah karena guard service
+    // memblokir mutasi tokenVersion lewat jalur update umum.
+    if (emailChanged) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { tokenVersion: { increment: 1 } },
+      });
+      await prisma.refreshToken.deleteMany({ where: { userId } });
+
+      // Audit L2: perubahan email wajib tercatat.
+      try {
+        await auditLogServices.createAuditLog({
+          entityType: 'USER',
+          action: 'UPDATE',
+          entityId: userId,
+          actorId: userId,
+          actorName: req.user.name,
+          actorRole: req.user.role,
+          ip: req.ip,
+          userAgent: req.headers['user-agent'],
+          metadata: { updatedFields: ['email'], note: 'email berubah, sesi diinvalidasi' },
+        });
+      } catch (auditError) {
+        log.error('Failed to create audit log for email change', { error: auditError.message });
+      }
+    }
+
     // Remove password from response
     const { password, ...userWithoutPassword } = updatedUser;
-    
-    res.status(200).json(ResponseFormatter.success(userWithoutPassword, 'Profile updated successfully'));
+
+    res.status(200).json(ResponseFormatter.success(
+      { ...userWithoutPassword, ...(emailChanged ? { requireReLogin: true } : {}) },
+      emailChanged ? 'Email berubah. Silakan login kembali.' : 'Profile updated successfully'
+    ));
   } catch (error) {
     log.warn('updateProfile error', { error: error.message });
     res.status(400).json(ResponseFormatter.error('Profile update failed', 400));
@@ -89,8 +164,45 @@ exports.updateUser = async (req, res) => {
     log.info('Update user', { userId });
     const target = await getTargetUserOrThrow(userId, true);
     await assertCanManageUser(req.user, target, 'update');
-    const updatedUser = await userServices.updateUser(userId, req.body);
-    
+
+    // Security (mass-assignment): hanya field profil yang boleh diubah lewat
+    // endpoint ini. Perubahan role/password/verifikasi/tokenVersion harus
+    // melalui endpoint khususnya masing-masing — jangan spread req.body ke Prisma.
+    const updateData = {};
+    if (req.body.name !== undefined) updateData.name = req.body.name;
+    if (req.body.email !== undefined) updateData.email = req.body.email;
+    if (req.body.nim !== undefined) updateData.nim = req.body.nim;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json(
+        ResponseFormatter.error('Tidak ada field yang dapat diperbarui (hanya name, email, nim)', 400)
+      );
+    }
+
+    const updatedUser = await userServices.updateUser(userId, updateData);
+
+    // Create audit log
+    try {
+      await auditLogServices.createAuditLog({
+        entityType: 'USER',
+        action: 'UPDATE',
+        entityId: userId,
+        actorId: req.user.userId,
+        actorName: req.user.name,
+        actorRole: req.user.role,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: {
+          userName: updatedUser.name,
+          userEmail: updatedUser.email,
+          userRole: updatedUser.role,
+          updatedFields: Object.keys(updateData)
+        }
+      });
+    } catch (auditError) {
+      log.error('Failed to create audit log for update user', { error: auditError.message });
+    }
+
     // Remove password from response
     const { password, ...userWithoutPassword } = updatedUser;
     
@@ -253,7 +365,12 @@ exports.getUserByEmail = async (req, res) => {
     if (!user) {
       return res.status(404).json(ResponseFormatter.error('User not found', 404));
     }
-    
+
+    // Kebijakan direktori yang sama dengan GET /users/:id.
+    if (!canViewUser(req.user, user)) {
+      return res.status(403).json(ResponseFormatter.error('Access denied', 403));
+    }
+
     // Don't return password
     const { password, ...userWithoutPassword } = user;
     
@@ -360,8 +477,11 @@ exports.verifyStudent = async (req, res) => {
     res.status(200).json(ResponseFormatter.success(userWithoutPassword, 'User verified successfully'));
   } catch (error) {
     if (handleGovernanceError(res, error)) return;
+    if (error.message && error.message.includes('KTM')) {
+      return res.status(400).json(ResponseFormatter.error(error.message, 400));
+    }
     log.warn('verifyStudent error', { error: error.message });
-    res.status(404).json(ResponseFormatter.error('User not found', 404));
+    return res.status(404).json(ResponseFormatter.error('User not found', 404));
   }
 };
 
@@ -397,7 +517,9 @@ exports.getUserStatsById = async (req, res) => {
     const userId = parseInt(req.params.id);
     log.info('Get user stats by id', { userId });
 
-    if (!canAccessUser(req.user, userId)) {
+    // Fetch dulu untuk tahu role target, lalu cek kebijakan view.
+    const target = await userServices.getUserById(userId, true);
+    if (!canViewUser(req.user, target)) {
       return res.status(403).json(ResponseFormatter.error('Access denied', 403));
     }
 

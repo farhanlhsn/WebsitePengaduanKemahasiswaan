@@ -230,8 +230,13 @@ const AdminReportDetailModal = ({ open, reportId, initialReport, onClose, onUpda
                 <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.25 }}>Perbarui Status</Typography>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} alignItems={{ sm: 'flex-start' }}>
                   <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 190 } }}>
-                    <InputLabel>Status</InputLabel>
-                    <Select value={status} label="Status" onChange={(event) => setStatus(event.target.value)}>
+                    <InputLabel id="admin-report-status-label">Status</InputLabel>
+                    <Select
+                      labelId="admin-report-status-label"
+                      value={status}
+                      label="Status"
+                      onChange={(event) => setStatus(event.target.value)}
+                    >
                       {STATUS_OPTIONS.map((option) => (
                         <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
                       ))}

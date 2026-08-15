@@ -121,6 +121,7 @@ async function checkChatAttachmentOwnership(req, res, next) {
         message: {
           select: {
             senderId: true,
+            deletedAt: true,
             report: { select: { id: true, userId: true, categoryId: true, status: true, deletedAt: true } }
           }
         }
@@ -129,6 +130,13 @@ async function checkChatAttachmentOwnership(req, res, next) {
 
     if (!attachment) {
       return res.status(404).json({ error: 'File not found' });
+    }
+
+    // Audit M5: attachment pesan yang sudah dihapus tidak boleh lagi
+    // bisa diunduh — penghapusan pesan harus memutus akses file.
+    if (attachment.message?.deletedAt) {
+      log.warn('Chat attachment of deleted message blocked', { userId, filename });
+      return res.status(403).json({ error: 'Access denied to this file' });
     }
 
     const access = await canAccessReport(req.user, attachment.message?.report);

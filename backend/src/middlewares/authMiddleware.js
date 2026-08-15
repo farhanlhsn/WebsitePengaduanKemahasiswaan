@@ -15,7 +15,7 @@ const authMiddleware = async (req, res, next) => {
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     
     // Verify the token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
     
     // Validate tokenVersion against database
     // This ensures tokens are invalidated after password reset or force-logout

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import AdminSectionHeader from './admin/AdminSectionHeader';
 import {
   Box, Fade, Typography, Button, Grid, Switch,
@@ -14,9 +14,11 @@ import {
 } from '@mui/icons-material';
 import useAuthStore from '../stores/authStore';
 import useSettingsStore from '../stores/settingsStore';
+import { changePassword } from '../services/api';
 
 const AdminSettingsPage = () => {
-  const { user, devices, logoutDevice, getUserDevices } = useAuthStore();
+  const { user, devices, logoutDevice, getUserDevices, logout } = useAuthStore();
+  const navigate = useNavigate();
   
   const { settings, updateAllSettings } = useSettingsStore();
   const [localSettings, setLocalSettings] = useState(settings);
@@ -41,6 +43,8 @@ const AdminSettingsPage = () => {
   });
 
   const [passwordDialog, setPasswordDialog] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -92,22 +96,51 @@ const AdminSettingsPage = () => {
   };
 
   const handleChangePassword = async () => {
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert('Password konfirmasi tidak cocok');
+    setPasswordError('');
+
+    if (!passwordForm.currentPassword) {
+      setPasswordError('Password saat ini wajib diisi');
       return;
     }
-    
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordError('Password baru minimal 8 karakter');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('Password konfirmasi tidak cocok');
+      return;
+    }
+
+    setPasswordLoading(true);
     try {
+      // Fix H1: panggil API sungguhan (sebelumnya hanya alert palsu).
+      const result = await changePassword(
+        passwordForm.currentPassword,
+        passwordForm.newPassword
+      );
+
       setPasswordDialog(false);
       setPasswordForm({
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
-        showPasswords: false
+        showPasswords: false,
       });
-      alert('Password berhasil diubah');
+
+      // Backend menginvalidasi semua sesi setelah ganti password.
+      if (result?.data?.requireReLogin) {
+        await logout();
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      alert(result?.message || 'Password berhasil diubah');
     } catch (error) {
+      const message = error.response?.data?.message || 'Gagal mengubah password';
+      setPasswordError(message);
       console.error('Failed to change password:', error);
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -365,10 +398,15 @@ const AdminSettingsPage = () => {
           </DialogActions>
         </Dialog>
 
-        <Dialog open={passwordDialog} onClose={() => setPasswordDialog(false)} maxWidth="xs" fullWidth>
+        <Dialog open={passwordDialog} onClose={() => { if (!passwordLoading) setPasswordDialog(false); }} maxWidth="xs" fullWidth>
           <DialogTitle>Ubah Password Admin</DialogTitle>
           <DialogContent>
             <Stack spacing={3} sx={{ mt: 1 }}>
+              {passwordError && (
+                <Alert severity="error" onClose={() => setPasswordError('')}>
+                  {passwordError}
+                </Alert>
+              )}
               <TextField
                 fullWidth
                 size="small"
@@ -407,8 +445,15 @@ const AdminSettingsPage = () => {
             </Stack>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setPasswordDialog(false)}>Batal</Button>
-            <Button onClick={handleChangePassword} variant="contained">Simpan</Button>
+            <Button onClick={() => setPasswordDialog(false)} disabled={passwordLoading}>Batal</Button>
+            <Button
+              onClick={handleChangePassword}
+              variant="contained"
+              disabled={passwordLoading}
+              startIcon={passwordLoading ? <CircularProgress size={16} /> : null}
+            >
+              {passwordLoading ? 'Menyimpan…' : 'Simpan'}
+            </Button>
           </DialogActions>
         </Dialog>
       </Box>

@@ -1,5 +1,6 @@
 const categoryServices = require('../services/categoryServices');
 const auditLogServices = require('../services/auditLogServices');
+const adminGovernanceServices = require('../services/adminGovernanceServices');
 const ResponseFormatter = require('../utils/responseFormatter');
 const { isSuperAdmin } = require('../utils/rbac');
 const { getLogger } = require('../utils/logger');
@@ -28,8 +29,16 @@ exports.getCategoriesWithReports = async (req, res) => {
   try {
     const includeDeleted = resolveIncludeDeleted(req);
     log.info('Get categories with reports', { includeDeleted });
-    const categories = await categoryServices.getCategoriesWithReports(includeDeleted);
-    
+    let categories = await categoryServices.getCategoriesWithReports(includeDeleted);
+
+    // Audit B5: judul laporan per kategori bisa sensitif. ADMIN hanya boleh
+    // melihat kategori dalam assignment-nya; SUPERADMIN melihat semua.
+    if (!isSuperAdmin(req.user)) {
+      const accessible = await adminGovernanceServices.getAccessibleCategoryIds(req.user);
+      const allowed = new Set(Array.isArray(accessible) ? accessible : []);
+      categories = categories.filter((c) => allowed.has(c.id));
+    }
+
     res.status(200).json(ResponseFormatter.success(categories, 'Categories with reports retrieved successfully'));
   } catch (error) {
     log.error('getCategoriesWithReports error', { error: error.message });
@@ -220,9 +229,11 @@ exports.permanentDeleteCategory = async (req, res) => {
       return res.status(400).json(ResponseFormatter.error('Invalid category ID provided', 400));
     }
     
-    // Only allow ADMIN to permanently delete
-    if (req.user.role !== 'ADMIN') {
-      return res.status(403).json(ResponseFormatter.error('Unauthorized: Admin access required', 403));
+    // Audit M12: route sudah SUPERADMIN-only; cek lama `role !== 'ADMIN'`
+    // justru memblokir SUPERADMIN (role-nya 'SUPERADMIN') sehingga endpoint
+    // mati. Samakan dengan middleware route.
+    if (!isSuperAdmin(req.user)) {
+      return res.status(403).json(ResponseFormatter.error('Unauthorized: Superadmin access required', 403));
     }
     
     const category = await categoryServices.getCategoryById(categoryId, true);
@@ -293,9 +304,9 @@ exports.searchCategories = async (req, res) => {
 
 exports.cleanupOldDeletedCategories = async (req, res) => {
   try {
-    // Only allow ADMIN to cleanup
-    if (req.user.role !== 'ADMIN') {
-      return res.status(403).json(ResponseFormatter.error('Unauthorized: Admin access required', 403));
+    // Audit M12: samakan dengan middleware route (SUPERADMIN-only).
+    if (!isSuperAdmin(req.user)) {
+      return res.status(403).json(ResponseFormatter.error('Unauthorized: Superadmin access required', 403));
     }
     
     const daysOld = parseInt(req.query.daysOld) || 90;

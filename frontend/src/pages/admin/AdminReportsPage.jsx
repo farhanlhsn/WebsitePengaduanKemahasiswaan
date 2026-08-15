@@ -1,13 +1,14 @@
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { Box, Fade, Alert, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Button, Snackbar } from '@mui/material';
 import { Visibility, Edit, Restore } from '@mui/icons-material';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import useReportStore from '../../stores/reportStore';
 import AdminDataTable from '../../components/admin/AdminDataTable';
+import AdminReportDetailModal from '../../components/admin/AdminReportDetailModal';
 import AdminSectionHeader from './AdminSectionHeader';
+import getApiErrorMessage from '../../utils/getApiErrorMessage';
 
 const AdminReportsPage = () => {
-  const navigate = useNavigate();
   const { onMobileMenuClick } = useOutletContext() ?? {};
   const { reports, loading, error, getAllReports, restoreReport, bulkUpdateReportStatus } = useReportStore();
 
@@ -15,6 +16,24 @@ const AdminReportsPage = () => {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
+  // Detail laporan dibuka sebagai popup via query param `?report=<id>`
+  // (konsisten dengan /admin/reports/:id yang di-redirect ke sini).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const detailReportId = searchParams.get('report');
+
+  const openReportDetail = useCallback((reportId) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('report', String(reportId));
+    setSearchParams(next);
+  }, [searchParams, setSearchParams]);
+
+  const closeReportDetail = useCallback(() => {
+    if (!searchParams.has('report')) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('report');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     getAllReports({ includeDeleted: true }, false).catch((e) => console.error(e));
@@ -73,17 +92,17 @@ const AdminReportsPage = () => {
 
   const onRowAction = useCallback(
     async (action, row) => {
-      if (action === 'detail') navigate(`/admin/reports/${row.id}`);
+      if (action === 'detail') openReportDetail(row.id);
       if (action === 'restore') {
         try {
           await restoreReport(row.id);
           setSnackbar({ open: true, message: 'Laporan berhasil dipulihkan', severity: 'success' });
         } catch (e) {
-          setSnackbar({ open: true, message: `Gagal memulihkan laporan: ${e.message || e}`, severity: 'error' });
+          setSnackbar({ open: true, message: `Gagal memulihkan laporan: ${getApiErrorMessage(e)}`, severity: 'error' });
         }
       }
     },
-    [navigate, restoreReport]
+    [openReportDetail, restoreReport]
   );
 
   const onBulkAction = useCallback((action, ids) => {
@@ -110,7 +129,7 @@ const AdminReportsPage = () => {
       console.error(e);
       setSnackbar({
         open: true,
-        message: `Gagal memperbarui status laporan: ${e.message || e}`,
+        message: `Gagal memperbarui status laporan: ${getApiErrorMessage(e)}`,
         severity: 'error'
       });
     }
@@ -138,6 +157,14 @@ const AdminReportsPage = () => {
           selectable
         />
         {error && <Alert severity="error" sx={{ mt: 3, borderRadius: 2 }}>{error}</Alert>}
+
+        {/* Popup detail laporan (?report=<id>) */}
+        <AdminReportDetailModal
+          open={Boolean(detailReportId)}
+          reportId={detailReportId}
+          onClose={closeReportDetail}
+          onUpdated={() => getAllReports({ includeDeleted: true }, false)}
+        />
 
         {/* Dialog Pembaruan Status Massal */}
         <Dialog 

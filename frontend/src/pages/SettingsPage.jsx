@@ -212,7 +212,7 @@ const SettingsPage = ({ isEmbedded = false }) => {
         )}
 
         <Grid container spacing={3}>
-          <Grid item xs={12} md={8}>
+          <Grid size={{ xs: 12, md: 8 }}>
             {/* Notification Settings */}
             <Accordion defaultExpanded sx={{ mb: 2, borderRadius: 2 }}>
               <AccordionSummary expandIcon={<ExpandMore />}>
@@ -225,7 +225,7 @@ const SettingsPage = ({ isEmbedded = false }) => {
               </AccordionSummary>
               <AccordionDetails>
                 <Grid container spacing={3}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <FormControlLabel
                       control={
                         <Switch
@@ -236,7 +236,7 @@ const SettingsPage = ({ isEmbedded = false }) => {
                       label="Email Notifikasi"
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <FormControlLabel
                       control={
                         <Switch
@@ -263,7 +263,7 @@ const SettingsPage = ({ isEmbedded = false }) => {
               </AccordionSummary>
               <AccordionDetails>
                 <Grid container spacing={3}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <FormControl fullWidth>
                       <InputLabel>Bahasa</InputLabel>
                       <Select
@@ -276,7 +276,7 @@ const SettingsPage = ({ isEmbedded = false }) => {
                       </Select>
                     </FormControl>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <FormControl fullWidth>
                       <InputLabel>Tema</InputLabel>
                       <Select
@@ -322,7 +322,7 @@ const SettingsPage = ({ isEmbedded = false }) => {
             </Accordion>
           </Grid>
 
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             {/* Device Management */}
             <Card sx={{ borderRadius: 2, mb: 3 }}>
               <CardContent>

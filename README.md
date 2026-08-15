@@ -131,8 +131,11 @@ Frontend mem-proxy `/v1/api`, `/api`, dan `/socket.io` ke backend via nginx (sam
 
 ```bash
 export POSTGRES_PASSWORD='<strong-password>'
+export SEED_SUPERADMIN_PASSWORD='<strong-password>'
 docker compose -f docker-compose.prod.yml up --build -d
 ```
+
+Kedua variabel di atas **wajib** — compose gagal start jika kosong (tidak ada default lemah).
 
 Hanya reverse proxy/frontend (`PUBLIC_HTTP_PORT`, default `8080`) yang diekspos. Backend, PostgreSQL, dan Redis berada pada jaringan internal Docker.
 

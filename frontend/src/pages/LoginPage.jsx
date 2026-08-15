@@ -158,6 +158,60 @@ export default function LoginPage() {
 
             <Fade in timeout={800}>
               <Box component="form" noValidate onSubmit={handleSubmit}>
+                {/* SSO Login Button — Fix H7: hanya tampil bila VITE_ENABLE_SSO=true
+                    (backend SSO belum tersedia; sebelumnya tombol selalu muncul
+                    dan mengarah ke endpoint yang tidak ada). */}
+                {import.meta.env.VITE_ENABLE_SSO === 'true' && (
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/${import.meta.env.VITE_SSO_PROVIDER || 'sso'}`}
+                  startIcon={
+                    <AccountCircle sx={{ width: 22, height: 22, color: 'text.secondary' }} />
+                  }
+                  sx={{
+                    mb: 3,
+                    borderRadius: 3,
+                    py: 1.2,
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    color: 'text.primary',
+                    borderColor: alpha(theme.palette.divider, 0.8),
+                    backgroundColor: theme.palette.background.paper,
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.divider, 0.05),
+                      borderColor: theme.palette.text.primary,
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, 0.05)}`
+                    },
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    textTransform: 'none'
+                  }}
+                >
+                  Masuk dengan {import.meta.env.VITE_SSO_PROVIDER_NAME || 'SSO Kampus'}
+                </Button>
+                )}
+
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  mb: 3,
+                  '&::before, &::after': {
+                    content: '""',
+                    flex: 1,
+                    height: '1px',
+                    bgcolor: alpha(theme.palette.divider, 0.5)
+                  }
+                }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ px: 2, fontWeight: 500 }}
+                  >
+                    atau dengan email
+                  </Typography>
+                </Box>
+
                 {/* Error Alert */}
                 {error && (
                   <Alert 

@@ -14,6 +14,8 @@ import AuditLogFilters from '../components/admin/AuditLogFilters';
 import AuditLogList from '../components/admin/AuditLogList';
 import AuditLogDetailModal from '../components/admin/AuditLogDetailModal';
 import StatCard from '../components/ui/StatCard';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import getApiErrorMessage from '../utils/getApiErrorMessage';
 
 const AuditLogPage = () => {
   const [logs, setLogs] = useState([]);
@@ -42,6 +44,10 @@ const AuditLogPage = () => {
     severity: 'success'
   });
 
+  // Fix M10: konfirmasi cleanup via dialog (bukan window.confirm).
+  const [cleanupConfirmOpen, setCleanupConfirmOpen] = useState(false);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+
   useEffect(() => {
     // Update offset when page changes
     setFilters(prev => ({
@@ -57,7 +63,7 @@ const AuditLogPage = () => {
       setLogs(result.logs || []);
       setTotalLogs(result.pagination?.total || 0);
     } catch (error) {
-      showSnackbar('Failed to load audit logs: ' + error.message, 'error');
+      showSnackbar(`Failed to load audit logs: ${getApiErrorMessage(error)}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -105,16 +111,17 @@ const AuditLogPage = () => {
   };
 
   const handleCleanup = async () => {
-    if (!window.confirm('Are you sure you want to cleanup audit logs older than 1 year? This cannot be undone.')) {
-      return;
-    }
-
+    setCleanupLoading(true);
     try {
       const result = await cleanupOldAuditLogs(365);
-      showSnackbar(`Berhasil membersihkan ${result.deleted} log audit lama`, 'success');
+      const deleted = result?.deleted ?? result?.count ?? 0;
+      showSnackbar(`Berhasil membersihkan ${deleted} audit log lama`, 'success');
+      setCleanupConfirmOpen(false);
       handleRefresh();
     } catch (error) {
-      showSnackbar('Gagal membersihkan log audit: ' + error.message, 'error');
+      showSnackbar(`Gagal membersihkan audit log: ${getApiErrorMessage(error)}`, 'error');
+    } finally {
+      setCleanupLoading(false);
     }
   };
 
@@ -162,7 +169,7 @@ const AuditLogPage = () => {
                 variant="outlined"
                 color="error"
                 startIcon={<Delete />}
-                onClick={handleCleanup}
+                onClick={() => setCleanupConfirmOpen(true)}
                 sx={{ borderRadius: 2, fontWeight: 600 }}
               >
                 Bersihkan Log Lama
@@ -256,6 +263,18 @@ const AuditLogPage = () => {
             {snackbar.message}
           </Alert>
         </Snackbar>
+
+        {/* Fix M10: konfirmasi cleanup audit log */}
+        <ConfirmDialog
+          open={cleanupConfirmOpen}
+          title="Bersihkan Audit Log Lama"
+          message="Hapus audit log yang lebih tua dari 1 tahun? Aksi ini permanen dan tidak dapat dibatalkan."
+          confirmLabel="Bersihkan"
+          severity="error"
+          loading={cleanupLoading}
+          onConfirm={handleCleanup}
+          onCancel={() => setCleanupConfirmOpen(false)}
+        />
       </Box>
     </Fade>
   );

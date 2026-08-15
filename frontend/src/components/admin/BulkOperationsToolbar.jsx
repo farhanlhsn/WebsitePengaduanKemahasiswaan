@@ -26,6 +26,7 @@ import {
   Edit,
   Close,
 } from '@mui/icons-material';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 const TYPE_LABELS = {
   users: 'pengguna',
@@ -45,22 +46,20 @@ const BulkOperationsToolbar = ({
   const [anchorEl, setAnchorEl] = useState(null);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('');
+  // Fix M10: konfirmasi bulk via ConfirmDialog (bukan window.confirm English).
+  const [pendingAction, setPendingAction] = useState(null);
   const typeLabel = TYPE_LABELS[type] || 'data';
 
   const handleMenuClose = () => setAnchorEl(null);
 
-  const handleBulkAction = async (action) => {
+  const handleBulkAction = (action) => {
     handleMenuClose();
 
     switch (action) {
       case 'verify':
-        if (window.confirm(`Verifikasi ${selectedCount} ${typeLabel} terpilih?`)) await onBulkVerify?.();
-        break;
       case 'delete':
-        if (window.confirm(`Hapus ${selectedCount} ${typeLabel} terpilih?`)) await onBulkDelete?.();
-        break;
       case 'restore':
-        if (window.confirm(`Pulihkan ${selectedCount} ${typeLabel} terpilih?`)) await onBulkRestore?.();
+        setPendingAction(action);
         break;
       case 'updateStatus':
         setStatusDialogOpen(true);
@@ -68,6 +67,37 @@ const BulkOperationsToolbar = ({
       default:
         break;
     }
+  };
+
+  const confirmMeta = {
+    verify: {
+      title: `Verifikasi ${selectedCount} Pengguna`,
+      message: `Verifikasi ${selectedCount} pengguna terpilih sebagai mahasiswa?`,
+      confirmLabel: 'Verifikasi',
+      severity: 'info',
+      run: onBulkVerify,
+    },
+    delete: {
+      title: `Hapus ${selectedCount} ${typeLabel}`,
+      message: `Hapus ${selectedCount} ${typeLabel} terpilih? Aksi ini dapat di-restore nanti.`,
+      confirmLabel: 'Hapus',
+      severity: 'error',
+      run: onBulkDelete,
+    },
+    restore: {
+      title: `Pulihkan ${selectedCount} ${typeLabel}`,
+      message: `Pulihkan ${selectedCount} ${typeLabel} terpilih?`,
+      confirmLabel: 'Pulihkan',
+      severity: 'warning',
+      run: onBulkRestore,
+    },
+  };
+
+  const handleConfirm = async () => {
+    const meta = confirmMeta[pendingAction];
+    if (!meta?.run) return;
+    await meta.run();
+    setPendingAction(null);
   };
 
   const handleStatusUpdate = async () => {
@@ -181,6 +211,17 @@ const BulkOperationsToolbar = ({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Fix M10: konfirmasi bulk */}
+      <ConfirmDialog
+        open={!!pendingAction}
+        title={confirmMeta[pendingAction]?.title || ''}
+        message={confirmMeta[pendingAction]?.message || ''}
+        confirmLabel={confirmMeta[pendingAction]?.confirmLabel || 'Konfirmasi'}
+        severity={confirmMeta[pendingAction]?.severity || 'error'}
+        onConfirm={handleConfirm}
+        onCancel={() => setPendingAction(null)}
+      />
     </>
   );
 };

@@ -192,10 +192,11 @@ class ReportServices {
   //for mahasiswa
   async getAllReportsByUserIdPaginated(userId, filters = {}, limit = 10, includeDeleted = false, lastItemId = null) {
     try {
-      // Gabungkan userId dan filter lain
+      // Gabungkan userId dan filter lain. Audit M10: userId sesi harus selalu
+      // menang — letakkan setelah spread agar tidak bisa ditimpa caller.
       const where = {
-        userId,
-        ...filters
+        ...filters,
+        userId
       };
 
       // Hitung total data user (dengan filter)
@@ -208,8 +209,8 @@ class ReportServices {
       // Siapkan query dasar
       const query = {
         where: {
-          userId,
-          ...filters
+          ...filters,
+          userId
         },
         select: {
           id: true,
@@ -275,9 +276,10 @@ class ReportServices {
 
   async createReport(reportData) {
     try {
-      // Ambil category untuk mendapatkan slug, default priority, dan anonymous setting
-      const category = await prisma.category.findUnique({
-        where: { id: reportData.categoryId },
+      // Ambil category untuk mendapatkan slug, default priority, dan anonymous setting.
+      // Audit M9: kategori yang sudah soft-delete tidak boleh dipakai.
+      const category = await prisma.category.findFirst({
+        where: { id: reportData.categoryId, deletedAt: null },
         select: { slug: true, defaultPriority: true, allowAnonymous: true }
       });
       
@@ -290,20 +292,31 @@ class ReportServices {
         throw new Error('Anonymous reporting is not allowed for this category');
       }
       
-      // Generate registration number
-      const registrationNumber = await RegistrationGenerator.generateRegistrationNumber(category.slug);
-      
-      const report = await prisma.report.create({
-        data: {
-          title: reportData.title,
-          description: reportData.description,
-          userId: reportData.userId,
-          categoryId: reportData.categoryId,
-          registrationNumber,
-          priority: category.defaultPriority || 'MEDIUM',
-          isAnonymous: reportData.isAnonymous || false
-        },
-      });
+      // Generate registration number.
+      // Audit M1: dua create konkuren di kategori/hari yang sama bisa
+      // menghitung nomor identik — bila unique constraint (P2002) menabrak,
+      // hitung ulang dan coba lagi (max 3 percobaan).
+      let report;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const registrationNumber = await RegistrationGenerator.generateRegistrationNumber(category.slug);
+        try {
+          report = await prisma.report.create({
+            data: {
+              title: reportData.title,
+              description: reportData.description,
+              userId: reportData.userId,
+              categoryId: reportData.categoryId,
+              registrationNumber,
+              priority: category.defaultPriority || 'MEDIUM',
+              isAnonymous: reportData.isAnonymous || false
+            },
+          });
+          break;
+        } catch (createError) {
+          if (createError?.code === 'P2002' && attempt < 2) continue;
+          throw createError;
+        }
+      }
       log.info('createReport success', { id: report.id, userId: report.userId, priority: report.priority, isAnonymous: report.isAnonymous });
       return report;
     } catch (error) {
@@ -312,20 +325,42 @@ class ReportServices {
     }
   }
 
-  async updateReportStatus(id, status) {
+  async updateReportStatus(id, status, expectedStatus = undefined) {
     try {
       // Defense-in-depth: status is the only mutable input here. We rebuild the
       // update payload explicitly rather than spreading caller-provided data,
       // and run the immutable-field guard for symmetry with future updaters.
       const updates = { status };
       assertImmutableFieldsNotMutated(updates);
-      const report = await prisma.report.update({
+
+      // Audit B1: update kondisional — cegah race TOCTOU antara validasi
+      // transisi dan penulisan. Jika status sudah diubah proses lain,
+      // update mempengaruhi 0 baris dan kita menolak dengan 409.
+      const CLOSED_STATUSES = ['RESOLVED', 'REJECTED', 'CANCELED'];
+      const data = {
+        ...updates,
+        ...(CLOSED_STATUSES.includes(status) ? { closedAt: new Date() } : {}),
+      };
+
+      const where = { id, deletedAt: null };
+      if (expectedStatus) where.status = expectedStatus;
+
+      const updated = await prisma.report.updateMany({ where, data });
+      if (updated.count !== 1) {
+        const err = new Error(
+          'Status laporan baru saja berubah oleh proses lain. Muat ulang dan coba lagi.'
+        );
+        err.statusCode = 409;
+        throw err;
+      }
+
+      const report = await prisma.report.findUnique({
         where: { id },
-        data: updates,
         select: {
           id: true,
           status: true,
           updatedAt: true,
+          closedAt: true,
           userId: true,
           title: true,
           registrationNumber: true,
@@ -335,6 +370,7 @@ class ReportServices {
       return report;
     } catch (error) {
       log.warn('updateReportStatus failed', { id, error: error.message });
+      if (error.statusCode === 409) throw error;
       throw new Error('Error updating report status: ' + error.message);
     }
   }
@@ -384,12 +420,20 @@ class ReportServices {
     }
   }
 
-  async getReportStats() {
+  /**
+   * @param {?Array<number>} categoryIds - Audit B5: null = semua kategori
+   * (SUPERADMIN), array = hanya kategori tersebut (ADMIN scoped). Array
+   * kosong menghasilkan statistik nol — bukan fallback ke global.
+   */
+  async getReportStats(categoryIds = null) {
     try{
       log.info('getReportStats start');
       const grouped = await prisma.report.groupBy({
         by: ['status'],
-        where: { deletedAt: null },
+        where: {
+          deletedAt: null,
+          ...(Array.isArray(categoryIds) ? { categoryId: { in: categoryIds } } : {}),
+        },
         _count: { _all: true },
       });
 

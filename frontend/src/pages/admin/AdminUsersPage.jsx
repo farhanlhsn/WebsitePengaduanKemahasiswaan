@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Box, Fade, Alert } from '@mui/material';
+import { Box, Fade, Alert, Snackbar } from '@mui/material';
 import { Visibility, CheckCircle, Delete, Restore } from '@mui/icons-material';
 import { useOutletContext } from 'react-router-dom';
 import useUserStore from '../../stores/userStore';
@@ -9,6 +9,7 @@ import AdminDataTable from '../../components/admin/AdminDataTable';
 import UserDetailModal from '../../components/admin/UserDetailModal';
 import UserStatistics from '../../components/admin/UserStatistics';
 import AdminSectionHeader from './AdminSectionHeader';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { exportUsersToExcel } from '../../utils/exportUtils';
 
 const AdminUsersPage = () => {
@@ -19,6 +20,14 @@ const AdminUsersPage = () => {
 
   const [selectedUser, setSelectedUser] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // Fix H4: konfirmasi untuk aksi destruktif (hapus/restore single & bulk).
+  const [confirm, setConfirm] = useState({ open: false, title: '', message: '', action: null });
+  const [actionLoading, setActionLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
+  const closeConfirm = () => setConfirm({ open: false, title: '', message: '', action: null });
+  const notify = (message, severity = 'success') => setSnackbar({ open: true, message, severity });
 
   useEffect(() => {
     getAllUsers(true).catch((e) => console.error(e));
@@ -78,11 +87,56 @@ const AdminUsersPage = () => {
 
   const onRowAction = useCallback(
     async (action, user) => {
+      // Fix H4: aksi hapus/restore butuh konfirmasi sebelum dieksekusi.
+      if (action === 'delete') {
+        setConfirm({
+          open: true,
+          title: 'Hapus Pengguna',
+          message: `Hapus "${user.name}" (${user.email})? Pengguna dinonaktifkan (soft delete) dan dapat di-restore nanti.`,
+          action: async () => {
+            setActionLoading(true);
+            try {
+              await deleteUser(user.id);
+              await getAllUsers(true);
+              notify(`Pengguna "${user.name}" dihapus`);
+              closeConfirm();
+            } catch (e) {
+              notify(e?.response?.data?.message || 'Gagal menghapus pengguna', 'error');
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        });
+        return;
+      }
+      if (action === 'restore') {
+        setConfirm({
+          open: true,
+          title: 'Restore Pengguna',
+          message: `Pulihkan akun "${user.name}" (${user.email})?`,
+          action: async () => {
+            setActionLoading(true);
+            try {
+              await restoreUser(user.id);
+              await getAllUsers(true);
+              notify(`Pengguna "${user.name}" dipulihkan`);
+              closeConfirm();
+            } catch (e) {
+              notify(e?.response?.data?.message || 'Gagal memulihkan pengguna', 'error');
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        });
+        return;
+      }
+
       try {
         switch (action) {
-          case 'verify':  await verifyStudent(user.id); break;
-          case 'delete':  await deleteUser(user.id); break;
-          case 'restore': await restoreUser(user.id); break;
+          case 'verify':
+            await verifyStudent(user.id);
+            notify(`Pengguna "${user.name}" diverifikasi`);
+            break;
           case 'view':    setSelectedUser(user); setDetailOpen(true); break;
           case 'promote-admin':
             await promoteToAdmin(user.id);
@@ -90,23 +144,48 @@ const AdminUsersPage = () => {
             break;
           default: console.log('Unknown user action', action);
         }
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error(e);
+        notify(e?.response?.data?.message || 'Aksi gagal', 'error');
+      }
     },
     [verifyStudent, deleteUser, restoreUser, getAllUsers]
   );
 
   const onBulkAction = useCallback(
     async (action, userIds) => {
-      try {
-        await Promise.all(userIds.map((id) => {
-          if (action === 'verify') return verifyStudent(id);
-          if (action === 'delete') return deleteUser(id);
-          if (action === 'restore') return restoreUser(id);
-          return Promise.resolve();
-        }));
-      } catch (e) { console.error(e); }
+      // Fix H4: operasi bulk selalu butuh konfirmasi + feedback hasil.
+      const labels = { verify: 'Verifikasi', delete: 'Hapus', restore: 'Restore' };
+      const label = labels[action] || action;
+      setConfirm({
+        open: true,
+        title: `${label} ${userIds.length} Pengguna`,
+        message: `Anda akan ${label.toLowerCase()} ${userIds.length} pengguna terpilih. Lanjutkan?`,
+        action: async () => {
+          setActionLoading(true);
+          const results = await Promise.allSettled(
+            userIds.map((id) => {
+              if (action === 'verify') return verifyStudent(id);
+              if (action === 'delete') return deleteUser(id);
+              if (action === 'restore') return restoreUser(id);
+              return Promise.resolve();
+            })
+          );
+          const ok = results.filter((r) => r.status === 'fulfilled').length;
+          const fail = results.length - ok;
+          setActionLoading(false);
+          closeConfirm();
+          await getAllUsers(true);
+          notify(
+            fail === 0
+              ? `${ok} pengguna berhasil di-${label.toLowerCase()}`
+              : `${ok} berhasil, ${fail} gagal`,
+            fail === 0 ? 'success' : 'warning'
+          );
+        },
+      });
     },
-    [verifyStudent, deleteUser, restoreUser]
+    [verifyStudent, deleteUser, restoreUser, getAllUsers]
   );
 
   return (
@@ -143,6 +222,32 @@ const AdminUsersPage = () => {
           onAction={onRowAction}
           isSuperAdmin={isSuperAdmin}
         />
+
+        {/* Fix H4: konfirmasi aksi destruktif */}
+        <ConfirmDialog
+          open={confirm.open}
+          title={confirm.title}
+          message={confirm.message}
+          severity="error"
+          loading={actionLoading}
+          onConfirm={confirm.action}
+          onCancel={closeConfirm}
+        />
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={4000}
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        >
+          <Alert
+            severity={snackbar.severity}
+            variant="filled"
+            onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+            sx={{ borderRadius: 2 }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </Fade>
   );

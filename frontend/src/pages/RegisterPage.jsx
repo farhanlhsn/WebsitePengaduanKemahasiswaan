@@ -24,7 +24,8 @@ import {
   School,
   SecurityOutlined,
   VerifiedUser,
-  PersonAdd
+  PersonAdd,
+  AccountCircle
 } from '@mui/icons-material';
 
 import RegisterStudentIdentity from '../components/auth/RegisterStudentIdentity';
@@ -484,6 +485,59 @@ export default function RegisterPage() {
             )}
           </Box>
         </Paper>
+
+        {/* SSO Register Button — Fix H7: hanya tampil bila VITE_ENABLE_SSO=true. */}
+        {import.meta.env.VITE_ENABLE_SSO === 'true' && (
+        <Box sx={{ mt: 2, px: { xs: 0, sm: 4 }, width: '100%', maxWidth: '100%' }}>
+          <Button
+            variant="outlined"
+            fullWidth
+            onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/${import.meta.env.VITE_SSO_PROVIDER || 'sso'}`}
+            startIcon={
+              <AccountCircle sx={{ width: 22, height: 22, color: 'text.secondary' }} />
+            }
+            sx={{
+              mb: 2,
+              borderRadius: 3,
+              py: 1.2,
+              fontSize: '1rem',
+              fontWeight: 600,
+              color: 'text.primary',
+              borderColor: alpha(theme.palette.divider, 0.8),
+              backgroundColor: theme.palette.background.paper,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.divider, 0.05),
+                borderColor: theme.palette.text.primary,
+                transform: 'translateY(-2px)',
+                boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, 0.05)}`
+              },
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              textTransform: 'none'
+            }}
+          >
+            Daftar dengan {import.meta.env.VITE_SSO_PROVIDER_NAME || 'SSO Kampus'}
+          </Button>
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            mb: 1,
+            '&::before, &::after': {
+              content: '""',
+              flex: 1,
+              height: '1px',
+              bgcolor: alpha(theme.palette.divider, 0.5)
+            }
+          }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ px: 2, fontWeight: 500 }}
+            >
+              atau secara manual
+            </Typography>
+          </Box>
+        </Box>
+        )}
 
         {/* Login Link */}
         <Box sx={{ textAlign: 'center', mt: 3 }}>

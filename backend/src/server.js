@@ -2,6 +2,8 @@
 const { validateEnv } = require('./config/env');
 validateEnv();
 
+const { getLogger } = require('./utils/logger');
+const log = getLogger('server');
 const { app, attachSocket } = require('./app');
 const prisma = require('./utils/prisma');
 const { connectWithRetry } = require('./utils/prisma');
@@ -11,8 +13,8 @@ const PORT = process.env.PORT || 6060;
 connectWithRetry();
 
 const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Base URL: http://localhost:${PORT}/api`);
+  log.info(`Server running on port ${PORT}`);
+  log.info(`Base URL: http://localhost:${PORT}/api`);
 });
 attachSocket(server);
 
@@ -29,18 +31,18 @@ let isShuttingDown = false;
 const shutdown = async (signal) => {
   // Idempotent: ignore subsequent Ctrl+C presses while we're already shutting down.
   if (isShuttingDown) {
-    console.log(`\nReceived ${signal} again — already shutting down. Press Ctrl+C once more to force exit.`);
+    log.info(`\nReceived ${signal} again — already shutting down. Press Ctrl+C once more to force exit.`);
     process.exit(1);
     return;
   }
   isShuttingDown = true;
 
-  console.log(`\nReceived ${signal}, shutting down gracefully...`);
+  log.info(`\nReceived ${signal}, shutting down gracefully...`);
 
   // Safety net: if shutdown takes too long (idle Socket.IO clients,
   // hanging DB query, stuck cron tick), force exit.
   const forceExitTimer = setTimeout(() => {
-    console.error(`Shutdown took longer than ${SHUTDOWN_TIMEOUT_MS}ms — forcing exit.`);
+    log.error(`Shutdown took longer than ${SHUTDOWN_TIMEOUT_MS}ms — forcing exit.`);
     process.exit(1);
   }, SHUTDOWN_TIMEOUT_MS);
   forceExitTimer.unref(); // don't keep the loop alive just because of this timer
@@ -76,16 +78,16 @@ const shutdown = async (signal) => {
 
     // 4) Wait for HTTP server to drain (now that sockets are gone, this resolves quickly).
     await closeHttp;
-    console.log('HTTP server closed');
+    log.info('HTTP server closed');
 
     // 5) Disconnect Prisma last so any in-flight handlers above can finish their queries.
     await prisma.$disconnect();
-    console.log('Prisma disconnected from database');
+    log.info('Prisma disconnected from database');
 
     clearTimeout(forceExitTimer);
     process.exit(0);
   } catch (error) {
-    console.error('Error during shutdown:', error);
+    log.error('Error during shutdown:', error);
     clearTimeout(forceExitTimer);
     process.exit(1);
   }
@@ -96,9 +98,9 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 // Surface late errors instead of letting the process linger silently.
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught exception:', err);
+  log.error('Uncaught exception:', err);
   shutdown('uncaughtException');
 });
 process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled rejection:', reason);
+  log.error('Unhandled rejection:', reason);
 });

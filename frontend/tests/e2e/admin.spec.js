@@ -42,7 +42,7 @@ test.describe('Admin report processing', () => {
     await page.goto(`/admin/reports/${reportId}`);
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible({ timeout: 20_000 });
-    await expect(page).toHaveURL(new RegExp(`/admin/reports\?report=${reportId}`));
+    await expect(page).toHaveURL(new RegExp(`/admin/reports\\?report=${reportId}`));
 
     await dialog.getByLabel('Status').click();
     await page.getByRole('option', { name: 'Ditinjau' }).click();

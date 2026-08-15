@@ -189,3 +189,62 @@ describe('BE-6 ADMIN category scope (regression)', () => {
     expect(res.body.data.data.find((r) => r.id === report.id)).toBeDefined();
   });
 });
+
+describe('B5 aggregate/export scoping (regression)', () => {
+  test('GET /reports/stats returns zeroed stats for ADMIN without assignments', async () => {
+    const { report } = await setupAnonymousReportScenario();
+    const strangerAdmin = await createAdmin({ name: 'No-Scope Admin' });
+
+    const res = await request(app)
+      .get('/v1/api/reports/stats')
+      .set(authHeader(strangerAdmin))
+      .expect(200);
+
+    // Admin tanpa assignment tidak boleh melihat agregat laporan global.
+    expect(res.body.data.total).toBe(0);
+    expect(res.body.data.pending).toBe(0);
+  });
+
+  test('GET /reports/stats counts only assigned category for ADMIN', async () => {
+    const { admin, report } = await setupAnonymousReportScenario();
+
+    const res = await request(app)
+      .get('/v1/api/reports/stats')
+      .set(authHeader(admin))
+      .expect(200);
+
+    expect(res.body.data.total).toBeGreaterThanOrEqual(1);
+  });
+
+  test('GET /admin/export/users is SUPERADMIN-only', async () => {
+    const admin = await createAdmin();
+    const sa = await createSuperAdmin();
+
+    await request(app)
+      .get('/v1/api/admin/export/users')
+      .set(authHeader(admin))
+      .expect(403);
+
+    const res = await request(app)
+      .get('/v1/api/admin/export/users')
+      .set(authHeader(sa))
+      .expect(200);
+    expect(res.headers['content-type']).toMatch(/csv/);
+  });
+
+  test('GET /categories/with-reports hides non-assigned categories from ADMIN', async () => {
+    const { admin, category } = await setupAnonymousReportScenario();
+    // Kategori lain yang TIDAK di-grant ke admin.
+    await createCategory({ name: 'KategoriRahasia', slug: 'kategori-rahasia' });
+
+    const res = await request(app)
+      .get('/v1/api/categories/with-reports')
+      .set(authHeader(admin))
+      .expect(200);
+
+    const ids = res.body.data.map((c) => c.id);
+    expect(ids).toContain(category.id);
+    const names = res.body.data.map((c) => c.name);
+    expect(names).not.toContain('KategoriRahasia');
+  });
+});

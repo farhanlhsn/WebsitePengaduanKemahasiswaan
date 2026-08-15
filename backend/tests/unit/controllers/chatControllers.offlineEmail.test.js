@@ -7,8 +7,12 @@ const mockPrisma = {
   report: {
     findUnique: jest.fn()
   },
+  user: {
+    findUnique: jest.fn()
+  },
   adminCategoryAssignment: {
-    findMany: jest.fn()
+    findMany: jest.fn(),
+    findUnique: jest.fn()
   }
 };
 
@@ -103,6 +107,10 @@ describe('ChatControllers - sendMessage Offline Email Notification', () => {
       assignedTo: { id: 42, name: 'Admin Receiver', email: 'admin@example.com' }
     });
 
+    // 2b. Audit M6: admin assigned masih punya akses kategori (validasi lolos).
+    mockPrisma.user.findUnique.mockResolvedValue({ role: 'ADMIN', deletedAt: null });
+    mockPrisma.adminCategoryAssignment.findUnique.mockResolvedValue({ adminId: 42, categoryId: 1 });
+
     // 3. Mock socket IO room to be empty (recipient is offline)
     const ioMock = req.app.get('io');
     ioMock.sockets.adapter.rooms.get.mockReturnValue(new Set(['socket_of_sender']));
@@ -186,6 +194,43 @@ describe('ChatControllers - sendMessage Offline Email Notification', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     // Email service should NOT be called
+    expect(mockEmailService.notifyNewMessage).not.toHaveBeenCalled();
+  });
+
+  it('should NOT notify assigned admin whose category access was revoked (audit M6)', async () => {
+    const createdMessage = {
+      id: 100,
+      content: 'Hello there!',
+      senderId: 5,
+      report: { id: 10, userId: 5, isAnonymous: false }
+    };
+    mockChatServices.sendMessage.mockResolvedValue(createdMessage);
+
+    mockPrisma.report.findUnique.mockResolvedValue({
+      title: 'Report Title ABC',
+      registrationNumber: 'REG12345',
+      userId: 5,
+      assignedToId: 42,
+      categoryId: 1,
+      isAnonymous: false,
+      user: { id: 5, name: 'Student Sender', email: 'student@example.com' },
+      assignedTo: { id: 42, name: 'Admin Receiver', email: 'admin@example.com' }
+    });
+
+    // Admin 42 sudah tidak punya assignment kategori 1 (dicabut).
+    mockPrisma.user.findUnique.mockResolvedValue({ role: 'ADMIN', deletedAt: null });
+    mockPrisma.adminCategoryAssignment.findUnique.mockResolvedValue(null);
+
+    const ioMock = req.app.get('io');
+    ioMock.sockets.adapter.rooms.get.mockReturnValue(new Set(['socket_of_sender']));
+    ioMock.sockets.sockets.get.mockImplementation((sid) => {
+      if (sid === 'socket_of_sender') return { data: { user: { userId: 5 } } };
+      return null;
+    });
+
+    await chatControllers.sendMessage(req, res);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
     expect(mockEmailService.notifyNewMessage).not.toHaveBeenCalled();
   });
 });

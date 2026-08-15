@@ -25,6 +25,7 @@ function buildApp() {
   app.use(express.json());
   app.use(cookieParser());
   app.use('/v1/api/auth', require('../../src/routes/authRoutes'));
+  app.use('/v1/api/users', require('../../src/routes/userRoutes'));
   app.use('/v1/api/categories', require('../../src/routes/categoryRoutes'));
   app.use('/v1/api/reports', require('../../src/routes/reportRoutes'));
   app.use('/v1/api/chat', require('../../src/routes/chatRoutes'));

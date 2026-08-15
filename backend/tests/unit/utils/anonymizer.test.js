@@ -1,6 +1,8 @@
 const {
   ANON_USER,
+  ANON_REPORTER_IDENTITY,
   shouldMaskReporter,
+  socketIdentity,
   anonymizeReport,
   anonymizeReportList,
   anonymizeChatMessage,
@@ -122,5 +124,28 @@ describe('anonymizeChatMessage', () => {
     anonymizeChatMessage(msg, report, { userId: REPORTER_ID });
     expect(msg.sender.name).toBe('Budi');
     expect(msg.senderId).toBe(REPORTER_ID);
+  });
+});
+
+describe('socketIdentity (audit C1)', () => {
+  test('anonymous reporter is masked to a stable pseudonym', () => {
+    const report = { isAnonymous: true, userId: REPORTER_ID };
+    expect(socketIdentity(report, { userId: REPORTER_ID })).toBe(ANON_REPORTER_IDENTITY);
+  });
+
+  test('admin identity is never masked', () => {
+    const report = { isAnonymous: true, userId: REPORTER_ID };
+    expect(socketIdentity(report, { userId: ADMIN_ID })).toBe(ADMIN_ID);
+  });
+
+  test('non-anonymous report keeps real userId for everyone', () => {
+    const report = { isAnonymous: false, userId: REPORTER_ID };
+    expect(socketIdentity(report, { userId: REPORTER_ID })).toBe(REPORTER_ID);
+    expect(socketIdentity(report, { userId: ADMIN_ID })).toBe(ADMIN_ID);
+  });
+
+  test('missing report or user returns safe fallback', () => {
+    expect(socketIdentity(null, { userId: ADMIN_ID })).toBe(ADMIN_ID);
+    expect(socketIdentity({ isAnonymous: true, userId: REPORTER_ID }, {})).toBeNull();
   });
 });

@@ -65,34 +65,6 @@ export const getTheme = (mode) => createTheme({
   shape: {
     borderRadius: 12,
   },
-  shadows: [
-    'none',
-    '0px 2px 4px rgba(0,0,0,0.05)',
-    '0px 4px 8px rgba(0,0,0,0.08)',
-    '0px 8px 16px rgba(0,0,0,0.1)',
-    '0px 12px 24px rgba(0,0,0,0.12)',
-    '0px 16px 32px rgba(0,0,0,0.15)',
-    '0px 20px 40px rgba(0,0,0,0.18)',
-    '0px 24px 48px rgba(0,0,0,0.2)',
-    '0px 32px 64px rgba(0,0,0,0.25)',
-    // Continue with enhanced shadows...
-    '0px 2px 4px rgba(0,0,0,0.05)',
-    '0px 4px 8px rgba(0,0,0,0.08)',
-    '0px 8px 16px rgba(0,0,0,0.1)',
-    '0px 12px 24px rgba(0,0,0,0.12)',
-    '0px 16px 32px rgba(0,0,0,0.15)',
-    '0px 20px 40px rgba(0,0,0,0.18)',
-    '0px 24px 48px rgba(0,0,0,0.2)',
-    '0px 32px 64px rgba(0,0,0,0.25)',
-    '0px 40px 80px rgba(0,0,0,0.3)',
-    '0px 48px 96px rgba(0,0,0,0.35)',
-    '0px 56px 112px rgba(0,0,0,0.4)',
-    '0px 64px 128px rgba(0,0,0,0.45)',
-    '0px 72px 144px rgba(0,0,0,0.5)',
-    '0px 80px 160px rgba(0,0,0,0.55)',
-    '0px 88px 176px rgba(0,0,0,0.6)',
-    '0px 96px 192px rgba(0,0,0,0.65)',
-  ],
   components: {
     MuiButton: {
       styleOverrides: {

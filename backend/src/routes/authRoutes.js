@@ -31,7 +31,7 @@ const ktmUpload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: createMulterFileFilter(KTM_MIMES),
 });
-const validateKtmUpload = createValidateUploadedMiddleware(KTM_MIMES);
+const validateKtmUpload = createValidateUploadedMiddleware(KTM_MIMES, { required: true });
 // Public routes
 /**
  * @swagger

@@ -36,6 +36,7 @@ import {
   cleanupOldDeletedUsers,
   cleanupOldAuditLogs
 } from '../services/api';
+import getApiErrorMessage from '../utils/getApiErrorMessage';
 
 const SystemSecurityPage = () => {
   const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
@@ -66,7 +67,7 @@ const SystemSecurityPage = () => {
       }
       setCleanupDialogOpen(false);
     } catch (error) {
-      showSnackbar('Pembersihan gagal: ' + error.message, 'error');
+      showSnackbar(`Pembersihan gagal: ${getApiErrorMessage(error)}`, 'error');
     }
   };
 

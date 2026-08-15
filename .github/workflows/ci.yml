@@ -129,6 +129,11 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
+    # docker-compose.prod.yml mewajibkan POSTGRES_PASSWORD & SEED_SUPERADMIN_PASSWORD
+    # (tidak ada default lemah). Sediakan nilai dummy khusus CI.
+    env:
+      POSTGRES_PASSWORD: ci-dummy-password
+      SEED_SUPERADMIN_PASSWORD: ci-dummy-password
     steps:
       - uses: actions/checkout@v4
 

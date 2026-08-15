@@ -1,5 +1,7 @@
 const prisma = require('../utils/prisma');
 const SoftDeleteHelper = require('../utils/softDelete');
+const { ROLES } = require('../utils/rbac');
+const { acquireSuperAdminGuardLock } = require('../utils/superAdminLock');
 const { getLogger } = require('../utils/logger');
 const log = getLogger('user:service');
 
@@ -72,11 +74,25 @@ class UserServices {
     try {
       // Check if user exists and not deleted
       await this.getUserById(userId);
-      
+
+      // Security (defense-in-depth terhadap mass-assignment): field sensitif
+      // tidak boleh diubah lewat jalur update umum. Perubahan role/password/
+      // verifikasi hanya boleh melalui endpoint khususnya masing-masing.
+      const FORBIDDEN_FIELDS = [
+        'id', 'role', 'password', 'isVerified', 'tokenVersion',
+        'deletedAt', 'ktmPath', 'createdAt', 'updatedAt',
+      ];
+      const safeData = Object.fromEntries(
+        Object.entries(data || {}).filter(([key]) => !FORBIDDEN_FIELDS.includes(key))
+      );
+      if (Object.keys(safeData).length === 0) {
+        throw new Error('No updatable fields provided');
+      }
+
       const updatedUser = await prisma.user.update({
         where: { id: userId },
         data: {
-          ...data,
+          ...safeData,
           updatedAt: new Date()
         }
       });
@@ -91,12 +107,41 @@ class UserServices {
 
   async deleteUser(userId) {
     try {
+      // Audit B2: untuk target SUPERADMIN, cek guard last-superadmin harus
+      // atomik dengan penghapusan — advisory lock + hitung ulang di dalam
+      // transaksi menutup race demote/delete konkuren.
+      const target = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, role: true },
+      });
+
+      if (target && target.role === ROLES.SUPERADMIN) {
+        const result = await prisma.$transaction(async (tx) => {
+          await acquireSuperAdminGuardLock(tx);
+          const remaining = await tx.user.count({
+            where: { role: ROLES.SUPERADMIN, deletedAt: null, NOT: { id: userId } },
+          });
+          if (remaining < 1) {
+            const err = new Error('Cannot delete the last active SUPERADMIN');
+            err.code = 'LAST_SUPERADMIN';
+            throw err;
+          }
+          return tx.user.update({
+            where: { id: userId },
+            data: { deletedAt: new Date() },
+          });
+        });
+        log.info('deleteUser success (superadmin guarded)', { userId });
+        return result;
+      }
+
       // Soft delete user
       const result = await SoftDeleteHelper.softDelete(prisma.user, userId);
       log.info('deleteUser success', { userId });
       return result;
     } catch (error) {
       log.warn('deleteUser failed', { userId, error: error.message });
+      if (error.code === 'LAST_SUPERADMIN') throw error;
       throw new Error('Error deleting user');
     }
   }
@@ -170,6 +215,19 @@ class UserServices {
 
   async verifyUser(userId) {
     try {
+      // Security (audit B3): jangan verifikasi akun tanpa KTM — verifikasi
+      // identitas berbasis KTM tidak mungkin dilakukan tanpa dokumen KTM.
+      const target = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, ktmPath: true, deletedAt: true },
+      });
+      if (!target || target.deletedAt) {
+        throw new Error('User not found');
+      }
+      if (!target.ktmPath) {
+        throw new Error('User tidak memiliki KTM — tidak dapat diverifikasi');
+      }
+
       const result = await prisma.user.update({
         where: { id: userId },
         data: { isVerified: true }
@@ -178,7 +236,9 @@ class UserServices {
       return result;
     } catch (error) {
       log.warn('verifyUser failed', { userId, error: error.message });
-      throw new Error('Error verifying user');
+      throw new Error(error.message === 'User tidak memiliki KTM — tidak dapat diverifikasi'
+        ? error.message
+        : 'Error verifying user');
     }
   }
 

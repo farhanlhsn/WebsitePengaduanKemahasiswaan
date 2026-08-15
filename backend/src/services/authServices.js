@@ -15,7 +15,10 @@ class AuthServices {
         where: { email: data.email }
       });
 
-      if (!user) throw new Error('email/password salah');
+      // Security (audit B4): user yang sudah soft-delete tidak boleh login.
+      // Gunakan pesan generik yang sama dengan user-tidak-ditemukan agar
+      // status deleted tidak bocor (mencegah enumerasi status akun).
+      if (!user || user.deletedAt) throw new Error('email/password salah');
       
       const isPasswordValid = await bcrypt.compare(data.password, user.password);
       if (!isPasswordValid) throw new Error('email/password salah');
@@ -232,7 +235,7 @@ class AuthServices {
         where: { email: email }
       });
       
-      if (existingUserByEmail) {
+      if (existingUserByEmail && !existingUserByEmail.deletedAt) {
         throw new Error('Email already exists');
       }
       
@@ -241,13 +244,45 @@ class AuthServices {
         where: { nim: nim }
       });
       
-      if (existingUserByNim) {
+      if (existingUserByNim && !existingUserByNim.deletedAt) {
         throw new Error('NIM already exists');
       }
       
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
-      
+
+      // Audit M8: akun lama yang soft-deleted (ditolak/dihapus) boleh mendaftar
+      // ulang. Alih-alih menolak karena email/NIM "sudah ada", reset baris lama
+      // menjadi akun mahasiswa baru yang belum diverifikasi — menjaga FK/referensi
+      // tetap utuh tanpa hard delete.
+      if (existingUserByEmail || existingUserByNim) {
+        // Jika email dan NIM milik dua baris soft-deleted berbeda, buang baris
+        // NIM agar tidak melanggar unique constraint saat reset.
+        if (existingUserByEmail && existingUserByNim && existingUserByEmail.id !== existingUserByNim.id) {
+          await prisma.user.delete({ where: { id: existingUserByNim.id } });
+        }
+        const target = existingUserByEmail || existingUserByNim;
+        if (target.role !== 'MAHASISWA') {
+          throw new Error('Email already exists');
+        }
+        const reactivated = await prisma.user.update({
+          where: { id: target.id },
+          data: {
+            name,
+            email,
+            password: hashedPassword,
+            nim,
+            role: 'MAHASISWA',
+            ktmPath,
+            isVerified: false,
+            deletedAt: null,
+            tokenVersion: { increment: 1 },
+          },
+        });
+        log.info('Service registerStudent success (re-registered)', { userId: reactivated.id });
+        return reactivated;
+      }
+
       // Create user
       const user = await prisma.user.create({
         data: {
@@ -298,7 +333,15 @@ class AuthServices {
         }
       }
 
-      const response = await axios.get(`http://ip-api.com/json/${testIP}?fields=country,regionName,city,status`, {
+      // Security (audit S1/M13): validasi bentuk IP sebelum dimasukkan ke URL
+      // pihak ketiga — mencegah injeksi path/SSRF dari nilai IP yang dipalsukan.
+      const IPV4_RE = /^(\d{1,3}\.){3}\d{1,3}$/;
+      const IPV6_RE = /^[0-9a-fA-F:]+$/;
+      if (!IPV4_RE.test(testIP) && !IPV6_RE.test(testIP)) {
+        return 'Tidak Diketahui';
+      }
+
+      const response = await axios.get(`http://ip-api.com/json/${encodeURIComponent(testIP)}?fields=country,regionName,city,status`, {
         timeout: 3000 // 3 second timeout
       });
 

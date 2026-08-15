@@ -102,6 +102,26 @@ exports.cleanupOldAuditLogs = async (req, res) => {
 
     const result = await auditLogServices.cleanupOldAuditLogs(daysOld);
 
+    // Audit L2: aksi cleanup audit log itu sendiri harus tercatat agar ada
+    // jejak siapa menghapus berapa baris (fire-and-forget, jangan gagalkan response).
+    auditLogServices
+      .createAuditLog({
+        entityType: 'USER',
+        action: 'HARD_DELETE',
+        entityId: 0,
+        actorId: req.user?.userId,
+        actorName: req.user?.name,
+        actorRole: req.user?.role,
+        ip: req.ip,
+        userAgent: req.headers?.['user-agent'],
+        metadata: {
+          operation: 'AUDIT_LOG_CLEANUP',
+          daysOld,
+          deleted: result?.count ?? result,
+        },
+      })
+      .catch((e) => log.error('Failed to log audit cleanup', { error: e.message }));
+
     res.status(200).json(
       ResponseFormatter.success(
         result,

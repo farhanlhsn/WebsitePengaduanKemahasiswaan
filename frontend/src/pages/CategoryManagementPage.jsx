@@ -56,6 +56,8 @@ import {
 } from '../services/api';
 import { format } from 'date-fns';
 import StatCard from '../components/ui/StatCard';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import getApiErrorMessage from '../utils/getApiErrorMessage';
 
 const PRIORITY_OPTIONS = [
   { value: 'LOW', label: 'Rendah', color: 'default' },
@@ -89,13 +91,17 @@ const CategoryManagementPage = () => {
     severity: 'success',
   });
 
+  // Fix M10: konfirmasi hapus kategori via dialog (bukan window.confirm).
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   const loadCategories = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getCategories(true);
       setCategories(data);
     } catch (error) {
-      showSnackbar('Gagal memuat kategori: ' + error.message, 'error');
+      showSnackbar(`Gagal memuat kategori: ${getApiErrorMessage(error)}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -165,7 +171,7 @@ const CategoryManagementPage = () => {
       loadCategories();
       loadStats();
     } catch (error) {
-      showSnackbar('Gagal membuat kategori: ' + error.message, 'error');
+      showSnackbar(`Gagal membuat kategori: ${getApiErrorMessage(error)}`, 'error');
     }
   };
 
@@ -185,22 +191,23 @@ const CategoryManagementPage = () => {
       setEditDialogOpen(false);
       loadCategories();
     } catch (error) {
-      showSnackbar('Gagal memperbarui kategori: ' + error.message, 'error');
+      showSnackbar(`Gagal memperbarui kategori: ${getApiErrorMessage(error)}`, 'error');
     }
   };
 
-  const handleDelete = async (categoryId) => {
-    if (!window.confirm('Yakin ingin menghapus kategori ini?')) {
-      return;
-    }
-
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
     try {
-      await deleteCategory(categoryId);
+      await deleteCategory(deleteTarget.id);
       showSnackbar('Kategori berhasil dihapus', 'success');
+      setDeleteTarget(null);
       loadCategories();
       loadStats();
     } catch (error) {
-      showSnackbar('Gagal menghapus kategori: ' + error.message, 'error');
+      showSnackbar(`Gagal menghapus kategori: ${getApiErrorMessage(error)}`, 'error');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -211,7 +218,7 @@ const CategoryManagementPage = () => {
       loadCategories();
       loadStats();
     } catch (error) {
-      showSnackbar('Gagal memulihkan kategori: ' + error.message, 'error');
+      showSnackbar(`Gagal memulihkan kategori: ${getApiErrorMessage(error)}`, 'error');
     }
   };
 
@@ -231,7 +238,8 @@ const CategoryManagementPage = () => {
     handleActionMenuClose();
     if (!category) return;
     if (action === 'edit') handleEditOpen(category);
-    if (action === 'delete') handleDelete(category.id);
+    // Fix M10: hapus lewat ConfirmDialog, bukan eksekusi langsung.
+    if (action === 'delete') setDeleteTarget(category);
     if (action === 'restore') handleRestore(category.id);
   };
 
@@ -669,6 +677,17 @@ const CategoryManagementPage = () => {
             {snackbar.message}
           </Alert>
         </Snackbar>
+
+        {/* Fix M10: konfirmasi hapus kategori */}
+        <ConfirmDialog
+          open={!!deleteTarget}
+          title="Hapus Kategori"
+          message={`Hapus kategori "${deleteTarget?.name}"? Kategori dengan laporan aktif tidak dapat dihapus.`}
+          severity="error"
+          loading={deleteLoading}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
       </Box>
     </Fade>
   );
