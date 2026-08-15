@@ -158,7 +158,10 @@ export default function LoginPage() {
 
             <Fade in timeout={800}>
               <Box component="form" noValidate onSubmit={handleSubmit}>
-                {/* SSO Login Button */}
+                {/* SSO Login Button — Fix H7: hanya tampil bila VITE_ENABLE_SSO=true
+                    (backend SSO belum tersedia; sebelumnya tombol selalu muncul
+                    dan mengarah ke endpoint yang tidak ada). */}
+                {import.meta.env.VITE_ENABLE_SSO === 'true' && (
                 <Button
                   variant="outlined"
                   fullWidth
@@ -187,6 +190,7 @@ export default function LoginPage() {
                 >
                   Masuk dengan {import.meta.env.VITE_SSO_PROVIDER_NAME || 'SSO Kampus'}
                 </Button>
+                )}
 
                 <Box sx={{
                   display: 'flex',

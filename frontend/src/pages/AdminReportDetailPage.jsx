@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Box, Paper, Typography, Button, Chip, Grid, Avatar,
   Divider, Dialog, DialogTitle, DialogContent, DialogActions,
-  Alert, CircularProgress, Stack, Fade,
+  Alert, CircularProgress, Stack, Fade, TextField,
   useTheme, IconButton, AppBar, Toolbar, Menu, MenuItem, ListItemIcon,
   Breadcrumbs, Link
 } from '@mui/material';
@@ -95,6 +95,12 @@ const AdminReportDetailPage = () => {
   const [actionError, setActionError] = useState(null);
   const [statusMenuAnchor, setStatusMenuAnchor] = useState(null);
 
+  // Fix M10: alasan REJECTED/CANCELED via Dialog (bukan window.prompt yang
+  // tidak ramah mobile & tidak konsisten dengan desain).
+  const [reasonDialog, setReasonDialog] = useState({ open: false, status: null });
+  const [reasonText, setReasonText] = useState('');
+  const [reasonLoading, setReasonLoading] = useState(false);
+
   useEffect(() => {
     if (id) { getReportById(id, true).then(setReport); }
   }, [id, getReportById]);
@@ -104,15 +110,40 @@ const AdminReportDetailPage = () => {
   const handleOpenChat = async () => { if (report) { await selectReport(report); navigate('/admin/chat'); } };
   const handleStatusChange = async (s) => {
     setStatusMenuAnchor(null);
-    const reason = ['REJECTED', 'CANCELED'].includes(s)
-      ? window.prompt('Masukkan alasan perubahan status:')
-      : null;
-    if (['REJECTED', 'CANCELED'].includes(s) && !reason?.trim()) {
+    // Fix M10: untuk REJECTED/CANCELED buka dialog alasan alih-alih window.prompt.
+    if (['REJECTED', 'CANCELED'].includes(s)) {
+      setActionError(null);
+      setReasonText('');
+      setReasonDialog({ open: true, status: s });
+      return;
+    }
+    try {
+      setActionError(null);
+      await updateReportStatus(id, s, null);
+      setReport(prev => prev ? { ...prev, status: s } : prev);
+    } catch (e) {
+      setActionError(e?.message || 'Gagal mengubah status');
+    }
+  };
+
+  const handleReasonConfirm = async () => {
+    const { status } = reasonDialog;
+    if (!reasonText.trim()) {
       setActionError('Alasan wajib diisi untuk status ditolak atau dibatalkan.');
       return;
     }
-    try { setActionError(null); await updateReportStatus(id, s, reason); setReport(prev => prev ? { ...prev, status: s } : prev); }
-    catch (e) { setActionError(e?.message || 'Gagal mengubah status'); }
+    setReasonLoading(true);
+    try {
+      setActionError(null);
+      await updateReportStatus(id, status, reasonText.trim());
+      setReport(prev => prev ? { ...prev, status } : prev);
+      setReasonDialog({ open: false, status: null });
+      setReasonText('');
+    } catch (e) {
+      setActionError(e?.message || 'Gagal mengubah status');
+    } finally {
+      setReasonLoading(false);
+    }
   };
 
   const fmt = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -187,7 +218,7 @@ const AdminReportDetailPage = () => {
               <Paper sx={{ ...cardStyle, width: "100%" }}>
                 <Box sx={{ p: { xs: 2, md: 3 }, borderBottom: "1px solid", borderColor: "divider" }}>
                   <Grid container spacing={2} alignItems="center" sx={{ minWidth: 0 }}>
-                    <Grid item xs={12} md={8} sx={{ minWidth: 0 }}>
+                    <Grid size={{ xs: 12, md: 8 }} sx={{ minWidth: 0 }}>
                       <Stack direction="row" spacing={2} alignItems="center" sx={{ minWidth: 0 }}>
                         <Avatar sx={{ bgcolor: alpha(THEME_COLORS.primary, 0.1), color: THEME_COLORS.primary, width: 56, height: 56, flexShrink: 0 }}>
                           <Assignment sx={{ fontSize: 28 }} />
@@ -224,7 +255,7 @@ const AdminReportDetailPage = () => {
                     <Box>
                       <Grid container spacing={2} sx={{ minWidth: 0 }}>
                         {report.attachments.map((attachment) => (
-                          <Grid item xs={12} sm={6} md={4} key={attachment.id} sx={{ minWidth: 0 }}>
+                          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={attachment.id} sx={{ minWidth: 0 }}>
                             <ReportAttachmentCard attachment={attachment} onPreview={handleAttachmentPreview} downloadUrl={`${BACKEND_UPLOAD_URL}${attachment.filePath}`} />
                           </Grid>
                         ))}
@@ -344,6 +375,50 @@ const AdminReportDetailPage = () => {
           <DialogActions sx={{ p: 2 }}>
             <Button onClick={() => setRestoreDialog(false)} variant="outlined" sx={{ borderRadius: 2 }}>Batal</Button>
             <Button onClick={handleRestore} color="success" variant="contained" sx={{ borderRadius: 2 }}>Ya, Pulihkan</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Dialog Alasan (REJECTED/CANCELED) — Fix M10 */}
+        <Dialog
+          open={reasonDialog.open}
+          onClose={() => { if (!reasonLoading) setReasonDialog({ open: false, status: null }); }}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+        >
+          <DialogTitle>
+            <Typography variant="h6" fontWeight={700}>
+              {reasonDialog.status === 'REJECTED' ? 'Tolak Laporan' : 'Batalkan Laporan'}
+            </Typography>
+          </DialogTitle>
+          <DialogContent>
+            <Typography color="text.secondary" variant="body2" sx={{ mb: 2 }}>
+              Alasan akan dicatat di audit log dan diberitahukan ke pelapor.
+            </Typography>
+            <TextField
+              autoFocus
+              fullWidth
+              multiline
+              minRows={3}
+              label="Alasan"
+              value={reasonText}
+              onChange={(e) => setReasonText(e.target.value)}
+              error={!reasonText.trim()}
+              helperText={!reasonText.trim() ? 'Alasan wajib diisi' : ''}
+            />
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setReasonDialog({ open: false, status: null })} variant="outlined" sx={{ borderRadius: 2 }} disabled={reasonLoading}>Batal</Button>
+            <Button
+              onClick={handleReasonConfirm}
+              color={reasonDialog.status === 'REJECTED' ? 'error' : 'warning'}
+              variant="contained"
+              sx={{ borderRadius: 2 }}
+              disabled={reasonLoading}
+              startIcon={reasonLoading ? <CircularProgress size={16} color="inherit" /> : null}
+            >
+              {reasonLoading ? 'Memproses…' : 'Konfirmasi'}
+            </Button>
           </DialogActions>
         </Dialog>
 

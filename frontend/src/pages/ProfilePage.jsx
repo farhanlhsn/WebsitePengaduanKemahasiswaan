@@ -142,7 +142,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
             position: 'relative'
           }}>
             <Grid container spacing={3} alignItems="center">
-              <Grid item>
+              <Grid>
                 <Box sx={{ position: 'relative' }}>
                   <Avatar 
                     sx={{ 
@@ -176,7 +176,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
                 </Box>
               </Grid>
               
-              <Grid item xs>
+              <Grid xs>
                 <Typography variant="h5" fontWeight={800} gutterBottom sx={{ mb: 0.5 }}>
                   {user.name || 'Nama tidak tersedia'}
                 </Typography>
@@ -201,7 +201,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
                 </Box>
               </Grid>
               
-              <Grid item xs={12} sm="auto">
+              <Grid size={{ xs: 12, sm: 'auto' }}>
                 {!editMode ? (
                   <Button
                     variant="contained"
@@ -251,7 +251,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
 
             <Grid container spacing={4}>
               {/* Personal Information */}
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Person color="primary" />
                   <Typography variant="h6" fontWeight={700}>
@@ -301,7 +301,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
               </Grid>
 
               {/* Account Information */}
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
                   <AccountCircle color="secondary" />
                   <Typography variant="h6" fontWeight={700}>
@@ -339,7 +339,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
           Aktivitas Laporan
         </Typography>
         <Grid container spacing={3} sx={{ mb: 2 }}>
-          <Grid item xs={12} sm={4}>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <GlassCard variant="glass" sx={{ 
               height: '100%', 
               display: 'flex',
@@ -364,7 +364,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
             </GlassCard>
           </Grid>
           
-          <Grid item xs={12} sm={4}>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <GlassCard variant="glass" sx={{ 
               height: '100%', 
               display: 'flex',
@@ -389,7 +389,7 @@ const ProfilePage = ({ isEmbedded = false }) => {
             </GlassCard>
           </Grid>
           
-          <Grid item xs={12} sm={4}>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <GlassCard variant="glass" sx={{ 
               height: '100%', 
               display: 'flex',

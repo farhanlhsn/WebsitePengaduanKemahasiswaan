@@ -83,10 +83,10 @@ export default function StudentChatPage() {
 
         <Grid container spacing={3}>
           {/* Adjusted width for better layout on larger screens */}
-          <Grid item xs={12} md={4} lg={3}>
+          <Grid size={{ xs: 12, md: 4, lg: 3 }}>
             <ChatList onReportSelect={(r) => navigate(`/dashboard/chat/${r.id}`)} />
           </Grid>
-          <Grid item xs={12} md={8} lg={9}>
+          <Grid size={{ xs: 12, md: 8, lg: 9 }}>
             <ChatInterface />
           </Grid>
         </Grid>

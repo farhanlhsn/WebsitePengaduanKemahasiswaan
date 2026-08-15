@@ -5,6 +5,7 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 import useReportStore from '../../stores/reportStore';
 import AdminDataTable from '../../components/admin/AdminDataTable';
 import AdminSectionHeader from './AdminSectionHeader';
+import getApiErrorMessage from '../../utils/getApiErrorMessage';
 
 const AdminReportsPage = () => {
   const navigate = useNavigate();
@@ -79,7 +80,7 @@ const AdminReportsPage = () => {
           await restoreReport(row.id);
           setSnackbar({ open: true, message: 'Laporan berhasil dipulihkan', severity: 'success' });
         } catch (e) {
-          setSnackbar({ open: true, message: `Gagal memulihkan laporan: ${e.message || e}`, severity: 'error' });
+          setSnackbar({ open: true, message: `Gagal memulihkan laporan: ${getApiErrorMessage(e)}`, severity: 'error' });
         }
       }
     },
@@ -110,7 +111,7 @@ const AdminReportsPage = () => {
       console.error(e);
       setSnackbar({
         open: true,
-        message: `Gagal memperbarui status laporan: ${e.message || e}`,
+        message: `Gagal memperbarui status laporan: ${getApiErrorMessage(e)}`,
         severity: 'error'
       });
     }

@@ -8,34 +8,28 @@ export const login = async (email, password) => {
 };
 
 export const registerStudent = async (userData, ktmFile) => {
-  try {
-    // Create FormData for multipart/form-data
-    const formData = new FormData();
-    
-    // Add user data
-    formData.append('name', userData.name);
-    formData.append('email', userData.email);
-    formData.append('password', userData.password);
-    formData.append('nim', userData.nim);
-    
-    // Add KTM file if provided
-    if (ktmFile) {
-      formData.append('ktm', ktmFile);
-    }
-    
-    const response = await apiClient.post('/auth/registerStudent', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    return response.data;
-  } catch (error) {
-    // Handle specific error responses
-    if (error.response?.data) {
-      throw new Error(error.response.data.message || error.response.data.error || 'Registration failed');
-    }
-    throw error;
+  // Create FormData for multipart/form-data
+  const formData = new FormData();
+
+  // Add user data
+  formData.append('name', userData.name);
+  formData.append('email', userData.email);
+  formData.append('password', userData.password);
+  formData.append('nim', userData.nim);
+
+  // Add KTM file if provided
+  if (ktmFile) {
+    formData.append('ktm', ktmFile);
   }
+
+  // Fix H3: teruskan error axios apa adanya (tanpa dibungkus) agar `.response`
+  // berisi pesan backend tetap bisa dibaca oleh caller.
+  const response = await apiClient.post('/auth/registerStudent', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+  return response.data;
 };
 
 export const logout = async () => {

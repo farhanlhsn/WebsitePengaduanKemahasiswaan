@@ -88,7 +88,7 @@ const UserDetailModal = ({ open, onClose, user, onAction, isSuperAdmin }) => {
         <DialogContent sx={{ pt: 2, pb: 3, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <Grid container spacing={3}>
             {/* Kolom Kiri: Informasi Pengguna */}
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Paper
                 elevation={2}
                 sx={{
@@ -184,7 +184,7 @@ const UserDetailModal = ({ open, onClose, user, onAction, isSuperAdmin }) => {
             </Grid>
 
             {/* Kolom Kanan: Foto KTM */}
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Paper
                 elevation={2}
                 sx={{

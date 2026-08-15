@@ -49,6 +49,7 @@ import BulkOperationsToolbar from '../components/admin/BulkOperationsToolbar';
 import StatCard from '../components/ui/StatCard';
 import AdminSectionHeader from './admin/AdminSectionHeader';
 import { format } from 'date-fns';
+import getApiErrorMessage from '../utils/getApiErrorMessage';
 
 const UnverifiedUsersPage = () => {
   const headerCellSx = {
@@ -85,7 +86,7 @@ const UnverifiedUsersPage = () => {
       const result = await getUnverifiedStudents();
       setUsers(result.unverifiedStudents || []);
     } catch (error) {
-      showSnackbar('Failed to load unverified users: ' + error.message, 'error');
+      showSnackbar(`Failed to load unverified users: ${getApiErrorMessage(error)}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -120,7 +121,7 @@ const UnverifiedUsersPage = () => {
       loadUnverifiedUsers();
       setSelectedUsers([]);
     } catch (error) {
-      showSnackbar('Failed to verify user: ' + error.message, 'error');
+      showSnackbar(`Failed to verify user: ${getApiErrorMessage(error)}`, 'error');
     }
   };
 
@@ -131,7 +132,7 @@ const UnverifiedUsersPage = () => {
       loadUnverifiedUsers();
       setSelectedUsers([]);
     } catch (error) {
-      showSnackbar('Failed to bulk verify: ' + error.message, 'error');
+      showSnackbar(`Failed to bulk verify: ${getApiErrorMessage(error)}`, 'error');
     }
   };
 
@@ -141,7 +142,7 @@ const UnverifiedUsersPage = () => {
       setSelectedUser(user);
       setViewUserDialog(true);
     } catch (error) {
-      showSnackbar('Failed to load user details: ' + error.message, 'error');
+      showSnackbar(`Failed to load user details: ${getApiErrorMessage(error)}`, 'error');
     }
   };
 
@@ -170,7 +171,7 @@ const UnverifiedUsersPage = () => {
         setSelectedUsers(prev => prev.filter(id => id !== userToReject.id));
       }
     } catch (error) {
-      showSnackbar('Gagal menolak pendaftaran: ' + error.message, 'error');
+      showSnackbar(`Gagal menolak pendaftaran: ${getApiErrorMessage(error)}`, 'error');
     } finally {
       setRejectLoading(false);
     }

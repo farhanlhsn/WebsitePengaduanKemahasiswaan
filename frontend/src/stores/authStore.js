@@ -103,7 +103,13 @@ const useAuthStore = create(
           set({ loading: false });
           return response;
         } catch (error) {
-          const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Registration failed';
+          // Fix H3: baca pesan backend (message/error) lalu fallback ke
+          // error.message — hindari fallback English generik.
+          const errorMessage =
+            error.response?.data?.message ||
+            error.response?.data?.error ||
+            error.message ||
+            'Registrasi gagal. Silakan coba lagi.';
           set({ loading: false, error: errorMessage });
           throw error;
         }

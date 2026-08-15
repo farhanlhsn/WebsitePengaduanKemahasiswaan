@@ -133,7 +133,7 @@ const DeviceManagement = ({ open, onClose }) => {
                 >
                   <CardContent sx={{ p: 3 }}>
                     <Grid container spacing={2} alignItems="center">
-                      <Grid item>
+                      <Grid>
                         <Box sx={{ 
                           p: 1.5, 
                           borderRadius: 2, 
@@ -143,7 +143,7 @@ const DeviceManagement = ({ open, onClose }) => {
                           {getDeviceIcon(currentDevice.deviceType)}
                         </Box>
                       </Grid>
-                      <Grid item xs>
+                      <Grid xs>
                         <Typography variant="h6" fontWeight={600}>
                           {currentDevice.deviceName || 'Perangkat Ini'}
                         </Typography>
@@ -157,7 +157,7 @@ const DeviceManagement = ({ open, onClose }) => {
                           </Typography>
                         </Box>
                       </Grid>
-                      <Grid item>
+                      <Grid>
                         <Chip 
                           label="Aktif Sekarang" 
                           color="primary" 
@@ -193,7 +193,7 @@ const DeviceManagement = ({ open, onClose }) => {
                   <GlassCard variant="glass" key={device.id} sx={{ mb: 2, p: 0 }}>
                     <CardContent sx={{ p: 3 }}>
                       <Grid container spacing={2} alignItems="center">
-                        <Grid item>
+                        <Grid>
                           <Box sx={{ 
                             p: 1.5, 
                             borderRadius: 2, 
@@ -202,7 +202,7 @@ const DeviceManagement = ({ open, onClose }) => {
                             {getDeviceIcon(device.deviceType)}
                           </Box>
                         </Grid>
-                        <Grid item xs>
+                        <Grid xs>
                           <Typography variant="subtitle1" fontWeight={600}>
                             {device.deviceName || 'Perangkat Tidak Dikenal'}
                           </Typography>
@@ -216,7 +216,7 @@ const DeviceManagement = ({ open, onClose }) => {
                             </Typography>
                           </Box>
                         </Grid>
-                        <Grid item>
+                        <Grid>
                           <IconButton
                             color="error"
                             onClick={() => {

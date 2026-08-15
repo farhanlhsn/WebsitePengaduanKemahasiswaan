@@ -21,6 +21,13 @@ import {
   Restore,
   Edit
 } from '@mui/icons-material';
+import ConfirmDialog from '../ui/ConfirmDialog';
+
+const TYPE_LABEL = {
+  users: 'pengguna',
+  reports: 'laporan',
+  categories: 'kategori',
+};
 
 const BulkOperationsToolbar = ({ 
   selectedCount, 
@@ -34,6 +41,10 @@ const BulkOperationsToolbar = ({
   const [anchorEl, setAnchorEl] = useState(null);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('');
+  // Fix M10: konfirmasi bulk via ConfirmDialog (bukan window.confirm English).
+  const [pendingAction, setPendingAction] = useState(null);
+
+  const typeLabel = TYPE_LABEL[type] || type;
 
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -43,24 +54,14 @@ const BulkOperationsToolbar = ({
     setAnchorEl(null);
   };
 
-  const handleBulkAction = async (action) => {
+  const handleBulkAction = (action) => {
     handleMenuClose();
 
     switch (action) {
       case 'verify':
-        if (window.confirm(`Verify ${selectedCount} users?`)) {
-          await onBulkVerify();
-        }
-        break;
       case 'delete':
-        if (window.confirm(`Delete ${selectedCount} ${type}?`)) {
-          await onBulkDelete();
-        }
-        break;
       case 'restore':
-        if (window.confirm(`Restore ${selectedCount} ${type}?`)) {
-          await onBulkRestore();
-        }
+        setPendingAction(action);
         break;
       case 'updateStatus':
         setStatusDialogOpen(true);
@@ -68,6 +69,37 @@ const BulkOperationsToolbar = ({
       default:
         break;
     }
+  };
+
+  const confirmMeta = {
+    verify: {
+      title: `Verifikasi ${selectedCount} Pengguna`,
+      message: `Verifikasi ${selectedCount} pengguna terpilih sebagai mahasiswa?`,
+      confirmLabel: 'Verifikasi',
+      severity: 'info',
+      run: onBulkVerify,
+    },
+    delete: {
+      title: `Hapus ${selectedCount} ${typeLabel}`,
+      message: `Hapus ${selectedCount} ${typeLabel} terpilih? Aksi ini dapat di-restore nanti.`,
+      confirmLabel: 'Hapus',
+      severity: 'error',
+      run: onBulkDelete,
+    },
+    restore: {
+      title: `Restore ${selectedCount} ${typeLabel}`,
+      message: `Pulihkan ${selectedCount} ${typeLabel} terpilih?`,
+      confirmLabel: 'Restore',
+      severity: 'warning',
+      run: onBulkRestore,
+    },
+  };
+
+  const handleConfirm = async () => {
+    const meta = confirmMeta[pendingAction];
+    if (!meta?.run) return;
+    await meta.run();
+    setPendingAction(null);
   };
 
   const handleStatusUpdate = async () => {
@@ -180,29 +212,29 @@ const BulkOperationsToolbar = ({
       >
         <MenuItem onClick={() => handleBulkAction('delete')}>
           <Delete fontSize="small" sx={{ mr: 1 }} />
-          Bulk Delete
+          Hapus Massal
         </MenuItem>
         <MenuItem onClick={() => handleBulkAction('restore')}>
           <Restore fontSize="small" sx={{ mr: 1 }} />
-          Bulk Restore
+          Restore Massal
         </MenuItem>
         {type === 'users' && (
           <MenuItem onClick={() => handleBulkAction('verify')}>
             <CheckCircle fontSize="small" sx={{ mr: 1 }} />
-            Bulk Verify
+            Verifikasi Massal
           </MenuItem>
         )}
         {type === 'reports' && (
           <MenuItem onClick={() => handleBulkAction('updateStatus')}>
             <Edit fontSize="small" sx={{ mr: 1 }} />
-            Bulk Update Status
+            Ubah Status Massal
           </MenuItem>
         )}
       </Menu>
 
       {/* Status Update Dialog */}
       <Dialog open={statusDialogOpen} onClose={() => setStatusDialogOpen(false)}>
-        <DialogTitle>Update Report Status</DialogTitle>
+        <DialogTitle>Ubah Status Laporan</DialogTitle>
         <DialogContent sx={{ minWidth: 300 }}>
           <FormControl fullWidth sx={{ mt: 2 }}>
             <InputLabel>Status</InputLabel>
@@ -211,26 +243,37 @@ const BulkOperationsToolbar = ({
               onChange={(e) => setSelectedStatus(e.target.value)}
               label="Status"
             >
-              <MenuItem value="PENDING">Pending</MenuItem>
-              <MenuItem value="IN_REVIEW">In Review</MenuItem>
-              <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
-              <MenuItem value="RESOLVED">Resolved</MenuItem>
-              <MenuItem value="REJECTED">Rejected</MenuItem>
-              <MenuItem value="CANCELED">Canceled</MenuItem>
+              <MenuItem value="PENDING">Menunggu</MenuItem>
+              <MenuItem value="IN_REVIEW">Sedang Ditinjau</MenuItem>
+              <MenuItem value="IN_PROGRESS">Sedang Diproses</MenuItem>
+              <MenuItem value="RESOLVED">Selesai</MenuItem>
+              <MenuItem value="REJECTED">Ditolak</MenuItem>
+              <MenuItem value="CANCELED">Dibatalkan</MenuItem>
             </Select>
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setStatusDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setStatusDialogOpen(false)}>Batal</Button>
           <Button 
             onClick={handleStatusUpdate} 
             variant="contained" 
             disabled={!selectedStatus}
           >
-            Update
+            Perbarui
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Fix M10: konfirmasi bulk */}
+      <ConfirmDialog
+        open={!!pendingAction}
+        title={confirmMeta[pendingAction]?.title || ''}
+        message={confirmMeta[pendingAction]?.message || ''}
+        confirmLabel={confirmMeta[pendingAction]?.confirmLabel || 'Konfirmasi'}
+        severity={confirmMeta[pendingAction]?.severity || 'error'}
+        onConfirm={handleConfirm}
+        onCancel={() => setPendingAction(null)}
+      />
     </>
   );
 };

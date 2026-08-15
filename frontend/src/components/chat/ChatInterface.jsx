@@ -156,6 +156,9 @@ const ChatInterface = ({
   const [replyingTo, setReplyingTo] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [messageToDelete, setMessageToDelete] = useState(null);
+  // Fix H2: status pengiriman + feedback error (sebelumnya gagal diam-diam).
+  const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState('');
   
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -169,6 +172,10 @@ const ChatInterface = ({
   const handleSendMessage = async () => {
     if (!newMessage.trim() && !selectedFile) return;
     if (!currentReport) return;
+    if (isSending) return; // cegah double-submit
+
+    setIsSending(true);
+    setSendError('');
 
     try {
       let attachments = [];
@@ -191,6 +198,13 @@ const ChatInterface = ({
       }
     } catch (error) {
       console.error('Failed to send message:', error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Gagal mengirim pesan. Periksa koneksi Anda dan coba lagi.';
+      setSendError(message);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -644,6 +658,15 @@ const ChatInterface = ({
 
       {/* Input Area */}
       <InputContainer>
+        {sendError && (
+          <Alert
+            severity="error"
+            onClose={() => setSendError('')}
+            sx={{ position: 'absolute', bottom: '100%', left: 0, right: 0, borderRadius: 0 }}
+          >
+            {sendError}
+          </Alert>
+        )}
         {selectedFile && (
           <Box sx={{ 
             position: 'absolute', 
@@ -683,11 +706,11 @@ const ChatInterface = ({
           maxRows={4}
           value={newMessage}
           onChange={handleInputChange}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyPress}
           placeholder="Ketik pesan..."
           variant="outlined"
           size="small"
-          disabled={!currentReport}
+          disabled={!currentReport || isSending}
           sx={{
             '& .MuiOutlinedInput-root': {
               borderRadius: 3,
@@ -697,8 +720,9 @@ const ChatInterface = ({
         
         <IconButton 
           onClick={handleSendMessage}
-          disabled={!newMessage.trim() && !selectedFile}
+          disabled={isSending || (!newMessage.trim() && !selectedFile)}
           color="primary"
+          aria-label="Kirim pesan"
           sx={{ 
             alignSelf: 'flex-end', 
             mb: 0.5,
@@ -713,7 +737,7 @@ const ChatInterface = ({
             }
           }}
         >
-          <Send />
+          {isSending ? <CircularProgress size={20} color="inherit" /> : <Send />}
         </IconButton>
         
         <input

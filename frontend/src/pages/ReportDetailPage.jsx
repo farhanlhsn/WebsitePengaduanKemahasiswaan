@@ -219,6 +219,11 @@ const ReportDetailPage = () => {
     fetchReport();
   }, [id, getReportById]);
 
+  // Fix M13: tombol "Coba Lagi" di error state — muat ulang laporan.
+  const handleRetry = () => {
+    if (id) getReportById(id).then(setReport);
+  };
+
   const handleDelete = async () => {
     await deleteReport(id);
     setDeleteDialog(false);
@@ -329,6 +334,17 @@ const ReportDetailPage = () => {
           >
             {error || "Laporan tidak ditemukan atau gagal dimuat."}
           </Alert>
+          {/* Fix M13: aksi pemulihan di error state (retry + kembali). */}
+          <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
+            {error && (
+              <Button variant="contained" onClick={handleRetry} sx={{ borderRadius: 2 }}>
+                Coba Lagi
+              </Button>
+            )}
+            <Button variant="outlined" onClick={() => navigate("/dashboard")} sx={{ borderRadius: 2 }}>
+              Kembali ke Dasbor
+            </Button>
+          </Stack>
         </Container>
       </Box>
     );
@@ -442,7 +458,7 @@ const ReportDetailPage = () => {
                       alignItems="center"
                       sx={{ minWidth: 0 }}
                     >
-                      <Grid item xs={12} md={8} sx={{ minWidth: 0 }}>
+                      <Grid size={{ xs: 12, md: 8 }} sx={{ minWidth: 0 }}>
                         <Stack
                           direction="row"
                           spacing={2}
@@ -548,14 +564,7 @@ const ReportDetailPage = () => {
                       <Box>
                         <Grid container spacing={2} sx={{ minWidth: 0 }}>
                           {report.attachments.map((attachment) => (
-                            <Grid
-                              item
-                              xs={12}
-                              sm={6}
-                              md={4}
-                              key={attachment.id}
-                              sx={{ minWidth: 0 }}
-                            >
+                            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={attachment.id} sx={{ minWidth: 0 }}>
                               <ReportAttachmentCard
                                 attachment={attachment}
                                 onPreview={handleAttachmentPreview}

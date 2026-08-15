@@ -116,7 +116,7 @@ const UserStatistics = ({ users = [], loading = false }) => {
     return (
       <Grid container spacing={3}>
         {[...Array(8)].map((_, index) => (
-          <Grid item xs={12} sm={6} lg={3} key={index}>
+          <Grid size={{ xs: 12, sm: 6, lg: 3 }} key={index}>
             <Paper sx={{ p: 3, borderRadius: 3 }}>
               <LinearProgress />
             </Paper>
@@ -135,7 +135,7 @@ const UserStatistics = ({ users = [], loading = false }) => {
          gridGap: '20px',
          mb: 3
       }}>
-        <Grid item xs={12} sm={6} lg={3}>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <StatCard
             title="Total Pengguna"
             value={stats.total}
@@ -146,7 +146,7 @@ const UserStatistics = ({ users = [], loading = false }) => {
           />
         </Grid>
         
-        <Grid item xs={12} sm={6} lg={3}>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <StatCard
             title="Terverifikasi"
             value={stats.verified}
@@ -156,7 +156,7 @@ const UserStatistics = ({ users = [], loading = false }) => {
           />
         </Grid>
         
-        <Grid item xs={12} sm={6} lg={3}>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <StatCard
             title="Belum Terverifikasi"
             value={stats.unverified}  
@@ -166,7 +166,7 @@ const UserStatistics = ({ users = [], loading = false }) => {
           />
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 3, borderRadius: 3 }}>
             <Typography variant="h6" fontWeight={600} gutterBottom>
               Distribusi Role

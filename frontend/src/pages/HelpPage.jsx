@@ -211,7 +211,7 @@ const HelpPage = ({ isEmbedded = false }) => {
                 </Typography>
                 <Grid container spacing={2}>
                   {quickGuide.map((guide) => (
-                    <Grid item xs={6} sm={3} key={guide.step}>
+                    <Grid size={{ xs: 6, sm: 3 }} key={guide.step}>
                       <Box sx={{ 
                         textAlign: 'center', p: 2, borderRadius: 3, 
                         bgcolor: alpha(theme.palette.primary.main, 0.03),
@@ -285,7 +285,7 @@ const HelpPage = ({ isEmbedded = false }) => {
           <Grid container spacing={4} alignItems="flex-start">
             
             {/* Contact Card */}
-            <Grid item xs={12} lg={7}>
+            <Grid size={{ xs: 12, lg: 7 }}>
               <GlassCard variant="glass" sx={{ p: 4, bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
                 <Typography variant="h6" fontWeight={700} gutterBottom sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <ContactSupport color="primary" sx={{ mr: 1.5 }} /> Butuh Bantuan Lanjut?
@@ -330,7 +330,7 @@ const HelpPage = ({ isEmbedded = false }) => {
             </Grid>
 
             {/* Resource Links */}
-            <Grid item xs={12} lg={5}>
+            <Grid size={{ xs: 12, lg: 5 }}>
               <GlassCard variant="glass" sx={{ p: 4 }}>
                 <Typography variant="subtitle1" fontWeight={700} gutterBottom sx={{ mb: 2 }}>
                   Tautan Penting

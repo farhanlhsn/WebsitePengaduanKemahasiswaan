@@ -84,7 +84,7 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
       >
         <Grid container spacing={{ xs: 2, md: 3 }}>
           {/* Tipe Entitas */}
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <TextField
               select
               fullWidth
@@ -113,7 +113,7 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
           </Grid>
 
           {/* Aksi */}
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <TextField
               select
               fullWidth
@@ -148,7 +148,7 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
           </Grid>
 
           {/* Tanggal Mulai */}
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
             <TextField
               fullWidth
               size="small"
@@ -165,7 +165,7 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
           </Grid>
 
           {/* Tanggal Akhir */}
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
             <TextField
               fullWidth
               size="small"
@@ -182,7 +182,7 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
           </Grid>
 
           {/* Limit */}
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
             <TextField
               fullWidth
               size="small"
@@ -199,7 +199,7 @@ const AuditLogFilters = ({ filters, onFiltersChange, onClear }) => {
           </Grid>
 
           {/* Tombol Hapus */}
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
             <Box
               sx={{
                 height: '100%',

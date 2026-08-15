@@ -100,7 +100,7 @@ const AdminDashboardStats = ({
     return (
       <Grid container spacing={3}>
         {[...Array(8)].map((_, index) => (
-          <Grid item xs={12} sm={6} lg={3} key={index}>
+          <Grid size={{ xs: 12, sm: 6, lg: 3 }} key={index}>
             <Box sx={{ 
               height: 180, 
               borderRadius: 4, 

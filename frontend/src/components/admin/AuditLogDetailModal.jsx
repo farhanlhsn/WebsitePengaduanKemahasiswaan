@@ -64,14 +64,14 @@ const AuditLogDetailModal = ({ open, onClose, log }) => {
           <Paper variant="outlined" sx={{ p: 2, bgcolor: alpha(theme.palette.warning.light, 0.05) }}>
             <Typography variant="subtitle2" gutterBottom color="text.secondary">Change Log</Typography>
             <Grid container alignItems="center" spacing={2}>
-              <Grid item xs={5}>
+              <Grid size={{ xs: 5 }}>
                  <Typography variant="caption" display="block" color="text.secondary">From</Typography>
                  <Chip label={String(oldVal)} size="small" color="default" variant="outlined" />
               </Grid>
-              <Grid item xs={2} sx={{ textAlign: 'center' }}>
+              <Grid size={{ xs: 2 }} sx={{ textAlign: 'center' }}>
                  <Typography variant="body1" color="text.secondary">→</Typography>
               </Grid>
-              <Grid item xs={5} sx={{ textAlign: 'right' }}>
+              <Grid size={{ xs: 5 }} sx={{ textAlign: 'right' }}>
                  <Typography variant="caption" display="block" color="text.secondary">To</Typography>
                  <Chip label={String(newVal)} size="small" color="primary" />
               </Grid>
@@ -202,12 +202,12 @@ const AuditLogDetailModal = ({ open, onClose, log }) => {
       <DialogContent sx={{ p: 3 }}>
         <Grid container spacing={3}>
           {/* Actor Section */}
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Typography variant="subtitle2" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: 'text.primary' }}>
               <Person fontSize="small" color="action" /> ACTOR DETAILS
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <InfoCard 
                   icon={<AdminPanelSettings />}
                   label="Actor" 
@@ -215,7 +215,7 @@ const AuditLogDetailModal = ({ open, onClose, log }) => {
                   subValue={`Role: ${log.actorRole}`}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <InfoCard 
                   icon={<Dns />}
                   label="Network" 
@@ -226,7 +226,7 @@ const AuditLogDetailModal = ({ open, onClose, log }) => {
             </Grid>
           </Grid>
 
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <InfoCard 
               icon={<Computer />}
               label="User Agent" 
@@ -236,7 +236,7 @@ const AuditLogDetailModal = ({ open, onClose, log }) => {
           </Grid>
 
           {/* Metadata Section */}
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Typography variant="subtitle2" sx={{ mb: 2, mt: 1, display: 'flex', alignItems: 'center', gap: 1, color: 'text.primary' }}>
               <Code fontSize="small" color="action" /> ACTION METADATA
             </Typography>

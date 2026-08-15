@@ -14,8 +14,6 @@ import {
   useTheme, 
   alpha, 
   CircularProgress
-,
-  AccountCircle
 } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
@@ -26,7 +24,8 @@ import {
   School,
   SecurityOutlined,
   VerifiedUser,
-  PersonAdd
+  PersonAdd,
+  AccountCircle
 } from '@mui/icons-material';
 
 import RegisterStudentIdentity from '../components/auth/RegisterStudentIdentity';
@@ -487,7 +486,8 @@ export default function RegisterPage() {
           </Box>
         </Paper>
 
-        {/* SSO Register Button */}
+        {/* SSO Register Button — Fix H7: hanya tampil bila VITE_ENABLE_SSO=true. */}
+        {import.meta.env.VITE_ENABLE_SSO === 'true' && (
         <Box sx={{ mt: 2, px: { xs: 0, sm: 4 }, width: '100%', maxWidth: '100%' }}>
           <Button
             variant="outlined"
@@ -537,6 +537,7 @@ export default function RegisterPage() {
             </Typography>
           </Box>
         </Box>
+        )}
 
         {/* Login Link */}
         <Box sx={{ textAlign: 'center', mt: 3 }}>

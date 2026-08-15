@@ -76,7 +76,7 @@ export default function Footer() {
 
         <Grid container spacing={2} justifyContent="center">
           {/* Informasi Kontak */}
-          <Grid xs={12} sm={6} md={4}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <Box sx={{ 
               background: alpha(theme.palette.common.white, 0.08),
               borderRadius: 3,
@@ -115,7 +115,7 @@ export default function Footer() {
           </Grid>
 
           {/* Link Cepat */}
-          <Grid xs={12} sm={6} md={4}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <Box sx={{ 
               background: alpha(theme.palette.common.white, 0.08),
               borderRadius: 3,
@@ -150,7 +150,7 @@ export default function Footer() {
           </Grid>
 
           {/* Media Sosial */}
-          <Grid xs={12} sm={12} md={4}>
+          <Grid size={{ xs: 12, sm: 12, md: 4 }}>
             <Box sx={{ 
               background: alpha(theme.palette.common.white, 0.08),
               borderRadius: 3,
