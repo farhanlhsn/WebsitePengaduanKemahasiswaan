@@ -164,7 +164,8 @@ curl -f http://localhost:6060/api/health/ready
 Hanya frontend/reverse proxy yang diekspos ke publik. Backend, PostgreSQL, dan Redis pada jaringan internal.
 
 ```bash
-export POSTGRES_PASSWORD='<strong-password>'
+export POSTGRES_PASSWORD='<strong-password>'        # WAJIB (compose gagal tanpanya)
+export SEED_SUPERADMIN_PASSWORD='<strong-password>' # WAJIB (compose gagal tanpanya)
 export JWT_SECRET='<min-32-chars>'
 export JWT_REFRESH_SECRET='<min-32-chars>'
 export FRONTEND_URL='https://pengaduan.example.ac.id'
@@ -180,7 +181,7 @@ curl -f https://pengaduan.example.ac.id/api/health/ready
 
 **Readiness (`/api/health/ready`):** memverifikasi koneksi PostgreSQL **dan** Redis. Jika Redis down, readiness mengembalikan 503.
 
-**Trust proxy:** set `TRUST_PROXY=1` (atau hop count) agar rate limit dan audit log mencatat IP klien asli dari header `X-Forwarded-For`.
+**Trust proxy & X-Forwarded-For (audit S1):** set `TRUST_PROXY` sesuai jumlah hop proxy di depan backend (mis. `1` jika hanya ada nginx compose). Rate limiter kunci-IP dan audit log memakai `req.ip` yang dihitung Express dari header `X-Forwarded-For` **hanya** sebanyak hop tepercaya. Pastikan LB/reverse proxy terluar **menimpa** (bukan append) header `X-Forwarded-For` dengan IP klien asli — jika LB append, klien bisa menyisipkan IP palsu di elemen pertama dan mem-bypass rate limit. Backend tidak lagi membaca elemen pertama header secara mentah.
 
 ## 9. Migrasi Token Hash (Juni 2026)
 
