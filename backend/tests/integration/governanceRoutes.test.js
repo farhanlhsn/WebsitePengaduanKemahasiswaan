@@ -112,3 +112,34 @@ describe('user directory restriction (audit C1/B5)', () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe('demote-superadmin advisory-lock guard (audit B2, regression)', () => {
+  const app = buildApp();
+
+  // Regression untuk bug deserialize kolom void: pg_advisory_xact_lock via
+  // $queryRaw gagal ("Failed to deserialize column of type 'void'"), membuat
+  // SETIAP demote-superadmin error 400. Setelah pakai $executeRaw, demote yang
+  // valid (bukan superadmin terakhir) harus sukses.
+  test('demote works when another SUPERADMIN exists (lock path no longer errors)', async () => {
+    const actor = await createSuperAdmin();      // superadmin pelaku
+    const target = await createSuperAdmin();     // superadmin yang akan didemosi
+
+    const res = await request(app)
+      .post(`/v1/api/admin-governance/users/${target.id}/demote-superadmin`)
+      .set(authHeader(actor));
+
+    expect(res.status).toBe(200);
+    expect(res.body?.data?.role).toBe('ADMIN');
+  });
+
+  test('regular ADMIN cannot demote a SUPERADMIN', async () => {
+    const admin = await createAdmin();
+    const target = await createSuperAdmin();
+
+    const res = await request(app)
+      .post(`/v1/api/admin-governance/users/${target.id}/demote-superadmin`)
+      .set(authHeader(admin));
+
+    expect(res.status).toBe(403);
+  });
+});

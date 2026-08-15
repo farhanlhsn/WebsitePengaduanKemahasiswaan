@@ -30,31 +30,31 @@ describe('shouldRecordAnonViewAudit', () => {
     anonViewAuditCache.clear();
   });
 
-  test('first call for a (admin, report) pair returns true', () => {
-    expect(shouldRecordAnonViewAudit(7, 100)).toBe(true);
+  test('first call for a (admin, report) pair returns true', async () => {
+    expect(await shouldRecordAnonViewAudit(7, 100)).toBe(true);
   });
 
-  test('subsequent call within window returns false', () => {
-    shouldRecordAnonViewAudit(7, 100);
-    expect(shouldRecordAnonViewAudit(7, 100)).toBe(false);
-    expect(shouldRecordAnonViewAudit(7, 100)).toBe(false);
+  test('subsequent call within window returns false', async () => {
+    await shouldRecordAnonViewAudit(7, 100);
+    expect(await shouldRecordAnonViewAudit(7, 100)).toBe(false);
+    expect(await shouldRecordAnonViewAudit(7, 100)).toBe(false);
   });
 
-  test('different report by same admin tracked independently', () => {
-    expect(shouldRecordAnonViewAudit(7, 100)).toBe(true);
-    expect(shouldRecordAnonViewAudit(7, 200)).toBe(true);
+  test('different report by same admin tracked independently', async () => {
+    expect(await shouldRecordAnonViewAudit(7, 100)).toBe(true);
+    expect(await shouldRecordAnonViewAudit(7, 200)).toBe(true);
   });
 
-  test('different admin viewing same report tracked independently', () => {
-    expect(shouldRecordAnonViewAudit(7, 100)).toBe(true);
-    expect(shouldRecordAnonViewAudit(8, 100)).toBe(true);
+  test('different admin viewing same report tracked independently', async () => {
+    expect(await shouldRecordAnonViewAudit(7, 100)).toBe(true);
+    expect(await shouldRecordAnonViewAudit(8, 100)).toBe(true);
   });
 
-  test('after window elapses, a new entry is recorded', () => {
-    shouldRecordAnonViewAudit(7, 100);
+  test('after window elapses, a new entry is recorded', async () => {
+    await shouldRecordAnonViewAudit(7, 100);
     // Manually shift the cached timestamp into the past.
     anonViewAuditCache.set('7:100', Date.now() - ANON_VIEW_AUDIT_WINDOW_MS - 1);
-    expect(shouldRecordAnonViewAudit(7, 100)).toBe(true);
+    expect(await shouldRecordAnonViewAudit(7, 100)).toBe(true);
   });
 
   test('window is exactly 5 minutes', () => {

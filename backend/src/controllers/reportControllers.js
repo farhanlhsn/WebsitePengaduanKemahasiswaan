@@ -11,19 +11,37 @@ const { getLogger } = require('../utils/logger');
 const log = getLogger('report:controller');
 
 /**
- * In-memory rate-limit cache for VIEW_ANONYMOUS audit logs.
+ * Rate-limit gate for VIEW_ANONYMOUS audit logs.
  *
  * We log when an admin opens an anonymous report's detail page, but a single
  * admin refreshing or polling the page would create dozens of redundant audit
- * rows in seconds. Cache key is `${actorId}:${reportId}` and we only allow one
- * audit entry per window (5 minutes).
+ * rows in seconds. Key is `${actorId}:${reportId}` and we only allow one audit
+ * entry per window (5 minutes).
  *
- * Memory-bounded: entries auto-prune past their expiry on next access.
+ * Audit L11: memakai Redis bila tersedia agar jendela dedup konsisten di
+ * seluruh instance backend (multi-replica); fallback ke Map in-memory bila
+ * Redis tidak dikonfigurasi (dev/test).
  */
+const redisClient = require('../utils/redis');
 const ANON_VIEW_AUDIT_WINDOW_MS = 5 * 60 * 1000;
+const ANON_VIEW_AUDIT_WINDOW_S = Math.floor(ANON_VIEW_AUDIT_WINDOW_MS / 1000);
 const anonViewAuditCache = new Map();
 
-function shouldRecordAnonViewAudit(actorId, reportId) {
+async function shouldRecordAnonViewAudit(actorId, reportId) {
+  const redisKey = `anon_view_audit:${actorId}:${reportId}`;
+
+  if (redisClient) {
+    try {
+      // SET NX EX: hanya sukses bila key belum ada dalam jendela. Mengembalikan
+      // 'OK' pada pandangan pertama, null pada pandangan berulang.
+      const setRes = await redisClient.set(redisKey, '1', 'EX', ANON_VIEW_AUDIT_WINDOW_S, 'NX');
+      return setRes === 'OK';
+    } catch (err) {
+      log.warn('VIEW_ANONYMOUS redis gate failed, falling back to memory', { error: err.message });
+      // lanjut ke jalur in-memory di bawah
+    }
+  }
+
   const key = `${actorId}:${reportId}`;
   const now = Date.now();
   const lastAt = anonViewAuditCache.get(key);
@@ -246,7 +264,7 @@ exports.getReportById = async (req, res) => {
       result?.isAnonymous &&
       isAdminTier &&
       !isOwner &&
-      shouldRecordAnonViewAudit(req.user.userId, result.id)
+      (await shouldRecordAnonViewAudit(req.user.userId, result.id))
     ) {
       // Fire-and-forget — never block the response on audit-log latency.
       auditLogServices
