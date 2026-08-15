@@ -4,15 +4,13 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart as Recharts
 import { BarChart, TrendingUp } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
 import GlassCard from '../ui/GlassCard';
+import { STATUS_CONFIG } from '../../utils/statusConfig';
 
-const STATUS_COLORS = {
-  PENDING: '#FFC107',
-  IN_REVIEW: '#2196F3',
-  IN_PROGRESS: '#FF9800',
-  RESOLVED: '#4CAF50',
-  REJECTED: '#F44336',
-  CANCELED: '#9E9E9E'
-};
+// Warna per status, diturunkan dari konfigurasi status terpusat agar
+// konsisten dengan badge dan bagian aplikasi lainnya.
+const STATUS_COLORS = Object.fromEntries(
+  Object.entries(STATUS_CONFIG).map(([status, cfg]) => [status, cfg.color])
+);
 
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {

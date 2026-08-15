@@ -34,16 +34,29 @@ import {
 import { useNavigate } from 'react-router-dom';
 import useReportStore from '../../stores/reportStore';
 import useChatStore from '../../stores/chatStore';
+import useAuthStore from '../../stores/authStore';
+import { listAdmins } from '../../services/adminGovernanceApi';
+import { getAllUsers } from '../../services/api';
+import getApiErrorMessage from '../../utils/getApiErrorMessage';
+import { STATUS_CONFIG } from '../../utils/statusConfig';
 import RichTextDisplay from '../ui/RichTextDisplay';
 import StatusBadge from '../ui/StatusBadge';
 
+// Label opsi status diambil dari konfigurasi terpusat.
 const STATUS_OPTIONS = [
-  { value: 'PENDING', label: 'Menunggu' },
-  { value: 'IN_REVIEW', label: 'Ditinjau' },
-  { value: 'IN_PROGRESS', label: 'Diproses' },
-  { value: 'RESOLVED', label: 'Selesai' },
-  { value: 'REJECTED', label: 'Ditolak' },
-  { value: 'CANCELED', label: 'Dibatalkan' },
+  'PENDING',
+  'IN_REVIEW',
+  'IN_PROGRESS',
+  'RESOLVED',
+  'REJECTED',
+  'CANCELED',
+].map((value) => ({ value, label: STATUS_CONFIG[value].label }));
+
+const PRIORITY_OPTIONS = [
+  { value: 'LOW', label: 'Rendah' },
+  { value: 'MEDIUM', label: 'Sedang' },
+  { value: 'HIGH', label: 'Tinggi' },
+  { value: 'URGENT', label: 'Mendesak' },
 ];
 
 const BACKEND_UPLOAD_URL = import.meta.env.VITE_API_URL
@@ -72,27 +85,46 @@ const InfoItem = ({ icon, label, value }) => (
 
 const AdminReportDetailModal = ({ open, reportId, initialReport, onClose, onUpdated }) => {
   const navigate = useNavigate();
-  const { getReportById, updateReportStatus } = useReportStore();
+  const { getReportById, updateReportStatus, updateReportPriority, assignReport } = useReportStore();
   const { selectReport } = useChatStore();
+  const { user } = useAuthStore();
   const [report, setReport] = React.useState(initialReport || null);
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  const [savingPriority, setSavingPriority] = React.useState(false);
+  const [savingAssign, setSavingAssign] = React.useState(false);
   const [status, setStatus] = React.useState(initialReport?.status || '');
   const [reason, setReason] = React.useState('');
   const [error, setError] = React.useState('');
+  const [notice, setNotice] = React.useState(null); // { severity, message }
+  const [admins, setAdmins] = React.useState([]);
+  const [adminsLoading, setAdminsLoading] = React.useState(false);
+  const [adminsError, setAdminsError] = React.useState('');
+
+  // Snapshot initialReport via ref: efek buka/fetch hanya boleh dipicu oleh
+  // perubahan open/reportId, bukan oleh identity initialReport yang berubah
+  // tiap kali store men-merge pembaruan (bisa menghapus notice sukses).
+  const initialReportRef = React.useRef(initialReport);
+  React.useEffect(() => {
+    initialReportRef.current = initialReport;
+  }, [initialReport]);
 
   React.useEffect(() => {
     if (!open || !reportId) return;
     let active = true;
-    setReport(initialReport || null);
-    setStatus(initialReport?.status || '');
+    const seeded = initialReportRef.current;
+    setReport(seeded || null);
+    setStatus(seeded?.status || '');
     setReason('');
     setError('');
+    setNotice(null);
     setLoading(true);
     getReportById(reportId, true)
       .then((data) => {
         if (!active) return;
-        setReport(data);
+        // Merge di atas state sebelumnya agar field yang tidak ikut pada
+        // respons detail (mis. assignedTo hasil merge aksi assign) tetap ada.
+        setReport((prev) => ({ ...(prev || {}), ...data }));
         setStatus(data?.status || '');
       })
       .catch((err) => {
@@ -102,7 +134,46 @@ const AdminReportDetailModal = ({ open, reportId, initialReport, onClose, onUpda
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [open, reportId, initialReport, getReportById]);
+  }, [open, reportId, getReportById]);
+
+  // Muat daftar admin untuk kontrol penugasan. `listAdmins` hanya tersedia
+  // untuk SUPERADMIN; untuk ADMIN biasa fallback ke daftar pengguna lalu
+  // saring sisi klien. Jika keduanya gagal, kontrol dinonaktifkan + hint.
+  React.useEffect(() => {
+    if (!open) return;
+    let active = true;
+    setAdmins([]);
+    setAdminsError('');
+    setAdminsLoading(true);
+    (async () => {
+      try {
+        let list = null;
+        if (user?.role === 'SUPERADMIN') {
+          try {
+            list = await listAdmins();
+          } catch {
+            list = null; // 403/ gagal — coba fallback di bawah
+          }
+        }
+        if (!Array.isArray(list)) {
+          const users = await getAllUsers();
+          list = (users || []).filter(
+            (u) => (u.role === 'ADMIN' || u.role === 'SUPERADMIN') && u.isVerified && !u.deletedAt
+          );
+        } else {
+          list = list.filter((u) => u.isVerified);
+        }
+        if (!active) return;
+        list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        setAdmins(list);
+      } catch {
+        if (active) setAdminsError('Daftar admin tidak dapat dimuat. Penugasan laporan tidak tersedia.');
+      } finally {
+        if (active) setAdminsLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [open, user?.role]);
 
   const requiresReason = ['REJECTED', 'CANCELED'].includes(status);
 
@@ -114,6 +185,7 @@ const AdminReportDetailModal = ({ open, reportId, initialReport, onClose, onUpda
     }
     setSaving(true);
     setError('');
+    setNotice(null);
     try {
       const updated = await updateReportStatus(report.id, status, requiresReason ? reason.trim() : null);
       const next = { ...report, ...updated, status };
@@ -124,6 +196,53 @@ const AdminReportDetailModal = ({ open, reportId, initialReport, onClose, onUpda
       setError(err?.response?.data?.message || err?.message || 'Gagal memperbarui status laporan.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePriorityChange = async (event) => {
+    const nextPriority = event.target.value;
+    if (!report || nextPriority === report.priority) return;
+    const previousPriority = report.priority;
+    setSavingPriority(true);
+    setNotice(null);
+    // Optimistic update — dikembalikan bila gagal
+    setReport((prev) => ({ ...prev, priority: nextPriority }));
+    try {
+      const updated = await updateReportPriority(report.id, nextPriority);
+      const next = { ...report, priority: nextPriority, ...updated };
+      setReport(next);
+      setNotice({ severity: 'success', message: 'Prioritas laporan berhasil diperbarui.' });
+      onUpdated?.(next);
+    } catch (err) {
+      setReport((prev) => ({ ...prev, priority: previousPriority }));
+      setNotice({ severity: 'error', message: getApiErrorMessage(err, 'Gagal memperbarui prioritas laporan.') });
+    } finally {
+      setSavingPriority(false);
+    }
+  };
+
+  const handleAssignChange = async (event) => {
+    const rawValue = event.target.value;
+    const nextAssignedToId = rawValue === '' ? null : Number(rawValue);
+    if (!report || nextAssignedToId === (report.assignedToId ?? null)) return;
+    setSavingAssign(true);
+    setNotice(null);
+    try {
+      const updated = await assignReport(report.id, nextAssignedToId);
+      const next = { ...report, ...updated };
+      setReport(next);
+      const assigneeName = updated?.assignedTo?.name;
+      setNotice({
+        severity: 'success',
+        message: nextAssignedToId
+          ? `Laporan berhasil ditugaskan kepada ${assigneeName || 'admin'}.`
+          : 'Penugasan laporan berhasil dihapus.',
+      });
+      onUpdated?.(next);
+    } catch (err) {
+      setNotice({ severity: 'error', message: getApiErrorMessage(err, 'Gagal memperbarui penugasan laporan.') });
+    } finally {
+      setSavingAssign(false);
     }
   };
 
@@ -167,13 +286,52 @@ const AdminReportDetailModal = ({ open, reportId, initialReport, onClose, onUpda
         ) : (
           <Stack spacing={2.25}>
             {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
+            {notice && <Alert severity={notice.severity} onClose={() => setNotice(null)}>{notice.message}</Alert>}
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <StatusBadge status={report?.deletedAt ? 'DELETED' : report?.status} />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                <StatusBadge status={report?.deletedAt ? 'DELETED' : report?.status} />
+                {report?.priority && (
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    label={`Prioritas: ${PRIORITY_OPTIONS.find((option) => option.value === report.priority)?.label || report.priority}`}
+                    color={
+                      report.priority === 'URGENT' ? 'error'
+                        : report.priority === 'HIGH' ? 'warning'
+                        : report.priority === 'MEDIUM' ? 'info'
+                        : 'default'
+                    }
+                  />
+                )}
+              </Box>
               {report?.isAnonymous && (
                 <Chip icon={<VisibilityOff />} label="Laporan anonim" color="warning" variant="outlined" size="small" />
               )}
             </Box>
+
+            {report?.status === 'REJECTED' &&
+              (report?.rejectedReason || '').trim() !== '' && (
+                <Alert severity="error" sx={{ borderRadius: 2 }}>
+                  <Typography variant="body2" component="span" fontWeight={700}>
+                    Alasan ditolak:{' '}
+                  </Typography>
+                  <Typography variant="body2" component="span" sx={{ wordBreak: 'break-word' }}>
+                    {report.rejectedReason}
+                  </Typography>
+                </Alert>
+              )}
+            {report?.status === 'CANCELED' &&
+              (report?.canceledReason || '').trim() !== '' && (
+                <Alert severity="warning" sx={{ borderRadius: 2 }}>
+                  <Typography variant="body2" component="span" fontWeight={700}>
+                    Alasan dibatalkan:{' '}
+                  </Typography>
+                  <Typography variant="body2" component="span" sx={{ wordBreak: 'break-word' }}>
+                    {report.canceledReason}
+                  </Typography>
+                </Alert>
+              )}
 
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}>
@@ -221,6 +379,62 @@ const AdminReportDetailModal = ({ open, reportId, initialReport, onClose, onUpda
                       </Link>
                     </Box>
                   ))}
+                </Stack>
+              </Box>
+            )}
+
+            {!report?.deletedAt && (
+              <Box sx={{ p: 1.75, borderRadius: 2, bgcolor: 'action.hover' }}>
+                <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.25 }}>Prioritas &amp; Penugasan</Typography>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25}>
+                  <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 190 } }}>
+                    <InputLabel id="admin-report-priority-label">Prioritas</InputLabel>
+                    <Select
+                      labelId="admin-report-priority-label"
+                      value={report?.priority || ''}
+                      label="Prioritas"
+                      onChange={handlePriorityChange}
+                      disabled={savingPriority || !report?.priority}
+                    >
+                      {PRIORITY_OPTIONS.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 240 } }} error={Boolean(adminsError)}>
+                    <InputLabel id="admin-report-assign-label">Ditugaskan kepada</InputLabel>
+                    <Select
+                      labelId="admin-report-assign-label"
+                      value={report?.assignedToId ?? ''}
+                      label="Ditugaskan kepada"
+                      onChange={handleAssignChange}
+                      disabled={savingAssign || adminsLoading || Boolean(adminsError)}
+                      renderValue={(value) => {
+                        if (value === '' || value === null || value === undefined) return 'Belum ditugaskan';
+                        const admin = admins.find((item) => item.id === value);
+                        return admin?.name || report?.assignedTo?.name || String(value);
+                      }}
+                    >
+                      <MenuItem value="">Belum ditugaskan</MenuItem>
+                      {admins.map((admin) => (
+                        <MenuItem key={admin.id} value={admin.id}>
+                          {admin.name}
+                          {admin.id === user?.id ? ' (Anda)' : ''}
+                          {admin.role === 'SUPERADMIN' ? ' — Super Admin' : ''}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {adminsLoading && (
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, ml: 1.5 }}>
+                        Memuat daftar admin...
+                      </Typography>
+                    )}
+                    {adminsError && (
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
+                        {adminsError}
+                      </Typography>
+                    )}
+                  </FormControl>
                 </Stack>
               </Box>
             )}

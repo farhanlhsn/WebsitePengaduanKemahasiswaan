@@ -216,6 +216,10 @@ class BulkOperationsServices {
       if (['RESOLVED', 'REJECTED', 'CANCELED'].includes(status)) {
         updateData.closedAt = new Date();
       }
+      // Audit: alasan penutupan persist di laporan (bukan hanya audit log).
+      const trimmedReason = reason && String(reason).trim() ? String(reason).trim() : null;
+      if (status === 'REJECTED') updateData.rejectedReason = trimmedReason;
+      if (status === 'CANCELED') updateData.canceledReason = trimmedReason;
 
       const result = await prisma.report.updateMany({
         where: { id: { in: eligible }, deletedAt: null },

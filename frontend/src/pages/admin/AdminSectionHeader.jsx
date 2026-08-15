@@ -1,7 +1,6 @@
 import React from 'react';
 import { Box, IconButton, Tooltip, Typography } from '@mui/material';
 import { Menu as MenuIcon, Refresh } from '@mui/icons-material';
-import AdminNotificationMenu from '../../components/admin/AdminNotificationMenu';
 
 const AdminSectionHeader = ({
   title,
@@ -9,7 +8,6 @@ const AdminSectionHeader = ({
   onMobileMenuClick,
   onRefresh,
   showRefresh = true,
-  showNotifications = true,
   action,
 }) => (
   <Box sx={{ mb: { xs: 2, md: 2.5 } }}>
@@ -66,7 +64,6 @@ const AdminSectionHeader = ({
             </IconButton>
           </Tooltip>
         )}
-        {showNotifications && <AdminNotificationMenu />}
       </Box>
     </Box>
   </Box>

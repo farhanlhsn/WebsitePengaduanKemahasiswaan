@@ -21,6 +21,9 @@ model User {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   deletedAt     DateTime?
+  // Preferensi pengguna (tema, bahasa, notifikasi) — disimpan per akun agar
+  // tidak hanya di localStorage browser.
+  preferences   Json?
   messages      Message[]
   refreshTokens RefreshToken[]
   reports       Report[]
@@ -32,6 +35,7 @@ model User {
   // Assignments this user (typically a SUPERADMIN) has granted to others.
   grantedAssignments  AdminCategoryAssignment[] @relation("AssignmentGrantor")
   chatPendingUploads  ChatPendingUpload[]
+  messageReads        MessageRead[]
 
   @@map("users")
 }
@@ -89,6 +93,9 @@ model Report {
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   closedAt           DateTime?
+  // Alasan penutupan laporan (audit: sebelumnya hanya di metadata audit log).
+  rejectedReason     String?        @db.Text
+  canceledReason     String?        @db.Text
   deletedAt          DateTime?
   attachments        Attachment[]
   messages           Message[]
@@ -129,6 +136,8 @@ model Message {
   reportId        Int
   clientMessageId String?   @db.VarChar(64)
   createdAt       DateTime  @default(now())
+  // Deprecated sejak read-receipt per-user (model MessageRead). Dipertahankan
+  // sementara untuk kompatibilitas; logika unread kini memakai MessageRead.
   isRead          Boolean   @default(false)
   deletedAt       DateTime?
   replyToId       Int?
@@ -137,11 +146,28 @@ model Message {
   report    Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
   sender    User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
   attachments Attachment[]
+  reads       MessageRead[]
 
   @@unique([reportId, senderId, clientMessageId])
   @@index([reportId, createdAt])
   @@index([senderId], map: "messages_senderId_idx")
   @@map("messages")
+}
+
+// Read receipt per-user (audit M2): satu baris per (pesan, pembaca). Mengganti
+// flag tunggal Message.isRead yang membuat unread hilang untuk semua admin saat
+// satu admin membaca.
+model MessageRead {
+  id        Int      @id @default(autoincrement())
+  messageId Int
+  userId    Int
+  readAt    DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId])
+  @@map("message_reads")
 }
 
 model RefreshToken {

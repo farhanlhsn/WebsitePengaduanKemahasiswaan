@@ -19,7 +19,9 @@ export const getTheme = (mode) => createTheme({
       main: mode === 'dark' ? '#81C784' : '#4CAF50',
     },
     warning: {
-      main: mode === 'dark' ? '#FFB74D' : '#FF9800',
+      // Light: #BF360C (Deep Orange 900) agar teks/ikon warning di atas latar putih
+      // memenuhi kontras ~4.5:1 (#FF9800 hanya ~2.2:1). Dark: tetap terang agar terbaca.
+      main: mode === 'dark' ? '#FFB74D' : '#BF360C',
     },
     error: {
       main: mode === 'dark' ? '#E57373' : '#F44336',
@@ -104,24 +106,27 @@ export const getTheme = (mode) => createTheme({
         root: {
           borderRadius: 16,
           boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-          border: '1px solid rgba(0,0,0,0.05)',
+          // Border netral yang tetap terlihat pada dark mode.
+          border: mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.05)',
         },
       },
     },
     MuiTextField: {
       styleOverrides: {
-        root: {
+        // Gunakan palette agar warna mengikuti mode (dark mode memakai primary terang),
+        // bukan hijau gelap hardcode yang sulit terlihat di latar gelap.
+        root: ({ theme }) => ({
           '& .MuiOutlinedInput-root': {
             borderRadius: 12,
             transition: 'all 0.3s ease',
             '&:hover fieldset': {
-              borderColor: '#2E7D32',
+              borderColor: theme.palette.primary.main,
             },
             '&.Mui-focused fieldset': {
               borderWidth: 2,
             },
           },
-        },
+        }),
       },
     },
     MuiChip: {

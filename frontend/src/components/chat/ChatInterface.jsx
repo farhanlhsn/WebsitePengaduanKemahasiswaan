@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Box, Paper, Typography, TextField, IconButton, Avatar, Chip,
   List, ListItem, ListItemAvatar, ListItemText, Divider,
@@ -8,7 +8,7 @@ import {
 import {
   Send, AttachFile, MoreVert, Reply, Delete,
   Check, DoneAll, Schedule, Person, AdminPanelSettings,
-  Close, Image, Description, GetApp, VisibilityOff
+  Close, Image, Description, GetApp, VisibilityOff, KeyboardArrowDown
 } from '@mui/icons-material';
 import { styled, alpha, useTheme } from '@mui/material/styles';
 import { formatDistanceToNow } from 'date-fns';
@@ -143,6 +143,7 @@ const ChatInterface = ({
     sendMessage, 
     deleteMessage,
     sendTypingIndicator,
+    typingUsers,
     clearError
   } = useChatStore();
   
@@ -161,13 +162,58 @@ const ChatInterface = ({
   const [sendError, setSendError] = useState('');
   
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  // Auto scroll to bottom when new messages arrive
+  // ── Smart auto-scroll ─────────────────────────────────────────────────────
+  // Hanya scroll otomatis bila pengguna sudah berada di dekat bawah
+  // (<= 150px); bila sedang membaca riwayat di atas, tampilkan tombol
+  // "Pesan baru" alih-alih menarik paksa tampilan ke bawah.
+  const NEAR_BOTTOM_THRESHOLD = 150;
+  const isNearBottomRef = useRef(true);
+  const prevMessagesCountRef = useRef(0);
+  const [showNewMessageButton, setShowNewMessageButton] = useState(false);
+
+  const scrollToBottom = useCallback((behavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+    isNearBottomRef.current = true;
+    setShowNewMessageButton(false);
+  }, []);
+
+  // Saat berpindah laporan, reset status scroll dan kembali ke bawah
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    isNearBottomRef.current = true;
+    setShowNewMessageButton(false);
+  }, [currentReport?.id]);
+
+  const handleMessagesScroll = () => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const nearBottom = distanceFromBottom <= NEAR_BOTTOM_THRESHOLD;
+    isNearBottomRef.current = nearBottom;
+    if (nearBottom) setShowNewMessageButton(false);
+  };
+
+  useEffect(() => {
+    const count = messages?.length || 0;
+    const grew = count > prevMessagesCountRef.current;
+    prevMessagesCountRef.current = count;
+    if (!count) return;
+
+    const lastMessage = messages[count - 1];
+    const isOwnLastMessage =
+      lastMessage?.senderId != null && lastMessage.senderId === user?.id;
+
+    if (isNearBottomRef.current || isOwnLastMessage) {
+      // Selalu ikuti pesan yang dikirim sendiri, atau bila sudah di bawah
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setShowNewMessageButton(false);
+    } else if (grew) {
+      setShowNewMessageButton(true);
+    }
+  }, [messages, user?.id]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() && !selectedFile) return;
@@ -394,6 +440,24 @@ const ChatInterface = ({
   const loading = isMessagesLoading; 
   const currentUser = user;
 
+  // ── Indikator mengetik untuk laporan aktif ────────────────────────────────
+  // Pada laporan anonim, identitas pelapor dikirim sebagai pseudonim
+  // 'reporter' — wajib ditampilkan sebagai "Anonim" tanpa mencari nama asli.
+  const typingUserIds = currentReport ? (typingUsers?.[currentReport.id] || []) : [];
+
+  const getTypingName = (userId) => {
+    if (currentReport?.isAnonymous && userId === 'reporter') return 'Anonim';
+    // Coba ambil nama pengirim dari pesan yang sudah dimuat
+    const sender = messages?.find(
+      (m) => m.senderId != null && String(m.senderId) === String(userId)
+    )?.sender;
+    return sender?.name || 'Admin';
+  };
+
+  const typingLabel = typingUserIds.length
+    ? `${typingUserIds.map(getTypingName).join(', ')} sedang mengetik…`
+    : '';
+
   // Placeholder state
   if (placeholder || !currentReport) {
     return (
@@ -473,7 +537,8 @@ const ChatInterface = ({
       </ChatHeader>
 
       {/* Messages */}
-      <MessagesContainer>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
+        <MessagesContainer ref={messagesContainerRef} onScroll={handleMessagesScroll}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
             <CircularProgress />
@@ -619,7 +684,39 @@ const ChatInterface = ({
             <div ref={messagesEndRef} />
           </Stack>
         )}
-      </MessagesContainer>
+        </MessagesContainer>
+
+        {/* Tombol mengambang: ada pesan baru saat pengguna membaca riwayat */}
+        {showNewMessageButton && (
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<KeyboardArrowDown />}
+            onClick={() => scrollToBottom()}
+            sx={{
+              position: 'absolute',
+              bottom: 16,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              borderRadius: 999,
+              px: 2,
+              whiteSpace: 'nowrap',
+              boxShadow: 3,
+            }}
+          >
+            Pesan baru
+          </Button>
+        )}
+      </Box>
+
+      {/* Indikator mengetik */}
+      <Box sx={{ px: 3, height: 20, display: 'flex', alignItems: 'center' }}>
+        {typingLabel && (
+          <Typography variant="caption" color="text.secondary" fontStyle="italic" noWrap>
+            {typingLabel}
+          </Typography>
+        )}
+      </Box>
 
       {/* Reply Preview Bar */}
       {replyingTo && (

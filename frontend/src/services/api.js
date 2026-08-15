@@ -235,6 +235,16 @@ export const updateProfile = async (userData) => {
   return response.data.data;
 };
 
+export const getMyPreferences = async () => {
+  const response = await apiClient.get('/users/preferences/me');
+  return response.data.data;
+};
+
+export const updateMyPreferences = async (preferences) => {
+  const response = await apiClient.put('/users/preferences/me', preferences);
+  return response.data.data;
+};
+
 export const updateUser = async (userId, userData) => {
   const response = await apiClient.put(`/users/${userId}`, userData);
   return response.data.data;

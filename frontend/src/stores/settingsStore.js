@@ -1,9 +1,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { getMyPreferences, updateMyPreferences } from '../services/api';
+import useAuthStore from './authStore';
+
+// ID pengguna yang preferensinya sudah dimuat dari backend. Berfungsi sebagai
+// guard terhadap pemanggilan loadPreferences() berulang (AuthProvider di-mount
+// ulang setiap berpindah route terproteksi).
+let loadedPreferencesUserId = null;
 
 const useSettingsStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
       settings: {
         notifications: {
           email: true,
@@ -39,9 +46,62 @@ const useSettingsStore = create(
             }
           };
         }),
-      updateAllSettings: (newSettings) => set(() => ({ settings: newSettings })),
-      setTheme: (theme) => set((state) => ({ settings: { ...state.settings, theme } })),
-      setLanguage: (language) => set((state) => ({ settings: { ...state.settings, language } }))
+      updateAllSettings: (newSettings) => {
+        set(() => ({ settings: newSettings }));
+        get().savePreferences();
+      },
+      setTheme: (theme) => {
+        set((state) => ({ settings: { ...state.settings, theme } }));
+        get().savePreferences();
+      },
+      setLanguage: (language) => {
+        set((state) => ({ settings: { ...state.settings, language } }));
+        get().savePreferences();
+      },
+
+      // Muat preferensi pengguna terautentikasi dari backend lalu gabungkan
+      // di atas pengaturan saat ini (backend menang bila ada). Bila gagal,
+      // pertahankan pengaturan saat ini (localStorage) dan jangan melempar.
+      loadPreferences: async () => {
+        const currentUserId = useAuthStore.getState().user?.id ?? null;
+        if (!currentUserId) return; // belum login — tidak ada yang dimuat
+        if (loadedPreferencesUserId === currentUserId) return; // sudah dimuat
+        loadedPreferencesUserId = currentUserId; // guard sinkron anti-duplikat
+
+        try {
+          const preferences = await getMyPreferences();
+          // data bisa berupa {} bila belum pernah disimpan — biarkan lokal.
+          if (preferences && typeof preferences === 'object' && Object.keys(preferences).length > 0) {
+            set((state) => {
+              const merged = { ...state.settings };
+              if (typeof preferences.theme === 'string') merged.theme = preferences.theme;
+              if (typeof preferences.language === 'string') merged.language = preferences.language;
+              if (preferences.notifications && typeof preferences.notifications === 'object') {
+                merged.notifications = { ...state.settings.notifications, ...preferences.notifications };
+              }
+              if (preferences.privacy && typeof preferences.privacy === 'object') {
+                merged.privacy = { ...state.settings.privacy, ...preferences.privacy };
+              }
+              return { settings: merged };
+            });
+          }
+        } catch (error) {
+          // Gagal memuat dari backend: pertahankan pengaturan lokal.
+          loadedPreferencesUserId = null; // izinkan percobaan ulang berikutnya
+          console.error('Gagal memuat preferensi pengguna:', error);
+        }
+      },
+
+      // Simpan pengaturan ke backend secara fire-and-forget; kegagalan tidak
+      // boleh memblokir UI karena localStorage (persist) tetap menjadi cache.
+      savePreferences: async () => {
+        try {
+          if (!useAuthStore.getState().isAuthenticated()) return;
+          await updateMyPreferences(get().settings);
+        } catch (error) {
+          console.error('Gagal menyimpan preferensi pengguna:', error);
+        }
+      }
     }),
     {
       name: 'user-settings-storage',

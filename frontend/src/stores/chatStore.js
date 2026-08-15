@@ -6,6 +6,26 @@ import chatApi from '../services/chatApi';
 import socketService from '../services/socketService';
 import useAuthStore from './authStore'; // We need the user ID
 
+// ── Typing indicator: timer per pengguna (level modul, di luar store) ────────
+// Event `chat:typing` dari backend hanya berisi { userId, isTyping, timestamp }
+// dan dikirim per-room, jadi indikator dibersihkan otomatis setelah ~3 detik
+// jika tidak ada event typing lanjutan.
+const TYPING_TIMEOUT_MS = 3000;
+const typingTimeouts = new Map(); // kunci: `${reportId}:${userId}` -> id timeout
+
+function clearTypingTimeout(key) {
+  const timer = typingTimeouts.get(key);
+  if (timer) {
+    clearTimeout(timer);
+    typingTimeouts.delete(key);
+  }
+}
+
+function clearAllTypingTimeouts() {
+  typingTimeouts.forEach((timer) => clearTimeout(timer));
+  typingTimeouts.clear();
+}
+
 const useChatStore = create(
   devtools(
     (set, get) => ({
@@ -14,10 +34,13 @@ const useChatStore = create(
       currentReport: null,
       messages: [],
       unreadCount: 0,
+      totalUnread: 0, // total pesan belum dibaca di semua laporan (badge sidebar)
       isLoading: false, // For list loading
       isMessagesLoading: false, // For messages loading specifically
       isConnected: false,
-      typingUsers: new Set(),
+      // { [reportId]: Array<userId|'reporter'> } — userId berupa angka, atau
+      // pseudonim 'reporter' untuk pelapor pada laporan anonim.
+      typingUsers: {},
       onlineUsers: new Set(),
       
       // Pagination
@@ -52,6 +75,8 @@ const useChatStore = create(
           
           socketService.on('connected', () => {
             set({ isConnected: true });
+            // Ambil total pesan belum dibaca untuk badge di sidebar
+            get().getUnreadCount();
             const { currentReport } = get();
             if (currentReport) {
               socketService.joinRoom(currentReport.id).catch((err) => {
@@ -61,7 +86,8 @@ const useChatStore = create(
           });
           
           socketService.on('disconnected', () => {
-            set({ isConnected: false });
+            clearAllTypingTimeouts();
+            set({ isConnected: false, typingUsers: {} });
           });
 
           socketService.on('roomJoinFailed', (err) => {
@@ -76,6 +102,7 @@ const useChatStore = create(
 
           socketService.on('chat:list:update', () => {
             get().getReportsWithMessages();
+            get().getUnreadCount();
           });
           
           socketService.on('chat:message', (message) => {
@@ -133,7 +160,46 @@ const useChatStore = create(
             set({ messages: updatedMessages });
           });
           
-          // Other listeners... (typing, userJoined, etc. remain the same)
+          // Indikator mengetik: payload { userId, isTyping, timestamp } dikirim
+          // per-room (tanpa reportId), jadi reportId diturunkan dari room aktif.
+          socketService.on('chat:typing', (data) => {
+            const { userId, isTyping } = data || {};
+            if (userId === null || userId === undefined) return;
+
+            // Abaikan event typing milik sendiri (backend seharusnya tidak
+            // mengirimnya ke pengirim, tapi tetap dijaga sebagai guard).
+            const myId = useAuthStore.getState().user?.id;
+            if (myId !== null && myId !== undefined && String(userId) === String(myId)) return;
+
+            const roomMatch = /^report_(\d+)$/.exec(socketService.getCurrentRoom() || '');
+            const reportId = roomMatch ? Number(roomMatch[1]) : get().currentReport?.id;
+            if (!reportId) return;
+
+            const key = `${reportId}:${userId}`;
+            clearTypingTimeout(key);
+
+            if (isTyping) {
+              const currentTyping = get().typingUsers?.[reportId] || [];
+              if (!currentTyping.includes(userId)) {
+                set((state) => ({
+                  typingUsers: {
+                    ...(state.typingUsers || {}),
+                    [reportId]: [...(state.typingUsers?.[reportId] || []), userId],
+                  },
+                }));
+              }
+              // Bersihkan otomatis bila tidak ada event lanjutan dalam ~3 detik
+              typingTimeouts.set(
+                key,
+                setTimeout(() => {
+                  typingTimeouts.delete(key);
+                  get().removeTypingUser(reportId, userId);
+                }, TYPING_TIMEOUT_MS)
+              );
+            } else {
+              get().removeTypingUser(reportId, userId);
+            }
+          });
           
         } catch (error) {
           set({ error: error.message });
@@ -141,12 +207,13 @@ const useChatStore = create(
       },
       
       cleanup: () => {
+        clearAllTypingTimeouts();
         socketService.disconnect();
         set({ 
           isConnected: false, 
           currentReport: null, 
           messages: [], 
-          typingUsers: new Set(),
+          typingUsers: {},
           onlineUsers: new Set()
         });
       },
@@ -295,7 +362,19 @@ const useChatStore = create(
         }
       },
       
-      getUnreadCount: async () => { /* ... no changes needed ... */ },
+      // Ambil total pesan belum dibaca (untuk badge menu chat di sidebar)
+      getUnreadCount: async () => {
+        try {
+          const response = await chatApi.getUnreadCount();
+          if (response?.status === 'success') {
+            const total = Number(response.data?.unreadCount) || 0;
+            set({ totalUnread: total, unreadCount: total });
+          }
+        } catch (error) {
+          // Non-fatal: badge hanya tidak ter-update
+          console.error('Failed to fetch unread count:', error);
+        }
+      },
       
       // **FIXED**: deleteMessage with optimistic update
       deleteMessage: async (messageId) => {
@@ -344,6 +423,22 @@ const useChatStore = create(
         } catch (err) {
           console.error('Failed to send typing indicator:', err);
         }
+      },
+
+      // Hapus pengguna dari daftar mengetik pada laporan tertentu
+      removeTypingUser: (reportId, userId) => {
+        const currentTyping = get().typingUsers?.[reportId] || [];
+        if (!currentTyping.includes(userId)) return;
+        set((state) => {
+          const typingUsers = { ...(state.typingUsers || {}) };
+          const remaining = (typingUsers[reportId] || []).filter((id) => id !== userId);
+          if (remaining.length > 0) {
+            typingUsers[reportId] = remaining;
+          } else {
+            delete typingUsers[reportId];
+          }
+          return { typingUsers };
+        });
       },
 
       // ... other functions like sendTypingIndicator, reset, etc.

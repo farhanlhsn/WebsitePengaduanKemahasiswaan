@@ -78,16 +78,16 @@ WebsitePengaduanKemahasiswaan/
 
 ### Sisi Mahasiswa
 - **Registrasi & Login** — Daftar akun dengan upload KTM untuk verifikasi identitas, autentikasi JWT
-- **Pengajuan Laporan** — Buat pengaduan dengan judul, deskripsi, kategori, dan lampiran file; setiap laporan mendapat nomor registrasi unik
+- **Pengajuan Laporan** — Buat pengaduan dengan judul, deskripsi, kategori, dan lampiran file; setiap laporan mendapat nomor registrasi unik; laporan berstatus PENDING dapat diedit kembali oleh pelapor
 - **Dashboard Mahasiswa** — Lihat seluruh pengaduan beserta status terkini
 - **Tracking Status** — Pantau progres: `PENDING` → `IN_REVIEW` → `IN_PROGRESS` → `RESOLVED` / `REJECTED` / `CANCELED`
-- **Chat Real-time** — Diskusi langsung dengan admin per laporan (typing indicator, read receipt)
-- **Profil & Pengaturan** — Kelola informasi akun dan preferensi
+- **Chat Real-time** — Diskusi langsung dengan admin per laporan (typing indicator, read receipt per-user, unread count)
+- **Profil & Pengaturan** — Kelola informasi akun dan preferensi (tema, bahasa, notifikasi) yang tersinkron per akun
 - **Halaman Bantuan** — Panduan lengkap penggunaan sistem
 
 ### Sisi Admin
 - **Dashboard Admin** — Ringkasan statistik dan visualisasi data pengaduan (Recharts)
-- **Manajemen Laporan** — Tindaklanjuti, ubah status, lihat detail & riwayat chat
+- **Manajemen Laporan** — Tindaklanjuti, ubah status (dengan alasan), atur prioritas & petugas (assign), lihat detail & riwayat chat; filter "ditugaskan kepada saya"
 - **Bulk Operations** — Aksi massal untuk laporan (ubah status, hapus, restore), pengguna (verifikasi, hapus, restore), dan kategori; tervalidasi per-item sesuai scope
 - **Verifikasi Pengguna** — Verifikasi akun mahasiswa baru berdasarkan KTM
 - **Manajemen Kategori** — CRUD kategori pengaduan
@@ -107,7 +107,7 @@ Sistem menyediakan 23 kategori bawaan, antara lain: Kekerasan Seksual, Sarana da
 | Prefix | Modul |
 |---|---|
 | `/v1/api/auth` | Autentikasi (login, register, refresh token, logout) |
-| `/v1/api/users` | Manajemen pengguna |
+| `/v1/api/users` | Manajemen pengguna + preferensi (`/users/preferences/me`) |
 | `/v1/api/categories` | Manajemen kategori pengaduan |
 | `/v1/api/reports` | CRUD laporan pengaduan |
 | `/v1/api/chat` | Pesan/chat per laporan |
@@ -286,8 +286,9 @@ Frontend berjalan di `http://localhost:5173` (default Vite).
 - Audit logging untuk akuntabilitas (termasuk aksi governance, change password, cleanup)
 - Password reset via email: token acak 32-byte di-hash, kedaluwarsa 1 jam, sekali pakai, anti-enumerasi
 - Dependency audit bersih (0 known vulnerability)
-
-> **Catatan:** Read receipt chat menggunakan flag `isRead` tunggal per pesan (bukan per-user).
+- Read receipt chat **per-user** (model `MessageRead`) — satu admin membaca tidak lagi menghilangkan unread untuk admin lain
+- Preferensi pengguna (tema, bahasa, notifikasi) tersimpan per akun di backend (`GET/PUT /users/preferences/me`), bukan hanya localStorage
+- Alasan penolakan/pembatalan laporan tersimpan di laporan (`rejectedReason`/`canceledReason`) dan ditampilkan ke pelapor
 
 ## 🚀 Scripts
 

@@ -3,13 +3,16 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { getAccessToken } from '../services/authToken';
 import useAuthStore from '../stores/authStore';
 import useChatStore from '../stores/chatStore';
+import useSettingsStore from '../stores/settingsStore';
 import { CircularProgress, Box } from '@mui/material';
 
 const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { initializeAuth, isAuthenticated, refreshAuthToken, logout } = useAuthStore();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const { initialize: initializeChat, cleanup: cleanupChat } = useChatStore();
+  const loadPreferences = useSettingsStore((state) => state.loadPreferences);
   const [isInitialized, setIsInitialized] = React.useState(false);
 
   useEffect(() => {
@@ -47,6 +50,16 @@ const AuthProvider = ({ children }) => {
     initAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency - only run once on mount
+
+  // Muat preferensi pengguna (tema, bahasa, notifikasi) dari backend setelah
+  // pengguna terautentikasi. loadPreferences() memiliki guard internal per
+  // pengguna, sehingga aman dipanggil berulang (AuthProvider di-mount ulang
+  // saat berpindah antar route terproteksi).
+  useEffect(() => {
+    if (isLoggedIn) {
+      loadPreferences();
+    }
+  }, [isLoggedIn, loadPreferences]);
 
   useEffect(() => {
     if (!isInitialized) return;
