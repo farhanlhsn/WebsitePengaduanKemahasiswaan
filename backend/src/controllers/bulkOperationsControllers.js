@@ -10,7 +10,7 @@ exports.bulkVerifyUsers = async (req, res) => {
     const { userIds } = req.body;
     log.info('Bulk verify users', { userIds, actorId: req.user.userId });
 
-    const result = await bulkOperationsServices.bulkVerifyUsers(userIds);
+    const result = await bulkOperationsServices.bulkVerifyUsers(userIds, req.user);
 
     // Create audit log for bulk operation
     try {
@@ -26,7 +26,8 @@ exports.bulkVerifyUsers = async (req, res) => {
         metadata: {
           operation: 'BULK_VERIFY',
           userIds,
-          count: result.verified
+          count: result.verified,
+          skipped: result.skipped || []
         }
       });
     } catch (auditError) {
@@ -49,7 +50,7 @@ exports.bulkDeleteUsers = async (req, res) => {
     const { userIds } = req.body;
     log.info('Bulk delete users', { userIds, actorId: req.user.userId });
 
-    const result = await bulkOperationsServices.bulkDeleteUsers(userIds);
+    const result = await bulkOperationsServices.bulkDeleteUsers(userIds, req.user);
 
     // Create audit log
     try {
@@ -65,7 +66,8 @@ exports.bulkDeleteUsers = async (req, res) => {
         metadata: {
           operation: 'BULK_DELETE',
           userIds,
-          count: result.deleted
+          count: result.deleted,
+          skipped: result.skipped || []
         }
       });
     } catch (auditError) {
@@ -88,7 +90,7 @@ exports.bulkRestoreUsers = async (req, res) => {
     const { userIds } = req.body;
     log.info('Bulk restore users', { userIds, actorId: req.user.userId });
 
-    const result = await bulkOperationsServices.bulkRestoreUsers(userIds);
+    const result = await bulkOperationsServices.bulkRestoreUsers(userIds, req.user);
 
     // Create audit log
     try {
@@ -104,7 +106,8 @@ exports.bulkRestoreUsers = async (req, res) => {
         metadata: {
           operation: 'BULK_RESTORE',
           userIds,
-          count: result.restored
+          count: result.restored,
+          skipped: result.skipped || []
         }
       });
     } catch (auditError) {
@@ -127,7 +130,7 @@ exports.bulkUpdateReportStatus = async (req, res) => {
     const { reportIds, status } = req.body;
     log.info('Bulk update report status', { reportIds, status, actorId: req.user.userId });
 
-    const result = await bulkOperationsServices.bulkUpdateReportStatus(reportIds, status);
+    const result = await bulkOperationsServices.bulkUpdateReportStatus(reportIds, status, req.user, req.body.reason);
 
     // Create audit log
     try {
@@ -144,7 +147,8 @@ exports.bulkUpdateReportStatus = async (req, res) => {
           operation: 'BULK_UPDATE_STATUS',
           reportIds,
           newStatus: status,
-          count: result.updated
+          count: result.updated,
+          skipped: result.skipped || []
         }
       });
     } catch (auditError) {
@@ -167,7 +171,7 @@ exports.bulkDeleteReports = async (req, res) => {
     const { reportIds } = req.body;
     log.info('Bulk delete reports', { reportIds, actorId: req.user.userId });
 
-    const result = await bulkOperationsServices.bulkDeleteReports(reportIds);
+    const result = await bulkOperationsServices.bulkDeleteReports(reportIds, req.user);
 
     // Create audit log
     try {
@@ -183,7 +187,8 @@ exports.bulkDeleteReports = async (req, res) => {
         metadata: {
           operation: 'BULK_DELETE',
           reportIds,
-          count: result.deleted
+          count: result.deleted,
+          skipped: result.skipped || []
         }
       });
     } catch (auditError) {
@@ -206,7 +211,7 @@ exports.bulkRestoreReports = async (req, res) => {
     const { reportIds } = req.body;
     log.info('Bulk restore reports', { reportIds, actorId: req.user.userId });
 
-    const result = await bulkOperationsServices.bulkRestoreReports(reportIds);
+    const result = await bulkOperationsServices.bulkRestoreReports(reportIds, req.user);
 
     // Create audit log
     try {
@@ -222,7 +227,8 @@ exports.bulkRestoreReports = async (req, res) => {
         metadata: {
           operation: 'BULK_RESTORE',
           reportIds,
-          count: result.restored
+          count: result.restored,
+          skipped: result.skipped || []
         }
       });
     } catch (auditError) {
@@ -261,7 +267,8 @@ exports.bulkDeleteCategories = async (req, res) => {
         metadata: {
           operation: 'BULK_DELETE',
           categoryIds,
-          count: result.deleted
+          count: result.deleted,
+          skipped: result.skipped || []
         }
       });
     } catch (auditError) {
@@ -300,7 +307,8 @@ exports.bulkRestoreCategories = async (req, res) => {
         metadata: {
           operation: 'BULK_RESTORE',
           categoryIds,
-          count: result.restored
+          count: result.restored,
+          skipped: result.skipped || []
         }
       });
     } catch (auditError) {

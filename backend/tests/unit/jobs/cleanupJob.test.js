@@ -1,6 +1,8 @@
 jest.mock('../../../src/utils/prisma', () => ({
   refreshToken: { deleteMany: jest.fn() },
   passwordResetToken: { deleteMany: jest.fn() },
+  // Audit L1: runCleanup memakai advisory lock via $queryRaw.
+  $queryRaw: jest.fn().mockResolvedValue([{ ok: true }]),
 }));
 jest.mock('../../../src/utils/logger', () => ({
   getLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }),

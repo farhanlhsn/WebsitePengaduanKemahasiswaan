@@ -5,6 +5,26 @@ const { getLogger } = require('../utils/logger');
 const log = getLogger('chat:offline-notification');
 
 /**
+ * Audit M6: cek apakah seorang admin masih punya akses ke kategori tertentu
+ * (SUPERADMIN selalu ya; ADMIN butuh baris assignment aktif).
+ */
+async function hasCategoryAccess(adminId, categoryId) {
+  if (!adminId || !categoryId) return false;
+  const admin = await prisma.user.findUnique({
+    where: { id: adminId },
+    select: { role: true, deletedAt: true },
+  });
+  if (!admin || admin.deletedAt) return false;
+  if (admin.role === 'SUPERADMIN') return true;
+  if (admin.role !== 'ADMIN') return false;
+  const assignment = await prisma.adminCategoryAssignment.findUnique({
+    where: { adminId_categoryId: { adminId, categoryId } },
+    select: { adminId: true },
+  });
+  return !!assignment;
+}
+
+/**
  * Send email notifications to offline chat participants.
  * Runs fire-and-forget; errors are logged and never propagated to the caller.
  */
@@ -54,7 +74,17 @@ async function sendOfflineEmailNotification({ io, reportId, sender }) {
         );
       }
     } else if (reportDetails.assignedToId) {
-      if (reportDetails.assignedTo && !activeUserIdsInRoom.has(reportDetails.assignedToId)) {
+      // Audit M6: pastikan admin yang di-assign masih berhak atas kategori
+      // laporan ini (assignment bisa dicabut antara penugasan dan notifikasi).
+      const stillAssigned = await hasCategoryAccess(
+        reportDetails.assignedToId,
+        reportDetails.categoryId
+      );
+      if (
+        stillAssigned &&
+        reportDetails.assignedTo &&
+        !activeUserIdsInRoom.has(reportDetails.assignedToId)
+      ) {
         await emailService.notifyNewMessage(
           reportDetails.assignedTo.email,
           reportDetails.assignedTo.name,

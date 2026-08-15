@@ -4,6 +4,7 @@ const { assertSocketEventAllowed } = require('./roomAccess');
 const { parsePositiveInt, parseBoolean } = require('./validatePayload');
 const { emitChatError, leaveAndClearRoom, kickSocket } = require('./socketEmitters');
 const { allowTyping, clearTypingBucket } = require('./typingRateLimit');
+const { socketIdentity } = require('../utils/anonymizer');
 const { getLogger } = require('../utils/logger');
 
 const socketLog = getLogger('socket:io');
@@ -55,6 +56,7 @@ function setupSocket(server) {
   io.on('connection', (socket) => {
     socket.data.activeRoomId = null;
     socket.data.authorizedReportId = null;
+    socket.data.publicIdentity = null;
 
     socketLog.info('User connected', {
       socketId: socket.id,
@@ -82,11 +84,13 @@ function setupSocket(server) {
         socket.join(roomId);
         socket.data.activeRoomId = roomId;
         socket.data.authorizedReportId = reportId;
+        // Identitas yang aman dipublikasikan ke room (anonim -> 'reporter').
+        socket.data.publicIdentity = socketIdentity(check.report, check.user);
 
         const success = { ok: true, roomId };
         if (typeof callback === 'function') callback(success);
         socket.to(roomId).emit('room:joined', {
-          userId: check.user.userId,
+          userId: socket.data.publicIdentity,
           timestamp: new Date().toISOString(),
         });
       } catch (error) {
@@ -132,7 +136,7 @@ function setupSocket(server) {
 
         const roomId = `report_${reportId}`;
         socket.to(roomId).emit('chat:typing', {
-          userId: check.user.userId,
+          userId: socketIdentity(check.report, check.user),
           isTyping,
           timestamp: new Date().toISOString(),
         });

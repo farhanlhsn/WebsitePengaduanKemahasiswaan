@@ -23,6 +23,35 @@ const ANON_USER = Object.freeze({
 });
 
 /**
+ * Pseudonim stabil untuk identitas pelapor anonim di event socket
+ * (typing / join / leave / read). Dipakai menggantikan userId asli agar
+ * admin di room tidak bisa melakukan deanonymisasi.
+ */
+const ANON_REPORTER_IDENTITY = 'reporter';
+
+/**
+ * Identitas yang boleh dipublikasikan lewat event socket untuk `user`
+ * di konteks laporan `report`.
+ *
+ * - Laporan anonim + user adalah pelapor  -> pseudonim 'reporter'.
+ * - Selain itu                            -> userId asli.
+ *
+ * @param {?{isAnonymous?:boolean, userId?:number}} report
+ * @param {{userId:number}} user
+ * @returns {number|string}
+ */
+function socketIdentity(report, user) {
+  if (
+    report?.isAnonymous &&
+    user?.userId != null &&
+    Number(report.userId) === Number(user.userId)
+  ) {
+    return ANON_REPORTER_IDENTITY;
+  }
+  return user?.userId ?? null;
+}
+
+/**
  * Should this report's reporter identity be hidden from `viewer`?
  * Returns false only for the reporter themselves.
  */
@@ -99,7 +128,9 @@ function anonymizeChatMessage(message, report, viewer) {
 
 module.exports = {
   ANON_USER,
+  ANON_REPORTER_IDENTITY,
   shouldMaskReporter,
+  socketIdentity,
   anonymizeReport,
   anonymizeReportList,
   anonymizeChatMessage,

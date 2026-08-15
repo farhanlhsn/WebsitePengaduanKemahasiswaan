@@ -76,7 +76,10 @@ const parseUserAgent = (userAgent) => {
  */
 const getDeviceInfo = (req, extra = {}) => {
   const userAgent = req.headers['user-agent'] || '';
-  const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+  // req.ip sudah trust-proxy-aware (dihitung Express). Jangan baca header
+  // X-Forwarded-For mentah di sini — elemen pertamanya bisa dipalsukan klien.
+  const ipAddress =
+    req.ip || req.socket?.remoteAddress || req.connection?.remoteAddress || 'unknown';
   const { acceptLanguage = '', fingerprintId = '' } = extra;
 
   const deviceInfo = parseUserAgent(userAgent);

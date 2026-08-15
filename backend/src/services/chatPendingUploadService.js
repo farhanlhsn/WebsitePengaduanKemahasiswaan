@@ -120,21 +120,31 @@ async function deletePendingUploadsByUploader(uploaderId) {
 }
 
 async function cleanupExpiredChatPendingUploads() {
-  const expired = await prisma.chatPendingUpload.findMany({
-    where: { expiresAt: { lt: new Date() } },
-    take: 100,
-  });
-
+  // Audit L1: proses sampai habis per run (batch 500), jangan berhenti di 100
+  // pertama — backlog akan menumpuk bila traffic upload tinggi.
+  const BATCH = 500;
+  const MAX_BATCHES = 20;
   let deleted = 0;
-  for (const pending of expired) {
-    try {
-      await prisma.chatPendingUpload.delete({ where: { id: pending.id } });
-      await deleteFileFromDisk(pending.filePath);
-      deleted++;
-    } catch (err) {
-      if (err.code === 'P2025') continue;
-      log.warn('cleanup expired pending failed', { id: pending.id, error: err.message });
+
+  for (let i = 0; i < MAX_BATCHES; i++) {
+    const expired = await prisma.chatPendingUpload.findMany({
+      where: { expiresAt: { lt: new Date() } },
+      take: BATCH,
+    });
+    if (expired.length === 0) break;
+
+    for (const pending of expired) {
+      try {
+        await prisma.chatPendingUpload.delete({ where: { id: pending.id } });
+        await deleteFileFromDisk(pending.filePath);
+        deleted++;
+      } catch (err) {
+        if (err.code === 'P2025') continue;
+        log.warn('cleanup expired pending failed', { id: pending.id, error: err.message });
+      }
     }
+
+    if (expired.length < BATCH) break;
   }
   return deleted;
 }
@@ -144,12 +154,22 @@ async function reconcileOrphanChatPendingFiles() {
   const known = await prisma.chatPendingUpload.findMany({ select: { filePath: true } });
   const knownSet = new Set(known.map((p) => p.filePath));
 
+  // Audit L1: grace period — file yang baru dibuat (< 1 jam) bisa saja belum
+  // punya baris DB karena transaksi upload belum commit saat job berjalan.
+  const GRACE_MS = 60 * 60 * 1000;
+  const now = Date.now();
+
   let removed = 0;
   for (const filePath of filesOnDisk) {
-    if (!knownSet.has(filePath)) {
-      await deleteFileFromDisk(filePath);
-      removed++;
+    if (knownSet.has(filePath)) continue;
+    try {
+      const stat = await fs.promises.stat(filePath);
+      if (now - stat.mtimeMs < GRACE_MS) continue;
+    } catch (err) {
+      continue; // file hilang duluan / tidak terbaca — lewati
     }
+    await deleteFileFromDisk(filePath);
+    removed++;
   }
   return removed;
 }

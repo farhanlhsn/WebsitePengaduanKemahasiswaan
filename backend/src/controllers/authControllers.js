@@ -97,11 +97,15 @@ exports.registerStudent = async (req, res) => {
       });
     }
     
-    // Upload KTM
-    let ktmPath = null;
-    if (req.file) {
-      ktmPath = await uploadKtm(req);
+    // Upload KTM — wajib (audit B3). Middleware validasi sudah menolak
+    // request tanpa file, tapi tetap jaga eksplisit di sini.
+    if (!req.file) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'KTM wajib diunggah untuk registrasi'
+      });
     }
+    const ktmPath = await uploadKtm(req);
     
     // Register user
     const user = await authServices.registerStudent(req.body, ktmPath);
@@ -124,6 +128,19 @@ exports.registerStudent = async (req, res) => {
     log.error('Registration error', { error: error.message, stack: error.stack });
     
     // Handle specific errors
+    if (error.message === 'Email already exists') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'An account with this email already exists'
+      });
+    }
+    if (error.message === 'NIM already exists') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'An account with this NIM already exists'
+      });
+    }
+
     if (error.message.includes('Unique constraint')) {
       if (error.message.includes('email')) {
         return res.status(400).json({
@@ -200,7 +217,7 @@ exports.logout = async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, { algorithms: ['HS256'] });
     await authServices.logout(decoded.userId, refreshToken);
 
     log.info('Logout success', { userId: decoded.userId });
@@ -222,7 +239,7 @@ exports.refreshToken = async (req, res) => {
   if (!refreshToken) return res.status(401).json({ status: 'error', message: 'No refresh token provided' });
 
   try {
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, { algorithms: ['HS256'] });
     const tokenHash = hashToken(refreshToken);
 
     const user = await prisma.user.findUnique({
@@ -337,7 +354,7 @@ exports.getUserDevices = async (req, res) => {
     const refreshToken = req.cookies.refreshToken;
     if (refreshToken) {
       try {
-        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, { algorithms: ['HS256'] });
         currentDeviceId = decoded.deviceId;
       } catch (error) {
         // Ignore token errors for this endpoint
@@ -387,7 +404,7 @@ exports.logoutAllOtherDevices = async (req, res) => {
     }
 
     // Get current device ID from token
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, { algorithms: ['HS256'] });
     const currentDeviceId = decoded.deviceId;
 
     await authServices.logoutAllOtherDevices(userId, currentDeviceId);

@@ -15,6 +15,28 @@ function auditContext(req) {
   };
 }
 
+/**
+ * Audit M6: beri tahu socket user bahwa aksesnya berubah.
+ * - `disconnect=true` dipakai saat demote (tokenVersion naik → sesi socket
+ *   memang sudah tidak valid), sehingga socket pasif diputus sekarang juga
+ *   alih-alih terus menerima broadcast chat.
+ * - `disconnect=false` dipakai saat revoke kategori (sesi masih valid untuk
+ *   kategori lain) — frontend yang memutuskan keluar room terkait.
+ */
+function notifyAccessRevoked(req, userId, { reason, categoryId = null, disconnect = false }) {
+  const io = req.app.get('io');
+  if (!io) return;
+  const userRoom = `user_${userId}`;
+  const room = io.sockets.adapter.rooms.get(userRoom);
+  if (!room) return;
+  for (const socketId of [...room]) {
+    const socket = io.sockets.sockets.get(socketId);
+    if (!socket) continue;
+    socket.emit('access:revoked', { reason, categoryId });
+    if (disconnect) socket.disconnect(true);
+  }
+}
+
 exports.listAdmins = async (req, res) => {
   try {
     const admins = await adminGovernanceServices.listAdmins();
@@ -49,6 +71,7 @@ exports.demoteAdmin = async (req, res) => {
   try {
     const targetUserId = parseInt(req.params.userId, 10);
     const updated = await adminGovernanceServices.demoteAdmin(targetUserId, req.user.userId);
+    notifyAccessRevoked(req, targetUserId, { reason: 'DEMOTED', disconnect: true });
     auditLogServices
       .createAuditLog({
         ...auditContext(req),
@@ -89,6 +112,7 @@ exports.demoteSuperAdmin = async (req, res) => {
   try {
     const targetUserId = parseInt(req.params.userId, 10);
     const updated = await adminGovernanceServices.demoteSuperAdmin(targetUserId, req.user.userId);
+    notifyAccessRevoked(req, targetUserId, { reason: 'DEMOTED', disconnect: true });
     auditLogServices
       .createAuditLog({
         ...auditContext(req),
@@ -138,6 +162,7 @@ exports.revokeCategory = async (req, res) => {
     }
     const result = await adminGovernanceServices.revokeCategory(adminId, categoryId, req.user.userId);
     if (result.revoked) {
+      notifyAccessRevoked(req, adminId, { reason: 'CATEGORY_REVOKED', categoryId, disconnect: false });
       auditLogServices
         .createAuditLog({
           ...auditContext(req),

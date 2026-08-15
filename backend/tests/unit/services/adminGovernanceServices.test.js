@@ -23,6 +23,9 @@ const mockPrisma = {
   category: {
     findUnique: jest.fn(),
   },
+  report: {
+    updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+  },
   adminCategoryAssignment: {
     upsert: jest.fn(),
     deleteMany: jest.fn(),
@@ -31,6 +34,7 @@ const mockPrisma = {
     findMany: jest.fn(),
   },
   $transaction: jest.fn(),
+  $queryRaw: jest.fn().mockResolvedValue([]),
 };
 
 jest.mock('../../../src/utils/prisma', () => mockPrisma);

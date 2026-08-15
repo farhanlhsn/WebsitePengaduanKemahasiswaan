@@ -1,5 +1,6 @@
 const prisma = require('../utils/prisma');
 const { ROLES } = require('../utils/rbac');
+const { acquireSuperAdminGuardLock } = require('../utils/superAdminLock');
 const { getLogger } = require('../utils/logger');
 const log = getLogger('admin-governance:service');
 
@@ -117,6 +118,13 @@ class AdminGovernanceServices {
       // Drop assignments first (cascades on FK, but explicit for audit clarity).
       await tx.adminCategoryAssignment.deleteMany({ where: { adminId: targetUserId } });
 
+      // Audit M6: laporan yang masih "assigned" ke admin ini menjadi yatim —
+      // clear agar tidak ada notifikasi/akses sisa menuju akun yang di-demote.
+      await tx.report.updateMany({
+        where: { assignedToId: targetUserId, deletedAt: null },
+        data: { assignedToId: null },
+      });
+
       const updated = await tx.user.update({
         where: { id: targetUserId },
         data: { role: ROLES.MAHASISWA, tokenVersion: { increment: 1 } },
@@ -163,6 +171,9 @@ class AdminGovernanceServices {
    */
   async demoteSuperAdmin(targetUserId, actorId) {
     return prisma.$transaction(async (tx) => {
+      // Audit B2: serialisasi guard superadmin-terakhir antar request konkuren.
+      await acquireSuperAdminGuardLock(tx);
+
       const target = await tx.user.findUnique({
         where: { id: targetUserId },
         select: { id: true, role: true, deletedAt: true },
@@ -243,6 +254,14 @@ class AdminGovernanceServices {
     await prisma.adminCategoryAssignment.delete({
       where: { adminId_categoryId: { adminId, categoryId } },
     });
+
+    // Audit M6: laporan kategori ini yang masih assigned ke admin tersebut
+    // harus dilepas — assignment-nya sudah tidak ada.
+    await prisma.report.updateMany({
+      where: { assignedToId: adminId, categoryId, deletedAt: null },
+      data: { assignedToId: null },
+    });
+
     log.info('revokeCategory success', { adminId, categoryId, actorId });
     return { revoked: true };
   }

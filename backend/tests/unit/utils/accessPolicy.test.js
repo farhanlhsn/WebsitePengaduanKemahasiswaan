@@ -14,6 +14,7 @@ const {
   canAccessReport,
   canAdminManageReport,
   canAccessUser,
+  canViewUser,
 } = require('../../../src/utils/accessPolicy');
 
 describe('accessPolicy', () => {
@@ -82,5 +83,39 @@ describe('accessPolicy', () => {
     expect(canAccessUser({ userId: 1, role: 'MAHASISWA' }, 2)).toBe(false);
     expect(canAccessUser({ userId: 3, role: 'ADMIN' }, 2)).toBe(true);
     expect(canAccessUser({ userId: 3, role: 'SUPERADMIN' }, 2)).toBe(true);
+  });
+
+  describe('canViewUser (audit C1/B5 — user directory restriction)', () => {
+    const mahasiswa = { id: 10, role: 'MAHASISWA' };
+    const admin = { id: 21, role: 'ADMIN' };
+    const superadmin = { id: 31, role: 'SUPERADMIN' };
+
+    test('anyone can view their own profile', () => {
+      expect(canViewUser({ userId: 10, role: 'MAHASISWA' }, mahasiswa)).toBe(true);
+      expect(canViewUser({ userId: 21, role: 'ADMIN' }, admin)).toBe(true);
+      expect(canViewUser({ userId: 31, role: 'SUPERADMIN' }, superadmin)).toBe(true);
+    });
+
+    test('regular ADMIN can only view MAHASISWA, not admin-tier', () => {
+      expect(canViewUser({ userId: 20, role: 'ADMIN' }, mahasiswa)).toBe(true);
+      expect(canViewUser({ userId: 20, role: 'ADMIN' }, admin)).toBe(false);
+      expect(canViewUser({ userId: 20, role: 'ADMIN' }, superadmin)).toBe(false);
+    });
+
+    test('SUPERADMIN can view everyone', () => {
+      expect(canViewUser({ userId: 30, role: 'SUPERADMIN' }, mahasiswa)).toBe(true);
+      expect(canViewUser({ userId: 30, role: 'SUPERADMIN' }, admin)).toBe(true);
+      expect(canViewUser({ userId: 30, role: 'SUPERADMIN' }, superadmin)).toBe(true);
+    });
+
+    test('MAHASISWA cannot view other users', () => {
+      expect(canViewUser({ userId: 10, role: 'MAHASISWA' }, { id: 11, role: 'MAHASISWA' })).toBe(false);
+      expect(canViewUser({ userId: 10, role: 'MAHASISWA' }, admin)).toBe(false);
+    });
+
+    test('missing actor or target is denied', () => {
+      expect(canViewUser(null, mahasiswa)).toBe(false);
+      expect(canViewUser({ userId: 1, role: 'ADMIN' }, null)).toBe(false);
+    });
   });
 });

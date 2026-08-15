@@ -190,3 +190,131 @@ describe('chat access integration', () => {
     socket.disconnect();
   });
 });
+
+describe('anonymous reporter socket identity (audit C1)', () => {
+  async function createAnonymousReport(owner, category) {
+    return prisma.report.create({
+      data: {
+        title: 'Anon Report',
+        description: 'desc',
+        registrationNumber: `REG-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
+        categoryId: category.id,
+        userId: owner.id,
+        status: 'PENDING',
+        isAnonymous: true,
+      },
+    });
+  }
+
+  function waitForEvent(socket, event, ms = 3000) {
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error(`timeout waiting ${event}`)), ms);
+      socket.once(event, (payload) => {
+        clearTimeout(t);
+        resolve(payload);
+      });
+    });
+  }
+
+  test('room:joined masks anonymous reporter userId as "reporter"', async () => {
+    const owner = await createUser({ isVerified: true });
+    const sa = await createSuperAdmin();
+    const admin = await createAdmin();
+    const category = await createCategory({
+      name: 'CatAnonA', slug: 'cat-anon-a', allowAnonymous: true,
+    });
+    await grantCategory(admin.id, category.id, sa.id);
+    const report = await createAnonymousReport(owner, category);
+
+    const adminSocket = await connectSocket(issueToken(admin));
+    await joinRoom(adminSocket, report.id);
+
+    const joinedPromise = waitForEvent(adminSocket, 'room:joined');
+
+    const ownerSocket = await connectSocket(issueToken(owner));
+    await joinRoom(ownerSocket, report.id);
+
+    const joined = await joinedPromise;
+    expect(joined.userId).toBe('reporter');
+    expect(joined.userId).not.toBe(owner.id);
+
+    ownerSocket.disconnect();
+    adminSocket.disconnect();
+  });
+
+  test('chat:typing masks anonymous reporter userId as "reporter"', async () => {
+    const owner = await createUser({ isVerified: true });
+    const sa = await createSuperAdmin();
+    const admin = await createAdmin();
+    const category = await createCategory({
+      name: 'CatAnonB', slug: 'cat-anon-b', allowAnonymous: true,
+    });
+    await grantCategory(admin.id, category.id, sa.id);
+    const report = await createAnonymousReport(owner, category);
+
+    const adminSocket = await connectSocket(issueToken(admin));
+    await joinRoom(adminSocket, report.id);
+
+    const ownerSocket = await connectSocket(issueToken(owner));
+    await joinRoom(ownerSocket, report.id);
+
+    const typingPromise = waitForEvent(adminSocket, 'chat:typing');
+    ownerSocket.emit('chat:typing', { reportId: report.id, isTyping: true });
+
+    const typing = await typingPromise;
+    expect(typing.userId).toBe('reporter');
+    expect(typing.userId).not.toBe(owner.id);
+
+    ownerSocket.disconnect();
+    adminSocket.disconnect();
+  });
+
+  test('room:left masks anonymous reporter userId as "reporter"', async () => {
+    const owner = await createUser({ isVerified: true });
+    const sa = await createSuperAdmin();
+    const admin = await createAdmin();
+    const category = await createCategory({
+      name: 'CatAnonC', slug: 'cat-anon-c', allowAnonymous: true,
+    });
+    await grantCategory(admin.id, category.id, sa.id);
+    const report = await createAnonymousReport(owner, category);
+
+    const adminSocket = await connectSocket(issueToken(admin));
+    await joinRoom(adminSocket, report.id);
+
+    const ownerSocket = await connectSocket(issueToken(owner));
+    await joinRoom(ownerSocket, report.id);
+
+    const leftPromise = waitForEvent(adminSocket, 'room:left');
+    ownerSocket.emit('leaveRoom', { reportId: report.id });
+
+    const left = await leftPromise;
+    expect(left.userId).toBe('reporter');
+    expect(left.userId).not.toBe(owner.id);
+
+    ownerSocket.disconnect();
+    adminSocket.disconnect();
+  });
+
+  test('non-anonymous report keeps real userId in socket events', async () => {
+    const owner = await createUser({ isVerified: true });
+    const sa = await createSuperAdmin();
+    const admin = await createAdmin();
+    const category = await createCategory({ name: 'CatAnonD', slug: 'cat-anon-d' });
+    await grantCategory(admin.id, category.id, sa.id);
+    const report = await createReport(owner, category); // isAnonymous defaults false
+
+    const adminSocket = await connectSocket(issueToken(admin));
+    await joinRoom(adminSocket, report.id);
+
+    const joinedPromise = waitForEvent(adminSocket, 'room:joined');
+    const ownerSocket = await connectSocket(issueToken(owner));
+    await joinRoom(ownerSocket, report.id);
+
+    const joined = await joinedPromise;
+    expect(joined.userId).toBe(owner.id);
+
+    ownerSocket.disconnect();
+    adminSocket.disconnect();
+  });
+});

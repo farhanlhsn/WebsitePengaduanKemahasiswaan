@@ -1,4 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
+const { getLogger } = require('./logger');
+const log = getLogger('prisma');
 
 const prisma = new PrismaClient({
   log: [
@@ -17,12 +19,12 @@ async function connectWithRetry(retries = 5, delay = 3000) {
     try {
       await prisma.$connect();
       if (process.env.NODE_ENV !== 'test') {
-        console.log('✅ Prisma connected to database');
+        log.info('✅ Prisma connected to database');
       }
       return;
     } catch (err) {
       if (process.env.NODE_ENV !== 'test') {
-        console.warn(`⚠️  Prisma connection attempt ${i + 1}/${retries} failed: ${err.message}`);
+        log.warn(`⚠️  Prisma connection attempt ${i + 1}/${retries} failed: ${err.message}`);
       }
       if (i < retries - 1) {
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -30,19 +32,19 @@ async function connectWithRetry(retries = 5, delay = 3000) {
     }
   }
   if (process.env.NODE_ENV !== 'test') {
-    console.error('❌ Prisma could not connect after multiple retries');
+    log.error('❌ Prisma could not connect after multiple retries');
   }
 }
 
 prisma.$on('warn', (e) => {
-  console.warn(`Prisma Warning: ${e.message}`);
+  log.warn(`Prisma Warning: ${e.message}`);
 });
 
 prisma.$on('error', (e) => {
   if (process.env.NODE_ENV === 'test') return;
-  console.error(`Prisma Error: ${e.message}`);
+  log.error(`Prisma Error: ${e.message}`);
   if (e.message.includes('Closed') || e.message.includes('connection')) {
-    console.log('🔄 Attempting to reconnect to database...');
+    log.info('🔄 Attempting to reconnect to database...');
     connectWithRetry(3, 2000);
   }
 });

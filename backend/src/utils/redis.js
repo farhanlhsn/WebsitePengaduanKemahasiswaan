@@ -1,4 +1,6 @@
 const Redis = require('ioredis');
+const { getLogger } = require('./logger');
+const log = getLogger('redis');
 
 let redisClient = null;
 
@@ -13,14 +15,14 @@ if (redisUrl && (process.env.NODE_ENV !== 'test' || allowRedisInTest)) {
     });
 
     redisClient.on('connect', () => {
-      console.log('Redis connected successfully.');
+      log.info('Redis connected successfully.');
     });
 
     redisClient.on('error', (err) => {
-      console.error('Redis Client Error:', err);
+      log.error('Redis Client Error:', err);
     });
   } catch (err) {
-    console.error('Failed to initialize Redis client:', err);
+    log.error('Failed to initialize Redis client:', err);
     redisClient = null;
   }
 }

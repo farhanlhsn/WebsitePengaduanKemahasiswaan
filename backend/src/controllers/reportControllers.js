@@ -41,8 +41,16 @@ function shouldRecordAnonViewAudit(actorId, reportId) {
 // Admin: Get all reports paginated (with optional search & filter)
 exports.getAllReportsPaginated = async (req, res) => {
   try {
-    const { limit = 10, lastItemId: lastItemIdRaw, search, createdAt, categoryId, assignedToId, includeDeleted: includeDeletedRaw, ...rest } = req.query;
-    let filters = { ...rest };
+    const { limit = 10, lastItemId: lastItemIdRaw, search, createdAt, categoryId, assignedToId, includeDeleted: includeDeletedRaw, status, priority } = req.query;
+    // Audit M10: JANGAN spread req.query ke Prisma `where`. Hanya param
+    // whitelist yang boleh menjadi filter.
+    const filters = {};
+    if (status && ['PENDING', 'IN_REVIEW', 'IN_PROGRESS', 'RESOLVED', 'REJECTED', 'CANCELED'].includes(status)) {
+      filters.status = status;
+    }
+    if (priority && ['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(priority)) {
+      filters.priority = priority;
+    }
     const includeDeleted = includeDeletedRaw === 'true' || includeDeletedRaw === true;
     const take = parseInt(limit, 10);
     log.info('Admin get reports paginated', { take, search, createdAt, categoryId, assignedToId });
@@ -138,8 +146,13 @@ exports.getAllReportsPaginated = async (req, res) => {
 // Mahasiswa: Get all reports by userId paginated (with optional search & filter)
 exports.getAllReportsByUserIdPaginated = async (req, res) => {
   try {
-    const { limit = 10, lastItemId: lastItemIdRaw, search, createdAt, categoryId, ...rest } = req.query;
-    let filters = { ...rest };
+    const { limit = 10, lastItemId: lastItemIdRaw, search, createdAt, categoryId, status } = req.query;
+    // Audit M10: hanya param whitelist yang jadi filter — `userId` TIDAK boleh
+    // datang dari query; selalu dari sesi (lihat getAllReportsByUserIdPaginated).
+    const filters = {};
+    if (status && ['PENDING', 'IN_REVIEW', 'IN_PROGRESS', 'RESOLVED', 'REJECTED', 'CANCELED'].includes(status)) {
+      filters.status = status;
+    }
     const take = parseInt(limit, 10);
     log.info('User get reports paginated', { userId: req.user?.userId, take, search, createdAt, categoryId });
     let lastItemIdInt = null;
@@ -302,6 +315,25 @@ exports.editReport = async (req, res) => {
       return res.status(400).json(ResponseFormatter.error('Tidak ada data yang diubah'));
     }
 
+    // Audit M9: jika kategori berubah, validasi ulang kategori tujuan —
+    // harus aktif (belum dihapus) dan tetap kompatibel dengan anonimitas.
+    if (categoryId && Number(categoryId) !== Number(report.categoryId)) {
+      const newCategory = await prisma.category.findFirst({
+        where: { id: Number(categoryId), deletedAt: null },
+        select: { id: true, allowAnonymous: true },
+      });
+      if (!newCategory) {
+        return res.status(400).json(
+          ResponseFormatter.error('Kategori tidak ditemukan atau sudah dihapus', 400)
+        );
+      }
+      if (report.isAnonymous && !newCategory.allowAnonymous) {
+        return res.status(400).json(
+          ResponseFormatter.error('Kategori baru tidak mengizinkan laporan anonim', 400)
+        );
+      }
+    }
+
     // Defense-in-depth: assert no immutable field slipped through.
     // (Current code can't trigger this, but guards against future refactors
     // that might spread req.body into updateData.)
@@ -311,11 +343,44 @@ exports.editReport = async (req, res) => {
       return res.status(400).json(ResponseFormatter.error(immutableErr.message));
     }
 
-    const result = await prisma.report.update({
-      where: { id },
+    // Audit B1: update kondisional — laporan harus masih PENDING (dan milik
+    // user ini, belum terhapus) tepat saat penulisan, menutup race TOCTOU.
+    const updated = await prisma.report.updateMany({
+      where: { id, userId, status: 'PENDING', deletedAt: null },
       data: updateData,
-      select: { id: true, title: true, description: true, categoryId: true, status: true }
     });
+    if (updated.count !== 1) {
+      return res.status(409).json(ResponseFormatter.error(
+        'Laporan baru saja berubah (status bukan PENDING lagi). Muat ulang dan coba lagi.',
+        409
+      ));
+    }
+
+    const result = await prisma.report.findUnique({
+      where: { id },
+      select: { id: true, title: true, description: true, categoryId: true, status: true, registrationNumber: true }
+    });
+
+    // Audit L2: edit laporan wajib tercatat.
+    try {
+      await auditLogServices.createAuditLog({
+        entityType: 'REPORT',
+        action: 'UPDATE',
+        entityId: id,
+        actorId: req.user.userId,
+        actorName: req.user.name,
+        actorRole: req.user.role,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: {
+          operation: 'EDIT_REPORT',
+          updatedFields: Object.keys(updateData),
+          registrationNumber: result?.registrationNumber,
+        },
+      });
+    } catch (auditError) {
+      log.error('Failed to create audit log for edit report', { error: auditError.message });
+    }
 
     res.status(200).json(ResponseFormatter.success(result, 'Laporan berhasil diperbarui'));
   } catch (err) {
@@ -373,24 +438,16 @@ exports.updateReportStatus = async (req, res) => {
       );
     }
 
-    // Status transition validation (state machine)
-    const validTransitions = {
-      PENDING: ['IN_REVIEW', 'REJECTED', 'CANCELED'],
-      IN_REVIEW: ['IN_PROGRESS', 'RESOLVED', 'REJECTED', 'CANCELED'],
-      IN_PROGRESS: ['RESOLVED', 'REJECTED', 'CANCELED'],
-      RESOLVED: ['IN_REVIEW'],    // Allow reopen
-      REJECTED: ['IN_REVIEW'],    // Allow reopen
-      CANCELED: ['PENDING'],      // Allow resubmit
-    };
-
-    const allowed = validTransitions[oldStatus] || [];
+    // Status transition validation (state machine — satu sumber dengan bulk ops)
+    const { VALID_TRANSITIONS } = require('../utils/reportTransitions');
+    const allowed = VALID_TRANSITIONS[oldStatus] || [];
     if (!allowed.includes(status)) {
       return res.status(400).json(ResponseFormatter.error(
         `Tidak bisa mengubah status dari ${oldStatus} ke ${status}. Transisi yang diizinkan: ${allowed.join(', ')}`
       ));
     }
     
-    const result = await ReportServices.updateReportStatus(id, status);
+    const result = await ReportServices.updateReportStatus(id, status, oldStatus);
     
     // Create audit log
     try {
@@ -437,7 +494,8 @@ exports.updateReportStatus = async (req, res) => {
     res.status(200).json(ResponseFormatter.success(result, 'Status updated'));
   } catch (err) {
     log.warn('updateReportStatus error', { error: err.message });
-    res.status(400).json(ResponseFormatter.error(err.message));
+    const statusCode = err.statusCode || 400;
+    res.status(statusCode).json(ResponseFormatter.error(err.message, statusCode));
   }
 };
 
@@ -507,8 +565,10 @@ exports.deleteReport = async (req, res) => {
     
     let result;
     if (!isAdmin(req.user)) {
-      // Bagi mahasiswa, menghapus laporan PENDING berarti membatalkannya
-      result = await ReportServices.updateReportStatus(id, 'CANCELED');
+      // Bagi mahasiswa, menghapus laporan PENDING berarti membatalkannya.
+      // Audit B1: teruskan status yang terbaca agar update kondisional
+      // menolak bila status berubah di tengah proses (TOCTOU).
+      result = await ReportServices.updateReportStatus(id, 'CANCELED', report.status);
       
       // Create audit log for cancellation
       try {
@@ -581,13 +641,17 @@ exports.deleteReport = async (req, res) => {
     }
   } catch (err) {
     log.warn('deleteReport error', { error: err.message });
-    res.status(400).json(ResponseFormatter.error(err.message));
+    const statusCode = err.statusCode || 400;
+    res.status(statusCode).json(ResponseFormatter.error(err.message, statusCode));
   }
 };
 
 exports.getReportStats = async (req, res) => {
   try {
-    const stats = await ReportServices.getReportStats();
+    // Audit B5: ADMIN hanya melihat statistik kategori assignment-nya;
+    // SUPERADMIN (sentinel null) melihat global.
+    const categoryIds = await adminGovernanceServices.getAccessibleCategoryIds(req.user);
+    const stats = await ReportServices.getReportStats(categoryIds);
     log.info('Get report stats');
     res.status(200).json(ResponseFormatter.success(stats, 'Report statistics retrieved successfully'));
   } catch (error) {
@@ -676,6 +740,28 @@ exports.assignReport = async (req, res) => {
       }
     });
 
+    // Audit L2: assignment/unassignment laporan wajib tercatat.
+    try {
+      await auditLogServices.createAuditLog({
+        entityType: 'REPORT',
+        action: 'UPDATE',
+        entityId: id,
+        actorId: req.user.userId,
+        actorName: req.user.name,
+        actorRole: req.user.role,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: {
+          operation: assignedToId ? 'ASSIGN_REPORT' : 'UNASSIGN_REPORT',
+          assignedToId: assignedToId || null,
+          reportTitle: result.title,
+          registrationNumber: result.registrationNumber,
+        },
+      });
+    } catch (auditError) {
+      log.error('Failed to create audit log for assign report', { error: auditError.message });
+    }
+
     res.status(200).json(ResponseFormatter.success(result, assignedToId ? 'Report assigned' : 'Report unassigned'));
   } catch (err) {
     log.warn('assignReport error', { error: err.message });
@@ -709,6 +795,28 @@ exports.updateReportPriority = async (req, res) => {
       data: { priority },
       select: { id: true, priority: true, title: true, registrationNumber: true }
     });
+
+    // Audit L2: perubahan prioritas wajib tercatat.
+    try {
+      await auditLogServices.createAuditLog({
+        entityType: 'REPORT',
+        action: 'UPDATE',
+        entityId: id,
+        actorId: req.user.userId,
+        actorName: req.user.name,
+        actorRole: req.user.role,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: {
+          operation: 'UPDATE_PRIORITY',
+          newPriority: priority,
+          reportTitle: result.title,
+          registrationNumber: result.registrationNumber,
+        },
+      });
+    } catch (auditError) {
+      log.error('Failed to create audit log for update priority', { error: auditError.message });
+    }
 
     res.status(200).json(ResponseFormatter.success(result, 'Priority updated'));
   } catch (err) {

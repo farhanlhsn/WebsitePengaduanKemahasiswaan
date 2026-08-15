@@ -40,7 +40,18 @@ async function cleanupOldPasswordResetTokens() {
 }
 
 async function runCleanup() {
+  // Audit L1: guard multi-instance — bila beberapa replica backend jalan
+  // bersamaan, hanya satu yang boleh menjalankan cleanup pada satu waktu.
+  // pg_try_advisory_lock(42) tidak memblokir: instance lain langsung skip.
+  let lockAcquired = false;
   try {
+    const rows = await prisma.$queryRaw`SELECT pg_try_advisory_lock(424242) AS ok`;
+    lockAcquired = rows?.[0]?.ok === true;
+    if (!lockAcquired) {
+      log.info('Cleanup skipped — another instance holds the lock');
+      return;
+    }
+
     const refreshDeleted = await cleanupExpiredRefreshTokens();
     const resetDeleted = await cleanupOldPasswordResetTokens();
     const pendingDeleted = await cleanupExpiredChatPendingUploads();
@@ -53,6 +64,14 @@ async function runCleanup() {
     });
   } catch (error) {
     log.error('Cleanup failed', { error: error.message, stack: error.stack });
+  } finally {
+    if (lockAcquired) {
+      try {
+        await prisma.$queryRaw`SELECT pg_advisory_unlock(424242)`;
+      } catch (unlockError) {
+        log.error('Failed to release cleanup lock', { error: unlockError.message });
+      }
+    }
   }
 }
 

@@ -121,11 +121,12 @@ app.use(cors({
       'http://127.0.0.1:4173',  // Alternative localhost
       ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(url => url.trim()) : [])
     ].filter(Boolean); // Remove undefined values
-    
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.log('CORS blocked origin:', origin);
+      const log = require('./utils/logger');
+      log.warn(`CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },

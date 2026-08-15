@@ -1,27 +1,23 @@
 const deviceDetection = require('../utils/deviceDetection');
 
 /**
- * Middleware untuk menambahkan informasi device ke request
+ * Middleware untuk menambahkan informasi device ke request.
+ *
+ * Security (audit S1): JANGAN menimpa `req.ip` dari header mentah
+ * `X-Forwarded-For`. Elemen pertama header itu dapat dikontrol klien dan
+ * memungkinkan penyerang mem-bypass rate limiter berbasis IP dengan mengganti
+ * header tiap request. Biarkan Express menghitung `req.ip` berdasarkan
+ * pengaturan `trust proxy` (lihat app.js) — nilai itulah yang dipakai
+ * downstream (rate limiter, device tracking, audit log).
  */
 const deviceTrackingMiddleware = (req, res, next) => {
-  // Ambil IP address dari header proxy atau fallback ke remoteAddress
-  const forwarded = req.headers['x-forwarded-for'];
-  const realIp =
-    (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0]) ||
-    req.socket?.remoteAddress ||
-    req.connection?.remoteAddress ||
-    'unknown';
-
-  // Override req.ip agar semua modul downstream bisa pakai IP yang benar
-  req.ip = realIp;
-
   // Siapkan parameter tambahan untuk kestabilan fingerprint (jika tersedia)
   const extraFingerprint = {
     acceptLanguage: req.headers['accept-language'] || '',
     fingerprintId: req.headers['x-device-fingerprint'] || '', // optional cookie dari frontend
   };
 
-  // Ambil informasi device yang sudah ditingkatkan stabilitasnya
+  // Ambil informasi device; ipAddress diambil dari req.ip (trust-proxy-aware).
   req.deviceInfo = deviceDetection.getDeviceInfo(req, extraFingerprint);
 
   next();

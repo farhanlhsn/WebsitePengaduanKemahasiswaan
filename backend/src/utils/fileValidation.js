@@ -124,10 +124,15 @@ async function validateUploadedFiles(files, allowedMap) {
   }
 }
 
-function createValidateUploadedMiddleware(allowedMap) {
+function createValidateUploadedMiddleware(allowedMap, { required = false } = {}) {
   return async (req, res, next) => {
     try {
       const files = req.files || (req.file ? [req.file] : []);
+      // Security (audit B3): bila `required`, daftar file kosong = error,
+      // bukan lolos diam-diam.
+      if (required && files.length === 0) {
+        throw new Error('No file uploaded');
+      }
       await validateUploadedFiles(files, allowedMap);
       next();
     } catch (error) {

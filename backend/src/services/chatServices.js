@@ -18,6 +18,7 @@ const MESSAGE_INCLUDE = {
     select: {
       id: true,
       content: true,
+      deletedAt: true,
       sender: { select: { name: true } },
     },
   },
@@ -98,6 +99,9 @@ class ChatServices {
           userId: report.userId,
           isAnonymous: report.isAnonymous,
         };
+        // Audit M3: tandai replay agar controller tidak memancarkan ulang
+        // event socket / email notifikasi untuk pesan yang sama.
+        existing.replayed = true;
         return existing;
       }
     }
@@ -122,7 +126,22 @@ class ChatServices {
       isAnonymous: report.isAnonymous,
     };
 
-    const message = await prisma.$transaction(async (tx) => {
+    let message;
+    try {
+      message = await prisma.$transaction(async (tx) => {
+      // Audit M4: re-check status laporan DI DALAM transaksi — status bisa
+      // berubah antara pengecekan awal dan insert (TOCTOU).
+      const freshReport = await tx.report.findFirst({
+        where: { id: reportId, deletedAt: null },
+        select: { status: true },
+      });
+      if (!freshReport) {
+        throw chatError('ACCESS_DENIED', 403);
+      }
+      if (closedStatuses.includes(freshReport.status)) {
+        throw new Error('Cannot send messages on a closed report. Status: ' + freshReport.status);
+      }
+
       const pendings = [];
       for (const token of attachmentTokens) {
         const pending = await tx.chatPendingUpload.findUnique({ where: { token } });
@@ -173,7 +192,29 @@ class ChatServices {
       }
 
       return { created, pendings };
-    });
+      });
+    } catch (txError) {
+      // Audit M3: insert konkuren berbenturan pada unique constraint
+      // [reportId, senderId, clientMessageId] — pesan dengan idempotency key
+      // yang sama sudah dibuat request paralel. Kembalikan pesan existing
+      // sebagai replay alih-alih error mentah.
+      if (txError?.code === 'P2002' && clientMessageId) {
+        const existing = await prisma.message.findFirst({
+          where: {
+            reportId,
+            senderId: parseInt(senderId),
+            clientMessageId: String(clientMessageId),
+          },
+          include: MESSAGE_INCLUDE,
+        });
+        if (existing) {
+          existing.report = reportContext;
+          existing.replayed = true;
+          return existing;
+        }
+      }
+      throw txError;
+    }
 
     for (const pending of message.pendings) {
       const publicPath = await promotePendingToAttachment(pending);
@@ -355,7 +396,13 @@ class ChatServices {
     try {
       const message = await prisma.message.findFirst({
         where: { id: parseInt(messageId), deletedAt: null },
-        select: { id: true, senderId: true, reportId: true },
+        select: {
+          id: true,
+          senderId: true,
+          reportId: true,
+          // Konteks anonimitas untuk masking event socket (audit C1).
+          report: { select: { isAnonymous: true, userId: true } },
+        },
       });
 
       if (!message) {
@@ -372,7 +419,11 @@ class ChatServices {
         data: { deletedAt: new Date() },
       });
 
-      return { success: true, reportId: message.reportId };
+      return {
+        success: true,
+        reportId: message.reportId,
+        report: message.report,
+      };
     } catch (error) {
       if (error.name === 'ChatError') throw error;
       throw new Error(`Failed to delete message: ${error.message}`);
