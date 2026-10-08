@@ -1,0 +1,259 @@
+paths:
+  /v1/api/auth/registerStudent:
+    post:
+      tags: [Auth]
+      summary: Registrasi mahasiswa dengan unggah KTM
+      description: >
+        Akun dibuat dengan `isVerified=false`; mahasiswa baru bisa login dan
+        membuat laporan setelah diverifikasi admin. Bila `ALLOWED_EMAIL_DOMAINS`
+        di-set, domain email dibatasi. Rate limit: 20 per IP per jam.
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, email, password, nim, ktm]
+              properties:
+                name: { type: string, example: Budi Santoso }
+                email: { type: string, format: email, example: budi.santoso@mahasiswa.bunghatta.ac.id }
+                password: { type: string, minLength: 8, description: Mengikuti kebijakan password (`utils/passwordPolicy.js`). }
+                nim: { type: string, pattern: '^\d{8,}$', example: '2110003001' }
+                ktm: { type: string, format: binary, description: 'Foto KTM: JPEG, PNG, atau WebP, maks. 5 MB.' }
+      responses:
+        '201':
+          description: Akun dibuat, menunggu verifikasi admin.
+          content:
+            application/json:
+              example:
+                status: success
+                message: Registration successful. Please wait for admin verification.
+                data:
+                  id: 2
+                  name: Budi Santoso
+                  email: budi.santoso@mahasiswa.bunghatta.ac.id
+                  nim: '2110003001'
+                  role: MAHASISWA
+                  isVerified: false
+                  ktmPath: /uploads/ktm/c05dd06b2e88cd62026c95484efdbf2c.png
+        '400': { description: 'Validasi gagal, email/NIM sudah terdaftar, atau berkas KTM tidak valid/terlalu besar.' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /v1/api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login dengan email dan password
+      description: >
+        Mengembalikan access token di body (dan header `Authorization`) serta
+        men-set cookie httpOnly `refreshToken` (7 hari). Access token berlaku
+        15 menit. Satu sesi dicatat per perangkat; maksimal 3 perangkat per
+        akun (perangkat paling lama tidak aktif dikeluarkan otomatis).
+        Rate limit: 20 percobaan gagal per IP per 15 menit.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+            example: { email: budi.santoso@mahasiswa.bunghatta.ac.id, password: '********' }
+      responses:
+        '200':
+          description: Login berhasil.
+          headers:
+            Set-Cookie: { schema: { type: string }, description: 'refreshToken=...; HttpOnly; SameSite=Strict' }
+          content:
+            application/json:
+              example:
+                status: success
+                message: Login successful
+                tokenType: Bearer
+                accessToken: <access-token-jwt>
+                data:
+                  id: 2
+                  name: Budi Santoso
+                  nim: '2110003001'
+                  email: budi.santoso@mahasiswa.bunghatta.ac.id
+                  role: MAHASISWA
+                  isVerified: true
+                  deviceInfo: { deviceName: Chrome on Windows, deviceType: Desktop }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401':
+          description: Email atau password salah, akun dihapus, atau akun belum diverifikasi admin.
+          content:
+            application/json:
+              examples:
+                salah: { value: { status: error, message: email/password salah } }
+                belumVerifikasi: { value: { status: error, message: User is not verified } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /v1/api/auth/refresh-token:
+    post:
+      tags: [Auth]
+      summary: Terbitkan access token baru dari cookie refresh token
+      description: >
+        Refresh token dirotasi setiap dipakai. Bila token lama dipakai ulang
+        (indikasi pencurian), semua token perangkat tersebut dicabut.
+        Rate limit: 60 per IP per 15 menit.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Token baru diterbitkan; cookie refreshToken diperbarui.
+          content:
+            application/json:
+              example:
+                accessToken: <access-token-jwt>
+                data: { id: 2, name: Budi Santoso, nim: '2110003001', email: budi.santoso@mahasiswa.bunghatta.ac.id, role: MAHASISWA, isVerified: true }
+        '401': { description: Cookie refresh token tidak ada. }
+        '403': { description: 'Refresh token tidak valid, kedaluwarsa, dipakai ulang, atau pengguna sudah dihapus.' }
+
+  /v1/api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout dari perangkat ini
+      description: Menghapus sesi perangkat saat ini dan cookie refresh token. Tetap 200 walau cookie tidak ada.
+      security: []
+      responses:
+        '200':
+          description: Logout berhasil.
+          content:
+            application/json:
+              example: { status: success, message: Logout successful }
+
+  /v1/api/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Minta tautan reset password lewat email
+      description: >
+        Selalu mengembalikan 200 dengan pesan yang sama agar tidak bisa dipakai
+        menebak email terdaftar. Token berlaku 1 jam dan sekali pakai.
+        Membutuhkan konfigurasi SMTP. Rate limit: 3 per IP per 15 menit.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200': { description: Permintaan diterima (email dikirim bila akun ada). }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /v1/api/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Setel password baru dengan token dari email
+      description: Semua sesi pengguna dicabut setelah berhasil.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token: { type: string, description: Token dari parameter `token` di tautan email. }
+                newPassword: { type: string, minLength: 8 }
+      responses:
+        '200':
+          description: Password direset.
+          content:
+            application/json:
+              example: { status: success, statusCode: 200, message: Password berhasil direset. Silakan login dengan password baru., data: null }
+        '400': { description: 'Token tidak valid, kedaluwarsa, sudah dipakai, atau password tidak memenuhi kebijakan.' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /v1/api/auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Ganti password (pengguna login)
+      description: Semua sesi dicabut; klien harus login ulang.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { type: string, minLength: 8 }
+      responses:
+        '200':
+          description: Password diubah.
+          content:
+            application/json:
+              example:
+                status: success
+                statusCode: 200
+                message: Password berhasil diubah. Silakan login kembali.
+                data: { requireReLogin: true, code: SESSION_INVALIDATED }
+        '400': { description: Password lama salah atau password baru tidak memenuhi kebijakan. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/api/auth/devices:
+    get:
+      tags: [Auth]
+      summary: Daftar perangkat/sesi aktif milik pengguna
+      responses:
+        '200':
+          description: Daftar perangkat.
+          content:
+            application/json:
+              example:
+                status: success
+                message: Devices retrieved successfully
+                data:
+                  - id: 2
+                    deviceId: ede77d59e465eceea4d73515a905c6f0
+                    deviceName: Chrome on Windows
+                    lastAccess: '2026-10-08T08:09:21.851Z'
+                    createdAt: '2026-10-08T08:09:21.852Z'
+                    ipAddress: 10.0.0.12
+                    browser: Chrome
+                    os: Windows
+                    deviceType: Desktop
+                    location: Tidak Diketahui
+                    isCurrent: true
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/api/auth/devices/{id}:
+    delete:
+      tags: [Auth]
+      summary: Keluarkan satu perangkat
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Perangkat dikeluarkan.
+          content:
+            application/json:
+              example: { status: success, message: Device logged out successfully }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Perangkat tidak ditemukan atau bukan milik pengguna. }
+
+  /v1/api/auth/logout-other-devices:
+    post:
+      tags: [Auth]
+      summary: Keluarkan semua perangkat lain kecuali perangkat ini
+      security:
+        - bearerAuth: []
+          cookieAuth: []
+      responses:
+        '200':
+          description: Perangkat lain dikeluarkan.
+          content:
+            application/json:
+              example: { status: success, message: All other devices logged out successfully }
+        '401': { description: Access token atau cookie refresh token tidak ada. }

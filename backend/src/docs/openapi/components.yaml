@@ -1,0 +1,337 @@
+# Skema dan respons bersama yang dirujuk oleh file modul lain di folder ini.
+# Contoh nilai diambil dari respons API asli (data dummy).
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Access token dari `POST /v1/api/auth/login` (field `accessToken`).
+        Kirim sebagai header `Authorization: Bearer <token>`. Berlaku 15
+        menit; perbarui lewat `POST /v1/api/auth/refresh-token`.
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: refreshToken
+      description: Cookie httpOnly berisi refresh token, di-set otomatis saat login (berlaku 7 hari).
+
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, example: 1 }
+    ReportIdPath:
+      name: reportId
+      in: path
+      required: true
+      schema: { type: integer, example: 1 }
+    UserIdPath:
+      name: userId
+      in: path
+      required: true
+      schema: { type: integer, example: 4 }
+    IncludeDeleted:
+      name: includeDeleted
+      in: query
+      description: Sertakan data yang sudah di-soft-delete.
+      schema: { type: boolean, default: false }
+    DaysOld:
+      name: daysOld
+      in: query
+      description: Umur minimum (hari) sejak data di-soft-delete.
+      schema: { type: integer, minimum: 1 }
+
+  responses:
+    Unauthorized:
+      description: Access token tidak ada, tidak valid, atau kedaluwarsa.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }
+          example: { error: Access token required }
+    Forbidden:
+      description: Peran atau cakupan kategori pengguna tidak mengizinkan aksi ini.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            status: error
+            statusCode: 403
+            message: Access denied. Super-admin privileges required.
+            errors: null
+            timestamp: '2026-10-08T08:09:23.634Z'
+    NotFound:
+      description: Data tidak ditemukan.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Input tidak lolos validasi (express-validator).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationError' }
+    BadRequest:
+      description: Permintaan ditolak oleh aturan bisnis (mis. transisi status tidak valid).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TooManyRequests:
+      description: Batas laju (rate limit) terlampaui.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            status: error
+            statusCode: 429
+            message: Terlalu banyak percobaan login. Coba lagi dalam 15 menit.
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        status: { type: string, example: error }
+        statusCode: { type: integer, example: 400 }
+        message: { type: string }
+        errors: { type: object, nullable: true }
+        timestamp: { type: string, format: date-time }
+    ValidationError:
+      type: object
+      properties:
+        status: { type: string, example: error }
+        statusCode: { type: integer, example: 400 }
+        message: { type: string, example: Invalid value }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string, example: title }
+              message: { type: string, example: Invalid value }
+              location: { type: string, example: body }
+              value: { example: ab }
+        timestamp: { type: string, format: date-time }
+    SuccessEnvelope:
+      type: object
+      description: Bungkus standar respons sukses (`utils/responseFormatter.js`).
+      properties:
+        status: { type: string, example: success }
+        statusCode: { type: integer, example: 200 }
+        message: { type: string }
+        data: {}
+        timestamp: { type: string, format: date-time }
+
+    Role:
+      type: string
+      enum: [MAHASISWA, ADMIN, SUPERADMIN]
+    ReportStatus:
+      type: string
+      enum: [PENDING, IN_REVIEW, IN_PROGRESS, RESOLVED, REJECTED, CANCELED]
+      description: >
+        Transisi yang diizinkan (`utils/reportTransitions.js`):
+        PENDING → IN_REVIEW/REJECTED/CANCELED;
+        IN_REVIEW → IN_PROGRESS/RESOLVED/REJECTED/CANCELED;
+        IN_PROGRESS → RESOLVED/REJECTED/CANCELED;
+        RESOLVED → IN_REVIEW; REJECTED → IN_REVIEW; CANCELED → PENDING.
+    Priority:
+      type: string
+      enum: [LOW, MEDIUM, HIGH, URGENT]
+    AuditEntity:
+      type: string
+      enum: [USER, REPORT, CATEGORY, ASSIGNMENT]
+    AuditAction:
+      type: string
+      enum: [SOFT_DELETE, RESTORE, HARD_DELETE, UPDATE_STATUS, VERIFY_MAHASISWA, VIEW_ANONYMOUS, CREATE, UPDATE, PROMOTE_ADMIN, DEMOTE_ADMIN, GRANT_CATEGORY, REVOKE_CATEGORY]
+
+    User:
+      type: object
+      properties:
+        id: { type: integer, example: 2 }
+        name: { type: string, example: Budi Santoso }
+        email: { type: string, format: email, example: budi.santoso@mahasiswa.bunghatta.ac.id }
+        nim: { type: string, nullable: true, example: '2110003001' }
+        role: { $ref: '#/components/schemas/Role' }
+        isVerified: { type: boolean, example: true }
+        ktmPath: { type: string, nullable: true, example: /uploads/ktm/c05dd06b2e88cd62026c95484efdbf2c.png }
+        preferences: { $ref: '#/components/schemas/Preferences' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        deletedAt: { type: string, format: date-time, nullable: true }
+    UserSummary:
+      type: object
+      properties:
+        id: { type: integer, example: 2 }
+        name: { type: string, example: Budi Santoso }
+        nim: { type: string, nullable: true, example: '2110003001' }
+        email: { type: string, example: budi.santoso@mahasiswa.bunghatta.ac.id }
+    Preferences:
+      type: object
+      nullable: true
+      description: Objek bebas (maks. beberapa KB) untuk preferensi UI.
+      example: { theme: light, language: id, notifications: { email: true } }
+
+    Category:
+      type: object
+      properties:
+        id: { type: integer, example: 4 }
+        name: { type: string, example: Akademik }
+        slug: { type: string, example: akademik }
+        defaultPriority: { $ref: '#/components/schemas/Priority' }
+        allowAnonymous: { type: boolean, example: false }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        deletedAt: { type: string, format: date-time, nullable: true }
+        _count:
+          type: object
+          properties:
+            reports: { type: integer, example: 2 }
+
+    Attachment:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        filePath: { type: string, example: /uploads/reports/attachments/ce7dc08267b21c76b017203337bd1a2f.jpg }
+        fileName: { type: string, example: foto-ac-b204.jpg }
+        fileType: { type: string, example: image/jpeg }
+        reportId: { type: integer, example: 1 }
+        messageId: { type: integer, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    Report:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        registrationNumber:
+          type: string
+          example: SP/01/08/10/2026
+          description: '<KODE KATEGORI>/<urutan>/<tanggal>/<bulan>/<tahun>'
+        title: { type: string, example: AC ruang kuliah B.204 rusak sejak dua minggu }
+        description: { type: string, example: Pendingin ruangan di ruang B.204 Gedung B tidak berfungsi sejak awal bulan. }
+        status: { $ref: '#/components/schemas/ReportStatus' }
+        priority: { $ref: '#/components/schemas/Priority' }
+        isAnonymous: { type: boolean, example: false }
+        userId:
+          type: integer
+          nullable: true
+          description: Selalu `null` untuk laporan anonim (termasuk bagi admin dan superadmin).
+          example: 2
+        categoryId: { type: integer, example: 2 }
+        assignedToId: { type: integer, nullable: true, example: 4 }
+        rejectedReason: { type: string, nullable: true }
+        canceledReason: { type: string, nullable: true }
+        closedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        deletedAt: { type: string, format: date-time, nullable: true }
+    ReportListItem:
+      allOf:
+        - $ref: '#/components/schemas/Report'
+        - type: object
+          properties:
+            category:
+              type: object
+              properties:
+                slug: { type: string, example: sarana-dan-prasarana }
+                name: { type: string, example: Sarana dan Prasarana }
+            user:
+              description: 'Untuk laporan anonim berisi `{ id: null, name: "Anonim" }`.'
+              allOf:
+                - $ref: '#/components/schemas/UserSummary'
+    ReportDetail:
+      allOf:
+        - $ref: '#/components/schemas/ReportListItem'
+        - type: object
+          properties:
+            attachments:
+              type: array
+              items: { $ref: '#/components/schemas/Attachment' }
+            messages:
+              type: array
+              items: { $ref: '#/components/schemas/Message' }
+    CursorPagination:
+      type: object
+      description: Paginasi berbasis kursor; kirim `lastItemId` dari respons sebelumnya untuk halaman berikutnya.
+      properties:
+        totalItems: { type: integer, example: 3 }
+        itemsPerPage: { type: integer, example: 10 }
+        hasNextPage: { type: boolean, example: true }
+        lastItemId: { type: integer, nullable: true, example: 2 }
+    PagePagination:
+      type: object
+      properties:
+        page: { type: integer, example: 1 }
+        limit: { type: integer, example: 50 }
+        total: { type: integer, example: 3 }
+        totalPages: { type: integer, example: 1 }
+
+    Message:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        content: { type: string, example: Terima kasih laporannya. Apakah AC mati total atau hanya tidak dingin? }
+        senderId: { type: integer, example: 4 }
+        reportId: { type: integer, example: 1 }
+        clientMessageId: { type: string, nullable: true, example: cmsg-0001-rina }
+        replyToId: { type: integer, nullable: true }
+        isRead:
+          type: boolean
+          deprecated: true
+          description: Usang; status baca kini per pengguna (tabel `message_reads`).
+        createdAt: { type: string, format: date-time }
+        deletedAt: { type: string, format: date-time, nullable: true }
+        sender:
+          type: object
+          description: Untuk pelapor anonim, nama diganti pseudonim.
+          properties:
+            id: { type: integer, example: 4 }
+            name: { type: string, example: Rina Kurniawati }
+            role: { $ref: '#/components/schemas/Role' }
+        attachments:
+          type: array
+          items: { $ref: '#/components/schemas/Attachment' }
+        replyTo:
+          nullable: true
+          type: object
+
+    AuditLog:
+      type: object
+      properties:
+        id: { type: integer, example: 11 }
+        entityType: { $ref: '#/components/schemas/AuditEntity' }
+        action: { $ref: '#/components/schemas/AuditAction' }
+        entityId: { type: integer, example: 1 }
+        actorId: { type: integer, example: 4 }
+        actorName: { type: string, example: Rina Kurniawati }
+        actorRole: { $ref: '#/components/schemas/Role' }
+        ip: { type: string, example: 10.0.0.12 }
+        userAgent: { type: string }
+        metadata:
+          type: object
+          example:
+            oldStatus: IN_REVIEW
+            newStatus: IN_PROGRESS
+            reason: null
+            registrationNumber: SP/01/08/10/2026
+        createdAt: { type: string, format: date-time }
+
+    BulkResult:
+      type: object
+      description: >
+        Hasil operasi massal. Item yang ditolak (tidak ada, di luar cakupan
+        kategori, atau transisi tidak valid) masuk ke `skipped`, sedangkan item
+        lain tetap diproses.
+      properties:
+        updated: { type: integer, description: 'Untuk update-status', example: 1 }
+        verified: { type: integer, description: 'Untuk users/verify' }
+        deleted: { type: integer, description: 'Untuk */delete' }
+        restored: { type: integer, description: 'Untuk */restore' }
+        skipped:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer, example: 999 }
+              reason: { type: string, example: tidak ditemukan atau sudah dihapus }

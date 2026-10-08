@@ -30,27 +30,6 @@ const categoryIdsRules = [
   body('categoryIds.*').isInt().withMessage('Each categoryId must be an integer'),
 ];
 
-/**
- * @swagger
- * /v1/api/bulk-operations/users/verify:
- *   post:
- *     tags: [Bulk Operations]
- *     summary: Bulk verify multiple students (SUPERADMIN only)
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [userIds]
- *             properties:
- *               userIds:
- *                 type: array
- *                 maxItems: 100
- *                 items: { type: integer }
- *     responses:
- *       200: { description: Bulk verification result with per-id skipped list }
- */
 router.post(
   '/users/verify',
   isAdminMiddleware,

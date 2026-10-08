@@ -36,53 +36,6 @@ const canUploadReportAttachment = async (req, res, next) => {
   }
 };
 
-/**
- * @swagger
- * /v1/api/reports:
- *   get:
- *     tags: [Reports]
- *     summary: List reports paginated (admin only)
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema: { type: integer, default: 10, maximum: 100 }
- *       - in: query
- *         name: lastItemId
- *         schema: { type: integer }
- *       - in: query
- *         name: search
- *         schema: { type: string }
- *       - in: query
- *         name: createdAt
- *         schema: { type: integer, description: 'Days back' }
- *       - in: query
- *         name: categoryId
- *         schema: { type: integer }
- *     responses:
- *       200: { description: Paginated list of reports }
- *       403: { description: Forbidden — admin only }
- *   post:
- *     tags: [Reports]
- *     summary: Create a new report (verified students only)
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [title, description, categoryId]
- *             properties:
- *               title: { type: string, minLength: 3 }
- *               description: { type: string, minLength: 10 }
- *               categoryId: { type: integer }
- *               isAnonymous: { type: boolean }
- *     responses:
- *       201: { description: Report created }
- *       400: { description: Validation failed }
- *       403: { description: Account not verified or anonymous not allowed }
- *       429: { description: Rate limit exceeded }
- */
-
 // Admin: Get all reports paginated (search, filter)
 // GET /api/reports?limit=10&lastItemId=xxx&search=keyword&status=PENDING&createdAt=7
 router.get('/', isAdminMiddleware, [

@@ -12,7 +12,8 @@
     "prisma:migrate": "npx prisma migrate dev",
     "prisma:studio": "npx prisma studio",
     "seed": "node prisma/seed.js",
-    "rotate-secrets": "node scripts/rotate-secrets.js"
+    "rotate-secrets": "node scripts/rotate-secrets.js",
+    "docs:openapi": "node scripts/export-openapi.js"
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",

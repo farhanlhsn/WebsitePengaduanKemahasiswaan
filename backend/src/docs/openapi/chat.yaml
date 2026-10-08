@@ -1,0 +1,181 @@
+paths:
+  /v1/api/chat/reports:
+    get:
+      tags: [Chat]
+      summary: Daftar laporan yang punya percakapan, dengan pesan terakhir dan jumlah belum dibaca
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Daftar ruang chat.
+          content:
+            application/json:
+              example:
+                status: success
+                statusCode: 200
+                message: Chat list retrieved successfully
+                data:
+                  reports:
+                    - id: 1
+                      registrationNumber: SP/01/08/10/2026
+                      title: AC ruang kuliah B.204 rusak sejak dua minggu
+                      status: IN_PROGRESS
+                      isAnonymous: false
+                      user: { name: Budi Santoso }
+                      lastMessage: { content: 'Baik, teknisi Biro Umum dijadwalkan memeriksa besok pukul 09.00.', createdAt: '2026-10-08T08:09:22.913Z', senderRole: ADMIN }
+                      unreadCount: 1
+                  pagination: { page: 1, limit: 20, total: 3, totalPages: 1 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/api/chat/unread-count:
+    get:
+      tags: [Chat]
+      summary: Total pesan belum dibaca oleh pengguna yang login
+      responses:
+        '200':
+          description: Jumlah pesan belum dibaca (dihitung per pengguna).
+          content:
+            application/json:
+              example: { status: success, statusCode: 200, message: Unread count retrieved, data: { unreadCount: 2 } }
+
+  /v1/api/chat/reports/{reportId}/messages:
+    parameters:
+      - $ref: '#/components/parameters/ReportIdPath'
+    get:
+      tags: [Chat]
+      summary: Riwayat pesan sebuah laporan
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        '200':
+          description: Pesan urut dari yang terlama.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          report:
+                            type: object
+                            properties:
+                              id: { type: integer }
+                              userId: { type: integer, nullable: true }
+                              isAnonymous: { type: boolean }
+                          messages: { type: array, items: { $ref: '#/components/schemas/Message' } }
+                          pagination: { $ref: '#/components/schemas/PagePagination' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Chat]
+      summary: Kirim pesan
+      description: >
+        Hanya pengguna terverifikasi. Untuk melampirkan berkas, unggah dulu ke
+        `/upload` lalu kirim token-nya di `attachmentTokens`. Sertakan
+        `clientMessageId` unik agar pengiriman ulang (retry) tidak membuat
+        pesan ganda: request dengan ID yang sama mengembalikan pesan yang sama
+        dengan status 200, bukan 201. Peserta lain menerima event
+        `chat:message` dan notifikasi email bila sedang offline.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string, example: 'Mati total, Bu. Lampu indikatornya juga tidak menyala.' }
+                replyToId: { type: integer, description: ID pesan yang dibalas. }
+                attachmentTokens: { type: array, items: { type: string }, description: Token dari endpoint upload. }
+                clientMessageId: { type: string, minLength: 8, maxLength: 64, example: cmsg-0002-budi }
+                idempotencyKey: { type: string, minLength: 8, maxLength: 64, description: Alias lama untuk `clientMessageId`. }
+      responses:
+        '201':
+          description: Pesan terkirim.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Message' }
+        '200': { description: Replay idempoten; pesan dengan `clientMessageId` yang sama sudah ada. }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/chat/reports/{reportId}/upload:
+    post:
+      tags: [Chat]
+      summary: Unggah lampiran chat (sebelum pesan dikirim)
+      description: >
+        Berkas disimpan sementara dan hanya bisa dipakai untuk laporan ini oleh
+        pengunggah yang sama. Token berlaku 24 jam; yang tidak terpakai dibersihkan
+        otomatis. Maks. 10 berkas, 5 MB per berkas; JPEG, PNG, WebP, PDF, DOC, DOCX.
+      parameters:
+        - $ref: '#/components/parameters/ReportIdPath'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files: { type: array, maxItems: 10, items: { type: string, format: binary } }
+      responses:
+        '201':
+          description: Token lampiran diterbitkan.
+          content:
+            application/json:
+              example:
+                status: success
+                statusCode: 200
+                message: File uploaded successfully
+                data:
+                  attachments:
+                    - { token: <upload-token>, fileName: jadwal.pdf, fileType: application/pdf, fileSize: 48213, expiresAt: '2026-10-09T08:09:22.988Z' }
+        '400': { description: 'Tidak ada berkas, berkas terlalu besar, atau tipe tidak diizinkan.' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /v1/api/chat/reports/{reportId}/messages/read:
+    patch:
+      tags: [Chat]
+      summary: Tandai semua pesan di laporan ini sudah dibaca (oleh pengguna yang login)
+      parameters:
+        - $ref: '#/components/parameters/ReportIdPath'
+      responses:
+        '200':
+          description: Pesan ditandai dibaca; peserta lain menerima event `chat:read`.
+          content:
+            application/json:
+              example: { status: success, statusCode: 200, message: Messages marked as read }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/chat/messages/{messageId}:
+    delete:
+      tags: [Chat]
+      summary: Hapus pesan (soft delete)
+      description: Pengirim pesan, ADMIN dengan kategori terkait, atau SUPERADMIN. Tercatat di audit log.
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Pesan dihapus; peserta menerima event `chat:message:deleted`. }
+        '403': { description: Pesan tidak ada atau bukan hak pengguna. }

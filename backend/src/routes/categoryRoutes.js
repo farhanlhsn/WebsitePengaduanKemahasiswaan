@@ -8,24 +8,6 @@ const { body, param, query } = require('express-validator');
 const validate = require('../middlewares/validationMiddleware');
 
 // Public routes (no auth required)
-/**
- * @swagger
- * /v1/api/categories/search:
- *   get:
- *     tags: [Categories]
- *     summary: Search categories by query string
- *     security: []
- *     parameters:
- *       - in: query
- *         name: q
- *         required: true
- *         schema: { type: string }
- *       - in: query
- *         name: includeDeleted
- *         schema: { type: boolean }
- *     responses:
- *       200: { description: Matching categories }
- */
 router.get(
   '/search',
   [
