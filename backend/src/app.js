@@ -13,7 +13,7 @@ const prisma = require('./utils/prisma');
 const errorHandler = require('./middlewares/errorHandler');
 const helmet = require('helmet');
 const { setupSocket } = require('./sockets/chatHandler');
-const rateLimit = require('express-rate-limit');
+const { globalLimiter } = require('./middlewares/rateLimiters');
 const uploadAuthMiddleware = require('./middlewares/uploadAuthMiddleware');
 const fileAccessMiddleware = require('./middlewares/fileAccessMiddleware');
 
@@ -72,27 +72,6 @@ app.use(helmet({
 }));
 
 // Security: Global Rate Limiter (500 request per 15 menit agar tidak terlalu ketat)
-const redisClient = require('./utils/redis');
-const RedisStore = require('rate-limit-redis').default || require('rate-limit-redis');
-
-let rateLimitStore;
-if (redisClient) {
-  rateLimitStore = new RedisStore({
-    sendCommand: (...args) => redisClient.call(...args),
-  });
-}
-
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 500,
-  message: {
-    status: 'error',
-    message: 'Terlalu banyak request dari IP ini, coba lagi nanti.'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  store: rateLimitStore,
-});
 app.use(globalLimiter);
 
 // Enable compression for all responses
