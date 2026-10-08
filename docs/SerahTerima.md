@@ -357,12 +357,13 @@ Panduan lengkap bergambar ada di [`docs/UserManual.md`](UserManual.md). Di dalam
 
 Setiap perubahan kode sebaiknya lewat pull request ke `main` agar workflow CI berjalan otomatis.
 
-### Perbaikan keamanan yang harus digabung sebelum go-live
+### Perbaikan keamanan yang sudah diterapkan
 
-Dua bug prioritas tinggi ditemukan saat menyusun dokumentasi dan sudah diperbaiki di **PR #10** (`fix/rate-limiter-and-user-select`). Pastikan PR itu sudah digabung sebelum sistem dipakai:
+Tiga masalah ditemukan saat menyusun dokumentasi dan sudah diperbaiki di `main` (8 Oktober 2026):
 
-- **Rate limiter berbagi satu counter per IP.** Sebelumnya semua limiter berbasis IP memakai key Redis yang sama. Akibatnya, setelah sekitar 20 request dari satu IP dalam 15 menit login ditolak, dan setelah sekitar 60 request pengguna terlogout saat memuat ulang halaman. Di jaringan kampus yang memakai satu IP publik, ini bisa memblokir banyak mahasiswa sekaligus. Perbaikan: prefix Redis unik per limiter.
-- **Hash password ikut terkirim.** Daftar mahasiswa dan admin yang belum terverifikasi mengembalikan hash password ke browser admin. Perbaikan: `select` eksplisit tanpa password.
+- **Rate limiter berbagi satu counter per IP** (PR #10). Sebelumnya semua limiter berbasis IP memakai key Redis yang sama, sehingga setelah sekitar 20 request dari satu IP dalam 15 menit login ditolak, dan setelah sekitar 60 request pengguna terlogout. Kini setiap limiter memakai prefix Redis sendiri (`rl:<nama>:`). Setelah deploy, periksa di Redis produksi bahwa key berformat `rl:login:<ip>`, `rl:global:<ip>`, dan seterusnya.
+- **Hash password ikut terkirim** (PR #10). Daftar mahasiswa dan admin yang belum terverifikasi mengembalikan hash password ke browser admin. Kini memakai `select` eksplisit tanpa password.
+- **Dependensi rentan** (PR #11). Satu kerentanan critical (`nodemailer`) dan beberapa high diperbarui; `npm audit` produksi bersih di backend dan frontend.
 
 ### Keterbatasan yang diketahui
 
@@ -398,7 +399,6 @@ Serah terima dianggap selesai bila semua butir di bawah dicentang dan lembar pen
 - [ ] Kode sumber branch `main` (frontend, backend, migrasi database, konfigurasi Docker, workflow CI)
 - [ ] Dokumentasi di `docs/` (lihat tabel di bagian 1) dan `CHANGELOG.md`
 - [ ] SRS dan SDD sudah direvisi sesuai `docs/RevisiSRS-SDD.md`
-- [ ] PR #10 (perbaikan keamanan) sudah digabung ke `main`
 - [ ] Data produksi (database + lampiran) bila sistem sudah pernah dipakai, diserahkan lewat media terenkripsi
 
 ### Langkah oleh tim TI kampus

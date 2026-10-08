@@ -85,9 +85,7 @@ Penyimpanan counter memakai Redis (`REDIS_URL`). Kunci IP dihitung dari `X-Forwa
 | Unggah berkas | 10 / menit | Pengguna |
 | Event `chat:typing` (socket) | 120 / menit | Socket |
 
-Respons 429 berisi pesan berbahasa Indonesia dan header standar `RateLimit-*`.
-
-> **Catatan (Oktober 2026):** sebelum PR #10, semua limiter berbasis IP berbagi satu key Redis (`rl:<ip>`), sehingga counter global ikut menghabiskan kuota login, registrasi, dan lupa password. PR #10 memberi setiap limiter prefix sendiri (`rl:<nama>:`). Hapus catatan ini setelah PR #10 digabung.
+Setiap limiter memakai prefix Redis sendiri (`rl:<nama>:`, mis. `rl:login:`, `rl:global:`), sehingga kuotanya tidak saling memengaruhi. Respons 429 berisi pesan berbahasa Indonesia dan header standar `RateLimit-*`.
 
 ## Unggah berkas
 

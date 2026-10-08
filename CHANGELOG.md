@@ -14,6 +14,21 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 
 ### Diubah
 - Anotasi `@swagger` dipindahkan dari file route dan `app.js` ke file YAML per modul; `config/swagger.js` kini hanya membaca folder `src/docs/openapi/`.
+- Dokumen serah terima, user manual bergambar, dan daftar revisi SRS/SDD ditambahkan di `docs/`.
+
+## 2026-10-08 — Perbaikan keamanan dan dependensi (PR #10–#12)
+
+### Keamanan
+- Setiap rate limiter kini memakai prefix Redis sendiri (`rl:<nama>:`). Sebelumnya semua limiter berbasis IP berbagi key `rl:<ip>`, sehingga lalu lintas biasa menghabiskan kuota login, registrasi, lupa password, dan refresh token (PR #10).
+- `GET /users/unverified/students` dan `/unverified/admins` tidak lagi mengirim hash password dan `tokenVersion` (PR #10).
+- Dependensi rentan diperbarui: `nodemailer` 9 → 10.0.16 (critical), `sanitize-html` 2.17.5 → 2.18.0 (XSS), serta `axios`, `multer`, `express`/`qs`, `sharp`, `engine.io`, `dompurify` lewat `npm audit fix` (PR #11).
+
+### Diperbaiki
+- Setup E2E tidak lagi memakai SMTP dan Redis dari `backend/.env` developer, sehingga E2E lokal tidak mengirim email sungguhan (PR #12).
+
+### Catatan
+- `nodemailer` 10 membutuhkan Node.js ≥ 20 (Docker dan CI sudah Node 20).
+- Jest backend mentranspilasi paket ESM `htmlparser2` dkk. lewat `backend/tests/esmTransform.js`.
 
 ## 2026-08-16 — Pelengkapan fitur dan remediasi audit (PR #5–#8)
 
