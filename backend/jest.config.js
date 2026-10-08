@@ -1,4 +1,7 @@
+const esmTransform = require('./tests/esmTransform');
+
 module.exports = {
+  ...esmTransform,
   testEnvironment: 'node',
   roots: ['<rootDir>/tests'],
   testMatch: ['**/*.test.js'],
