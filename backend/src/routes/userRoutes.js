@@ -12,32 +12,6 @@ const validate = require('../middlewares/validationMiddleware');
 // Protected routes (auth required)
 router.use(authMiddleware); // All routes below require authentication
 
-/**
- * @swagger
- * /v1/api/users:
- *   get:
- *     tags: [Users]
- *     summary: List users (auth required; admin sees all)
- *     parameters:
- *       - in: query
- *         name: includeDeleted
- *         schema: { type: boolean }
- *     responses:
- *       200: { description: User list }
- *
- * /v1/api/users/verify/{id}:
- *   put:
- *     tags: [Users]
- *     summary: Verify a student account
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       200: { description: Account verified }
- */
-
 // User management routes
 router.get('/', isAdminMiddleware, [query('includeDeleted').optional().isBoolean().toBoolean()], validate, userController.getAllUsers);              // GET /api/users?includeDeleted=true
 router.get('/stats', isAdminMiddleware, userController.getUserStats);        // GET /api/users/stats

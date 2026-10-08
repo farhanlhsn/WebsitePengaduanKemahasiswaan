@@ -10,31 +10,6 @@ const validate = require('../middlewares/validationMiddleware');
 router.use(authMiddleware);
 router.use(isSuperAdminMiddleware);
 
-/**
- * @swagger
- * /v1/api/audit-logs:
- *   get:
- *     tags: [Audit Logs]
- *     summary: List audit logs (admin only)
- *     parameters:
- *       - in: query
- *         name: entityType
- *         schema: { type: string, enum: [USER, REPORT] }
- *       - in: query
- *         name: action
- *         schema: { type: string }
- *       - in: query
- *         name: actorId
- *         schema: { type: integer }
- *       - in: query
- *         name: limit
- *         schema: { type: integer, default: 50 }
- *       - in: query
- *         name: offset
- *         schema: { type: integer, default: 0 }
- *     responses:
- *       200: { description: Paginated audit logs }
- */
 router.get('/stats', auditLogController.getAuditStats);
 
 // Get all audit logs with filters and pagination

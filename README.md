@@ -119,6 +119,22 @@ Sistem menyediakan 23 kategori bawaan, antara lain: Kekerasan Seksual, Sarana da
 | `/api/health/ready` | Readiness probe (DB + Redis reachable) |
 | `/api/docs` | Swagger API documentation (non-production) |
 
+Referensi lengkap 85 endpoint (parameter, body, contoh respons, hak akses) ada di Swagger UI dan di [`docs/api/openapi.json`](docs/api/openapi.json). Konvensi, paginasi, dan rate limit dijelaskan di [`docs/api/README.md`](docs/api/README.md); event chat real-time di [`docs/api/SocketEvents.md`](docs/api/SocketEvents.md).
+
+## 📚 Dokumentasi
+
+| Dokumen | Untuk |
+|---|---|
+| [`docs/SerahTerima.md`](docs/SerahTerima.md) | Pihak kampus: ringkasan sistem, deploy, keamanan, keterbatasan, checklist serah terima |
+| [`docs/UserManual.md`](docs/UserManual.md) | Mahasiswa, admin, superadmin: panduan pemakaian bergambar |
+| [`docs/RevisiSRS-SDD.md`](docs/RevisiSRS-SDD.md) | Tim proyek: bagian SRS/SDD yang perlu diperbarui |
+| [`docs/DeveloperGuide.md`](docs/DeveloperGuide.md) | Developer: struktur kode, cara menambah endpoint/migrasi, pengujian, bug yang diketahui |
+| [`docs/api/`](docs/api/README.md) | Referensi API REST (OpenAPI) dan Socket.IO |
+| [`docs/ProductionRunbook.md`](docs/ProductionRunbook.md) | Tim operasional: deploy, backup, restore, monitoring |
+| [`docs/UserAcceptanceTest.md`](docs/UserAcceptanceTest.md) | Skenario UAT |
+| [`CHANGELOG.md`](CHANGELOG.md) | Riwayat perubahan |
+| `docs/*.pdf` | Proposal, SRS, SDD, dan laporan akhir Computing Project |
+
 ## 🐳 Deployment (Docker)
 
 ### Local development

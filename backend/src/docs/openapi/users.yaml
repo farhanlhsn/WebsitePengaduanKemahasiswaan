@@ -1,0 +1,280 @@
+paths:
+  /v1/api/users:
+    get:
+      tags: [Users]
+      summary: Daftar semua pengguna (admin)
+      parameters:
+        - $ref: '#/components/parameters/IncludeDeleted'
+      responses:
+        '200':
+          description: Daftar pengguna, terbaru lebih dulu.
+          content:
+            application/json:
+              example:
+                status: success
+                statusCode: 200
+                message: Users retrieved successfully
+                data:
+                  - { id: 5, name: Andi Pratama, email: andi.pratama@mahasiswa.bunghatta.ac.id, nim: '2210004005', role: MAHASISWA, isVerified: false, createdAt: '2026-10-08T08:09:21.471Z', ktmPath: /uploads/ktm/42a0faf52940ae291d012c54075d424e.png, deletedAt: null }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/users/stats:
+    get:
+      tags: [Users]
+      summary: Statistik jumlah pengguna (admin)
+      responses:
+        '200':
+          description: Statistik.
+          content:
+            application/json:
+              example: { status: success, statusCode: 200, message: User statistics retrieved successfully, data: { total: 5, deleted: 0, verified: 4, unverified: 1 } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/users/unverified/students:
+    get:
+      tags: [Users]
+      summary: Mahasiswa yang menunggu verifikasi (admin)
+      responses:
+        '200':
+          description: Daftar mahasiswa belum terverifikasi beserta path KTM untuk diperiksa.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          unverifiedStudents: { type: array, items: { $ref: '#/components/schemas/User' } }
+                          count: { type: integer, example: 1 }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/users/unverified/admins:
+    get:
+      tags: [Users]
+      summary: Admin yang belum terverifikasi (admin)
+      responses:
+        '200':
+          description: Daftar admin belum terverifikasi.
+          content:
+            application/json:
+              example: { status: success, statusCode: 200, message: Unverified admins retrieved successfully, data: { unverifiedAdmins: [], count: 0 } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/users/verify/{id}:
+    put:
+      tags: [Users]
+      summary: Verifikasi akun mahasiswa (admin)
+      description: Ditolak bila akun tidak memiliki KTM. Pengguna menerima email pemberitahuan (bila SMTP aktif).
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Akun terverifikasi.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/User' }
+        '400': { description: 'Pengguna tidak ditemukan atau tidak punya KTM ("User tidak memiliki KTM — tidak dapat diverifikasi").' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/users/reject/{id}:
+    put:
+      tags: [Users]
+      summary: Tolak pendaftaran mahasiswa (admin)
+      description: Akun di-soft-delete dan pendaftar menerima email berisi alasan penolakan.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, example: 'Foto KTM tidak terbaca, silakan daftar ulang dengan foto yang jelas.' }
+      responses:
+        '200': { description: Pendaftaran ditolak. }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/users/search/{email}:
+    get:
+      tags: [Users]
+      summary: Cari pengguna berdasarkan email (admin)
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema: { type: string, format: email }
+      responses:
+        '200':
+          description: Pengguna ditemukan.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/User' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/api/users/profile/me:
+    put:
+      tags: [Users]
+      summary: Perbarui profil sendiri
+      description: >
+        Hanya `name`, `email`, dan `nim` yang diterima (field lain diabaikan).
+        Mengganti email wajib menyertakan `currentPassword` dan mencabut semua
+        sesi. Peran dan password tidak bisa diubah lewat endpoint ini.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                nim: { type: string, minLength: 8 }
+                currentPassword: { type: string, description: Wajib bila email diganti. }
+      responses:
+        '200':
+          description: Profil diperbarui.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/User' }
+        '400': { description: 'Validasi gagal, email sudah dipakai, atau password saat ini salah/kosong.' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/api/users/preferences/me:
+    get:
+      tags: [Users]
+      summary: Ambil preferensi UI milik sendiri
+      responses:
+        '200':
+          description: Objek preferensi (kosong bila belum pernah disimpan).
+          content:
+            application/json:
+              example: { status: success, statusCode: 200, message: Preferences retrieved, data: { theme: light, language: id, notifications: { email: true } } }
+    put:
+      tags: [Users]
+      summary: Simpan preferensi UI milik sendiri
+      description: Body berupa objek JSON bebas; menggantikan preferensi sebelumnya.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Preferences' }
+      responses:
+        '200':
+          description: Preferensi tersimpan.
+          content:
+            application/json:
+              example: { status: success, statusCode: 200, message: Preferences saved, data: { theme: light, language: id, notifications: { email: true } } }
+        '400': { description: Body bukan objek. }
+
+  /v1/api/users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Users]
+      summary: Detail pengguna
+      description: Pengguna bisa melihat dirinya sendiri; admin bisa melihat pengguna dalam kewenangannya.
+      parameters:
+        - $ref: '#/components/parameters/IncludeDeleted'
+      responses:
+        '200':
+          description: Data pengguna.
+          content:
+            application/json:
+              example: { status: success, statusCode: 200, message: User retrieved successfully, data: { id: 2, name: Budi Santoso, email: budi.santoso@mahasiswa.bunghatta.ac.id, nim: '2110003001', role: MAHASISWA, isVerified: true, createdAt: '2026-10-08T08:09:20.691Z', updatedAt: '2026-10-08T08:09:21.508Z', deletedAt: null } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Users]
+      summary: Ubah data pengguna lain (admin)
+      description: Hanya `name`, `email`, `nim`. ADMIN hanya untuk akun MAHASISWA.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                nim: { type: string, minLength: 8 }
+      responses:
+        '200': { description: Data diperbarui. }
+        '400': { description: Tidak ada field yang diubah atau validasi gagal. }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [Users]
+      summary: Soft delete pengguna (admin)
+      description: Tidak bisa menghapus diri sendiri atau superadmin terakhir.
+      responses:
+        '200': { description: Pengguna dihapus sementara. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/users/{id}/stats:
+    get:
+      tags: [Users]
+      summary: Statistik laporan milik seorang pengguna
+      description: Pengguna itu sendiri atau admin.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Jumlah laporan per status.
+          content:
+            application/json:
+              example: { status: success, statusCode: 200, message: User statistics retrieved successfully, data: { total: 2, pending: 0, inReview: 0, inProgress: 1, resolved: 1, rejected: 0, canceled: 0, approved: 1, active: 2 } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/users/{id}/restore:
+    post:
+      tags: [Users]
+      summary: Pulihkan pengguna yang di-soft-delete (admin)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { description: Pengguna dipulihkan. }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/users/{id}/permanent:
+    delete:
+      tags: [Users]
+      summary: Hapus pengguna permanen (SUPERADMIN)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { description: Pengguna dihapus permanen. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/users/cleanup:
+    post:
+      tags: [Users]
+      summary: Hapus permanen pengguna yang sudah lama di-soft-delete (SUPERADMIN)
+      parameters:
+        - $ref: '#/components/parameters/DaysOld'
+      description: Default `daysOld` = 90.
+      responses:
+        '200': { description: 'Ringkasan jumlah yang dibersihkan ("Cleaned up users deleted more than N days ago").' }
+        '403': { $ref: '#/components/responses/Forbidden' }

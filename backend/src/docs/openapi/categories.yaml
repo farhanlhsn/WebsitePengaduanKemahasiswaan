@@ -1,0 +1,206 @@
+paths:
+  /v1/api/categories:
+    get:
+      tags: [Categories]
+      summary: Daftar kategori (publik)
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IncludeDeleted'
+      responses:
+        '200':
+          description: Semua kategori aktif.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: '#/components/schemas/Category' } }
+              example:
+                status: success
+                statusCode: 200
+                message: Categories retrieved successfully
+                data:
+                  - { id: 1, name: Kekerasan Seksual, slug: kekerasan-seksual, defaultPriority: URGENT, allowAnonymous: true, deletedAt: null }
+                  - { id: 4, name: Akademik, slug: akademik, defaultPriority: MEDIUM, allowAnonymous: false, deletedAt: null }
+    post:
+      tags: [Categories]
+      summary: Buat kategori (SUPERADMIN)
+      description: Slug dibuat otomatis dari nama.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, example: Beasiswa }
+                defaultPriority: { $ref: '#/components/schemas/Priority' }
+                allowAnonymous: { type: boolean, default: false }
+      responses:
+        '201':
+          description: Kategori dibuat.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Category' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '409': { description: Nama kategori sudah dipakai. }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/categories/search:
+    get:
+      tags: [Categories]
+      summary: Cari kategori berdasarkan nama (publik)
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, example: akad }
+        - $ref: '#/components/parameters/IncludeDeleted'
+      responses:
+        '200':
+          description: Kategori yang cocok.
+          content:
+            application/json:
+              example: { status: success, statusCode: 200, message: 'Found 1 categories matching "akad"', data: [ { id: 4, name: Akademik, slug: akademik, _count: { reports: 2 } } ] }
+        '400': { $ref: '#/components/responses/ValidationError' }
+
+  /v1/api/categories/slug/{slug}:
+    get:
+      tags: [Categories]
+      summary: Ambil kategori berdasarkan slug (publik)
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string, example: akademik }
+        - $ref: '#/components/parameters/IncludeDeleted'
+      responses:
+        '200':
+          description: Kategori.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Category' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/api/categories/stats:
+    get:
+      tags: [Categories]
+      summary: Statistik kategori dan 5 kategori dengan laporan terbanyak
+      responses:
+        '200':
+          description: Statistik.
+          content:
+            application/json:
+              example:
+                status: success
+                statusCode: 200
+                message: Category statistics retrieved successfully
+                data:
+                  total: 23
+                  deleted: 0
+                  active: 23
+                  topCategories: [ { id: 4, name: Akademik, _count: { reports: 2 } } ]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/api/categories/with-reports:
+    get:
+      tags: [Categories]
+      summary: Kategori beserta ringkasan laporannya (admin)
+      parameters:
+        - $ref: '#/components/parameters/IncludeDeleted'
+      responses:
+        '200':
+          description: Setiap kategori memuat array `reports` (id, title, status, createdAt) dan `_count`.
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/categories/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Categories]
+      summary: Detail kategori
+      parameters:
+        - $ref: '#/components/parameters/IncludeDeleted'
+      responses:
+        '200':
+          description: Kategori beserta jumlah laporan.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Category' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Categories]
+      summary: Ubah kategori (SUPERADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                defaultPriority: { $ref: '#/components/schemas/Priority' }
+                allowAnonymous: { type: boolean }
+      responses:
+        '200': { description: Kategori diperbarui. }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Categories]
+      summary: Soft delete kategori (SUPERADMIN)
+      responses:
+        '200': { description: Kategori dihapus sementara. }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/categories/{id}/restore:
+    post:
+      tags: [Categories]
+      summary: Pulihkan kategori (SUPERADMIN)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { description: Kategori dipulihkan. }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/categories/{id}/permanent:
+    delete:
+      tags: [Categories]
+      summary: Hapus kategori permanen (SUPERADMIN)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { description: Kategori dihapus permanen. }
+        '400': { description: 'Kategori masih punya laporan (termasuk yang sudah dihapus); pindahkan laporannya lebih dulu.' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/categories/cleanup:
+    post:
+      tags: [Categories]
+      summary: Hapus permanen kategori yang sudah lama di-soft-delete (SUPERADMIN)
+      description: Default `daysOld` = 90.
+      parameters:
+        - $ref: '#/components/parameters/DaysOld'
+      responses:
+        '200': { description: Ringkasan pembersihan. }
+        '403': { $ref: '#/components/responses/Forbidden' }

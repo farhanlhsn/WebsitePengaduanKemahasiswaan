@@ -1,0 +1,4960 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Pengaduan Kemahasiswaan API",
+    "version": "1.0.0",
+    "description": "REST API untuk Sistem Pelaporan dan Pengaduan Kemahasiswaan Universitas Bung Hatta.\n\n**Autentikasi**: login lewat `POST /v1/api/auth/login`, lalu kirim `accessToken` sebagai header `Authorization: Bearer <token>`. Klik tombol *Authorize* untuk memakainya di halaman ini.\n\n**Peran**: `MAHASISWA`, `ADMIN` (dibatasi kategori yang ditugaskan), `SUPERADMIN` (akses penuh).\n\n**Format respons**: sebagian besar endpoint memakai bungkus `{ status, statusCode, message, data, timestamp }`. Error validasi berisi array `errors` per field.\n\n**Real-time**: event Socket.IO didokumentasikan di `docs/api/SocketEvents.md`."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Host saat ini"
+    },
+    {
+      "url": "http://localhost:6060",
+      "description": "Backend lokal (npm run dev)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Registrasi, login, token, reset password, dan manajemen perangkat."
+    },
+    {
+      "name": "Users",
+      "description": "Profil, preferensi, verifikasi mahasiswa, dan manajemen pengguna. ADMIN hanya dapat mengelola akun MAHASISWA."
+    },
+    {
+      "name": "Categories",
+      "description": "Kategori pengaduan. Daftar, pencarian, dan slug bersifat publik; perubahan hanya oleh SUPERADMIN."
+    },
+    {
+      "name": "Reports",
+      "description": "Laporan pengaduan. ADMIN hanya mengelola laporan pada kategori yang ditugaskan; identitas pelapor anonim selalu disamarkan."
+    },
+    {
+      "name": "Chat",
+      "description": "Pesan per laporan antara pelapor dan admin. Pembaruan real-time lewat Socket.IO."
+    },
+    {
+      "name": "Admin",
+      "description": "Dasbor dan ekspor CSV untuk ADMIN/SUPERADMIN."
+    },
+    {
+      "name": "Admin Governance",
+      "description": "Khusus SUPERADMIN: peran admin dan penugasan kategori."
+    },
+    {
+      "name": "Audit Logs",
+      "description": "Khusus SUPERADMIN: jejak aksi penting."
+    },
+    {
+      "name": "Bulk Operations",
+      "description": "Operasi massal 1–100 item; item yang gagal dilaporkan di `skipped` tanpa menggagalkan item lain."
+    },
+    {
+      "name": "Health",
+      "description": "Liveness dan readiness probe."
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/v1/api/admin/dashboard/stats": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Statistik lengkap untuk dasbor admin",
+        "description": "Ringkasan laporan, kategori teratas, aktivitas terbaru, dan tren 7 hari. Untuk ADMIN, `users` bernilai null dan `scope` berisi kategori yang ditugaskan; untuk SUPERADMIN `scope.type` = `GLOBAL`.\n",
+        "responses": {
+          "200": {
+            "description": "Statistik dasbor.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Dashboard statistics retrieved successfully",
+                  "data": {
+                    "users": null,
+                    "reports": {
+                      "total": 3,
+                      "deleted": 0,
+                      "active": 3,
+                      "pending": 0,
+                      "inReview": 0,
+                      "inProgress": 1,
+                      "resolved": 1,
+                      "rejected": 1,
+                      "canceled": 0
+                    },
+                    "categories": {
+                      "total": 2,
+                      "active": 2,
+                      "topCategories": [
+                        {
+                          "id": 4,
+                          "name": "Akademik",
+                          "reportCount": 2
+                        }
+                      ]
+                    },
+                    "recent": {
+                      "reports": [],
+                      "users": [],
+                      "auditLogs": []
+                    },
+                    "trends": {
+                      "reports": [
+                        {
+                          "date": "2026-10-08",
+                          "count": 4
+                        }
+                      ]
+                    },
+                    "scope": {
+                      "type": "CATEGORY",
+                      "categoryIds": [
+                        4,
+                        2
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/admin/export/reports": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Ekspor laporan ke CSV",
+        "description": "Data pelapor anonim tetap disamarkan di CSV. ADMIN hanya mendapat laporan di kategorinya.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ReportStatus"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-09-01"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-09-30"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berkas CSV (`laporan_<tanggal>.csv`).",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "No,No. Registrasi,Judul,Deskripsi,Status,Prioritas,Kategori,..."
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/admin/export/users": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Ekspor direktori pengguna ke CSV (SUPERADMIN)",
+        "responses": {
+          "200": {
+            "description": "Berkas CSV (`users_<tanggal>.csv`) dengan kolom No, Nama, Email, NIM, Role, Terverifikasi, Jumlah Laporan, Tanggal Daftar.",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/admin-governance/admins": {
+      "get": {
+        "tags": [
+          "Admin Governance"
+        ],
+        "summary": "Daftar ADMIN dan SUPERADMIN beserta penugasan kategorinya",
+        "responses": {
+          "200": {
+            "description": "Daftar admin.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Success",
+                  "data": [
+                    {
+                      "id": 4,
+                      "name": "Rina Kurniawati",
+                      "email": "rina.kurnia@bunghatta.ac.id",
+                      "role": "ADMIN",
+                      "isVerified": true,
+                      "categoryAssignments": [
+                        {
+                          "id": 1,
+                          "categoryId": 4,
+                          "assignedAt": "2026-10-08T08:09:21.599Z",
+                          "category": {
+                            "id": 4,
+                            "name": "Akademik",
+                            "slug": "akademik"
+                          },
+                          "assignedBy": {
+                            "id": 1,
+                            "name": "Super Admin"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/admin-governance/users/{userId}/promote-admin": {
+      "post": {
+        "tags": [
+          "Admin Governance"
+        ],
+        "summary": "Jadikan pengguna ADMIN",
+        "description": "Setelah dipromosikan, berikan penugasan kategori agar admin bisa melihat laporan.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dipromosikan.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Promoted to ADMIN",
+                  "data": {
+                    "id": 4,
+                    "name": "Rina Kurniawati",
+                    "email": "rina.kurnia@bunghatta.ac.id",
+                    "role": "ADMIN"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Pengguna tidak ditemukan atau berperan SUPERADMIN."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/admin-governance/users/{userId}/demote-admin": {
+      "post": {
+        "tags": [
+          "Admin Governance"
+        ],
+        "summary": "Turunkan ADMIN menjadi MAHASISWA",
+        "description": "Semua penugasan kategori dihapus, sesi dicabut, dan socket pengguna diputus.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Diturunkan (\"Demoted to MAHASISWA\")."
+          },
+          "400": {
+            "description": "Pengguna tidak ditemukan, bukan admin, atau SUPERADMIN (pakai demote-superadmin)."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/admin-governance/users/{userId}/promote-superadmin": {
+      "post": {
+        "tags": [
+          "Admin Governance"
+        ],
+        "summary": "Jadikan ADMIN sebagai SUPERADMIN",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dipromosikan (\"Promoted to SUPERADMIN\")."
+          },
+          "400": {
+            "description": "Hanya ADMIN yang sudah ada yang bisa dipromosikan."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/admin-governance/users/{userId}/demote-superadmin": {
+      "post": {
+        "tags": [
+          "Admin Governance"
+        ],
+        "summary": "Turunkan SUPERADMIN menjadi ADMIN",
+        "description": "Ditolak bila target adalah SUPERADMIN terakhir (dijaga advisory lock PostgreSQL).",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Diturunkan (\"Demoted to ADMIN\")."
+          },
+          "400": {
+            "description": "Bukan SUPERADMIN, atau SUPERADMIN terakhir.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "error",
+                  "message": "Cannot demote the last SUPERADMIN. Promote another user first."
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/admin-governance/users/{userId}/categories": {
+      "post": {
+        "tags": [
+          "Admin Governance"
+        ],
+        "summary": "Berikan akses kategori kepada ADMIN",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserIdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "categoryId"
+                ],
+                "properties": {
+                  "categoryId": {
+                    "type": "integer",
+                    "example": 4
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Akses diberikan (idempoten).",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Category granted",
+                  "data": {
+                    "id": 1,
+                    "adminId": 4,
+                    "categoryId": 4,
+                    "assignedAt": "2026-10-08T08:09:21.599Z",
+                    "category": {
+                      "id": 4,
+                      "name": "Akademik",
+                      "slug": "akademik"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Target bukan ADMIN (mahasiswa harus dipromosikan dulu; superadmin sudah punya semua akses) atau kategori tidak ada."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/admin-governance/users/{userId}/categories/{categoryId}": {
+      "delete": {
+        "tags": [
+          "Admin Governance"
+        ],
+        "summary": "Cabut akses kategori dari ADMIN",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserIdPath"
+          },
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "\"Category revoked\", atau \"Already revoked\" bila memang tidak ada."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/audit-logs": {
+      "get": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Cari audit log dengan filter dan paginasi offset",
+        "parameters": [
+          {
+            "name": "entityType",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/AuditEntity"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/AuditAction"
+            }
+          },
+          {
+            "name": "actorId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit log, terbaru lebih dulu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "logs": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/AuditLog"
+                              }
+                            },
+                            "pagination": {
+                              "type": "object",
+                              "properties": {
+                                "total": {
+                                  "type": "integer",
+                                  "example": 16
+                                },
+                                "limit": {
+                                  "type": "integer",
+                                  "example": 50
+                                },
+                                "offset": {
+                                  "type": "integer",
+                                  "example": 0
+                                },
+                                "hasMore": {
+                                  "type": "boolean",
+                                  "example": false
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/audit-logs/stats": {
+      "get": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Ringkasan jumlah audit log per entitas dan aksi",
+        "responses": {
+          "200": {
+            "description": "Statistik dan 10 log terbaru.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Audit statistics retrieved successfully",
+                  "data": {
+                    "total": 16,
+                    "byEntityType": {
+                      "ASSIGNMENT": 2,
+                      "REPORT": 10,
+                      "USER": 4
+                    },
+                    "byAction": {
+                      "VERIFY_MAHASISWA": 3,
+                      "UPDATE": 3,
+                      "PROMOTE_ADMIN": 1,
+                      "UPDATE_STATUS": 6,
+                      "GRANT_CATEGORY": 2,
+                      "VIEW_ANONYMOUS": 1
+                    },
+                    "recentLogs": []
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/audit-logs/entity/{entityType}/{entityId}": {
+      "get": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Riwayat audit satu entitas (mis. satu laporan)",
+        "parameters": [
+          {
+            "name": "entityType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AuditEntity"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar audit log entitas tersebut.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AuditLog"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/audit-logs/actor/{actorId}": {
+      "get": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Riwayat aksi seorang pelaku",
+        "parameters": [
+          {
+            "name": "actorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar audit log pelaku tersebut."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/audit-logs/cleanup": {
+      "post": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Hapus audit log lama",
+        "description": "Default `daysOld` = 365.",
+        "parameters": [
+          {
+            "name": "daysOld",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 365
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Jumlah log yang dihapus."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/bulk-operations/users/verify": {
+      "post": {
+        "tags": [
+          "Bulk Operations"
+        ],
+        "summary": "Verifikasi banyak mahasiswa (admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userIds"
+                ],
+                "properties": {
+                  "userIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": {
+                      "type": "integer"
+                    },
+                    "example": [
+                      2,
+                      3
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hasil per item.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BulkResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/bulk-operations/users/delete": {
+      "post": {
+        "tags": [
+          "Bulk Operations"
+        ],
+        "summary": "Soft delete banyak pengguna (admin; ADMIN hanya target MAHASISWA)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userIds"
+                ],
+                "properties": {
+                  "userIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": {
+                      "type": "integer"
+                    },
+                    "example": [
+                      2,
+                      3
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hasil per item.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BulkResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/bulk-operations/users/restore": {
+      "post": {
+        "tags": [
+          "Bulk Operations"
+        ],
+        "summary": "Pulihkan banyak pengguna (admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userIds"
+                ],
+                "properties": {
+                  "userIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": {
+                      "type": "integer"
+                    },
+                    "example": [
+                      2,
+                      3
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hasil per item.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BulkResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/bulk-operations/reports/update-status": {
+      "post": {
+        "tags": [
+          "Bulk Operations"
+        ],
+        "summary": "Ubah status banyak laporan (admin, sesuai cakupan kategori)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "reportIds",
+                  "status"
+                ],
+                "properties": {
+                  "reportIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "status": {
+                    "$ref": "#/components/schemas/ReportStatus"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "description": "Wajib untuk REJECTED dan CANCELED."
+                  }
+                }
+              },
+              "example": {
+                "reportIds": [
+                  1,
+                  999
+                ],
+                "status": "IN_PROGRESS"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hasil per item.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Successfully updated 0 reports",
+                  "data": {
+                    "updated": 0,
+                    "reportIds": [],
+                    "newStatus": "IN_PROGRESS",
+                    "skipped": [
+                      {
+                        "id": 1,
+                        "reason": "transisi IN_PROGRESS → IN_PROGRESS tidak valid"
+                      },
+                      {
+                        "id": 999,
+                        "reason": "tidak ditemukan atau sudah dihapus"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/bulk-operations/reports/delete": {
+      "post": {
+        "tags": [
+          "Bulk Operations"
+        ],
+        "summary": "Soft delete banyak laporan (admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "reportIds"
+                ],
+                "properties": {
+                  "reportIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": {
+                      "type": "integer"
+                    },
+                    "example": [
+                      1,
+                      4
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hasil per item.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BulkResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/bulk-operations/reports/restore": {
+      "post": {
+        "tags": [
+          "Bulk Operations"
+        ],
+        "summary": "Pulihkan banyak laporan (admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "reportIds"
+                ],
+                "properties": {
+                  "reportIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": {
+                      "type": "integer"
+                    },
+                    "example": [
+                      1,
+                      4
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hasil per item.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BulkResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/bulk-operations/categories/delete": {
+      "post": {
+        "tags": [
+          "Bulk Operations"
+        ],
+        "summary": "Soft delete banyak kategori (SUPERADMIN)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "categoryIds"
+                ],
+                "properties": {
+                  "categoryIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": {
+                      "type": "integer"
+                    },
+                    "example": [
+                      22
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hasil per item.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BulkResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/bulk-operations/categories/restore": {
+      "post": {
+        "tags": [
+          "Bulk Operations"
+        ],
+        "summary": "Pulihkan banyak kategori (SUPERADMIN)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "categoryIds"
+                ],
+                "properties": {
+                  "categoryIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": {
+                      "type": "integer"
+                    },
+                    "example": [
+                      22
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hasil per item.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BulkResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/health/live": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Liveness probe (proses berjalan)",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Proses hidup.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "state": "live",
+                  "uptime": 174.3,
+                  "timestamp": "2026-10-08T08:09:23.534Z"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health/ready": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Readiness probe (PostgreSQL dan Redis terjangkau)",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Siap melayani.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "state": "ready",
+                  "checks": {
+                    "database": "ok",
+                    "redis": "ok"
+                  },
+                  "timestamp": "2026-10-08T08:09:23.544Z"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database atau Redis tidak terjangkau."
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health check gabungan (kompatibilitas lama; dipakai HEALTHCHECK Dockerfile backend)",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Sehat."
+          },
+          "500": {
+            "description": "Tidak sehat."
+          }
+        }
+      }
+    },
+    "/v1/api/auth/registerStudent": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Registrasi mahasiswa dengan unggah KTM",
+        "description": "Akun dibuat dengan `isVerified=false`; mahasiswa baru bisa login dan membuat laporan setelah diverifikasi admin. Bila `ALLOWED_EMAIL_DOMAINS` di-set, domain email dibatasi. Rate limit: 20 per IP per jam.\n",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "email",
+                  "password",
+                  "nim",
+                  "ktm"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Budi Santoso"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "budi.santoso@mahasiswa.bunghatta.ac.id"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "description": "Mengikuti kebijakan password (`utils/passwordPolicy.js`)."
+                  },
+                  "nim": {
+                    "type": "string",
+                    "pattern": "^\\d{8,}$",
+                    "example": "2110003001"
+                  },
+                  "ktm": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Foto KTM: JPEG, PNG, atau WebP, maks. 5 MB."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Akun dibuat, menunggu verifikasi admin.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "message": "Registration successful. Please wait for admin verification.",
+                  "data": {
+                    "id": 2,
+                    "name": "Budi Santoso",
+                    "email": "budi.santoso@mahasiswa.bunghatta.ac.id",
+                    "nim": "2110003001",
+                    "role": "MAHASISWA",
+                    "isVerified": false,
+                    "ktmPath": "/uploads/ktm/c05dd06b2e88cd62026c95484efdbf2c.png"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validasi gagal, email/NIM sudah terdaftar, atau berkas KTM tidak valid/terlalu besar."
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
+    },
+    "/v1/api/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login dengan email dan password",
+        "description": "Mengembalikan access token di body (dan header `Authorization`) serta men-set cookie httpOnly `refreshToken` (7 hari). Access token berlaku 15 menit. Satu sesi dicatat per perangkat; maksimal 3 perangkat per akun (perangkat paling lama tidak aktif dikeluarkan otomatis). Rate limit: 20 percobaan gagal per IP per 15 menit.\n",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  }
+                }
+              },
+              "example": {
+                "email": "budi.santoso@mahasiswa.bunghatta.ac.id",
+                "password": "********"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login berhasil.",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "refreshToken=...; HttpOnly; SameSite=Strict"
+              }
+            },
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "message": "Login successful",
+                  "tokenType": "Bearer",
+                  "accessToken": "<access-token-jwt>",
+                  "data": {
+                    "id": 2,
+                    "name": "Budi Santoso",
+                    "nim": "2110003001",
+                    "email": "budi.santoso@mahasiswa.bunghatta.ac.id",
+                    "role": "MAHASISWA",
+                    "isVerified": true,
+                    "deviceInfo": {
+                      "deviceName": "Chrome on Windows",
+                      "deviceType": "Desktop"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "description": "Email atau password salah, akun dihapus, atau akun belum diverifikasi admin.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "salah": {
+                    "value": {
+                      "status": "error",
+                      "message": "email/password salah"
+                    }
+                  },
+                  "belumVerifikasi": {
+                    "value": {
+                      "status": "error",
+                      "message": "User is not verified"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
+    },
+    "/v1/api/auth/refresh-token": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Terbitkan access token baru dari cookie refresh token",
+        "description": "Refresh token dirotasi setiap dipakai. Bila token lama dipakai ulang (indikasi pencurian), semua token perangkat tersebut dicabut. Rate limit: 60 per IP per 15 menit.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token baru diterbitkan; cookie refreshToken diperbarui.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "accessToken": "<access-token-jwt>",
+                  "data": {
+                    "id": 2,
+                    "name": "Budi Santoso",
+                    "nim": "2110003001",
+                    "email": "budi.santoso@mahasiswa.bunghatta.ac.id",
+                    "role": "MAHASISWA",
+                    "isVerified": true
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Cookie refresh token tidak ada."
+          },
+          "403": {
+            "description": "Refresh token tidak valid, kedaluwarsa, dipakai ulang, atau pengguna sudah dihapus."
+          }
+        }
+      }
+    },
+    "/v1/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Logout dari perangkat ini",
+        "description": "Menghapus sesi perangkat saat ini dan cookie refresh token. Tetap 200 walau cookie tidak ada.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Logout berhasil.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "message": "Logout successful"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/api/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Minta tautan reset password lewat email",
+        "description": "Selalu mengembalikan 200 dengan pesan yang sama agar tidak bisa dipakai menebak email terdaftar. Token berlaku 1 jam dan sekali pakai. Membutuhkan konfigurasi SMTP. Rate limit: 3 per IP per 15 menit.\n",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Permintaan diterima (email dikirim bila akun ada)."
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
+    },
+    "/v1/api/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Setel password baru dengan token dari email",
+        "description": "Semua sesi pengguna dicabut setelah berhasil.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token",
+                  "newPassword"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "description": "Token dari parameter `token` di tautan email."
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password direset.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Password berhasil direset. Silakan login dengan password baru.",
+                  "data": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Token tidak valid, kedaluwarsa, sudah dipakai, atau password tidak memenuhi kebijakan."
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
+    },
+    "/v1/api/auth/change-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Ganti password (pengguna login)",
+        "description": "Semua sesi dicabut; klien harus login ulang.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "currentPassword",
+                  "newPassword"
+                ],
+                "properties": {
+                  "currentPassword": {
+                    "type": "string"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password diubah.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Password berhasil diubah. Silakan login kembali.",
+                  "data": {
+                    "requireReLogin": true,
+                    "code": "SESSION_INVALIDATED"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Password lama salah atau password baru tidak memenuhi kebijakan."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/api/auth/devices": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Daftar perangkat/sesi aktif milik pengguna",
+        "responses": {
+          "200": {
+            "description": "Daftar perangkat.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "message": "Devices retrieved successfully",
+                  "data": [
+                    {
+                      "id": 2,
+                      "deviceId": "ede77d59e465eceea4d73515a905c6f0",
+                      "deviceName": "Chrome on Windows",
+                      "lastAccess": "2026-10-08T08:09:21.851Z",
+                      "createdAt": "2026-10-08T08:09:21.852Z",
+                      "ipAddress": "10.0.0.12",
+                      "browser": "Chrome",
+                      "os": "Windows",
+                      "deviceType": "Desktop",
+                      "location": "Tidak Diketahui",
+                      "isCurrent": true
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/api/auth/devices/{id}": {
+      "delete": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Keluarkan satu perangkat",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Perangkat dikeluarkan.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "message": "Device logged out successfully"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Perangkat tidak ditemukan atau bukan milik pengguna."
+          }
+        }
+      }
+    },
+    "/v1/api/auth/logout-other-devices": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Keluarkan semua perangkat lain kecuali perangkat ini",
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Perangkat lain dikeluarkan.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "message": "All other devices logged out successfully"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Access token atau cookie refresh token tidak ada."
+          }
+        }
+      }
+    },
+    "/v1/api/categories": {
+      "get": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Daftar kategori (publik)",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IncludeDeleted"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Semua kategori aktif.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Category"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Categories retrieved successfully",
+                  "data": [
+                    {
+                      "id": 1,
+                      "name": "Kekerasan Seksual",
+                      "slug": "kekerasan-seksual",
+                      "defaultPriority": "URGENT",
+                      "allowAnonymous": true,
+                      "deletedAt": null
+                    },
+                    {
+                      "id": 4,
+                      "name": "Akademik",
+                      "slug": "akademik",
+                      "defaultPriority": "MEDIUM",
+                      "allowAnonymous": false,
+                      "deletedAt": null
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Buat kategori (SUPERADMIN)",
+        "description": "Slug dibuat otomatis dari nama.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Beasiswa"
+                  },
+                  "defaultPriority": {
+                    "$ref": "#/components/schemas/Priority"
+                  },
+                  "allowAnonymous": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Kategori dibuat.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Category"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "Nama kategori sudah dipakai."
+          }
+        }
+      }
+    },
+    "/v1/api/categories/search": {
+      "get": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Cari kategori berdasarkan nama (publik)",
+        "security": [],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "akad"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IncludeDeleted"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Kategori yang cocok.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Found 1 categories matching \"akad\"",
+                  "data": [
+                    {
+                      "id": 4,
+                      "name": "Akademik",
+                      "slug": "akademik",
+                      "_count": {
+                        "reports": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/v1/api/categories/slug/{slug}": {
+      "get": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Ambil kategori berdasarkan slug (publik)",
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "akademik"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IncludeDeleted"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Kategori.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Category"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/api/categories/stats": {
+      "get": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Statistik kategori dan 5 kategori dengan laporan terbanyak",
+        "responses": {
+          "200": {
+            "description": "Statistik.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Category statistics retrieved successfully",
+                  "data": {
+                    "total": 23,
+                    "deleted": 0,
+                    "active": 23,
+                    "topCategories": [
+                      {
+                        "id": 4,
+                        "name": "Akademik",
+                        "_count": {
+                          "reports": 2
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/api/categories/with-reports": {
+      "get": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Kategori beserta ringkasan laporannya (admin)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IncludeDeleted"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Setiap kategori memuat array `reports` (id, title, status, createdAt) dan `_count`."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/categories/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/IdPath"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Detail kategori",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IncludeDeleted"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Kategori beserta jumlah laporan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Category"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Ubah kategori (SUPERADMIN)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "defaultPriority": {
+                    "$ref": "#/components/schemas/Priority"
+                  },
+                  "allowAnonymous": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Kategori diperbarui."
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Soft delete kategori (SUPERADMIN)",
+        "responses": {
+          "200": {
+            "description": "Kategori dihapus sementara."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/categories/{id}/restore": {
+      "post": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Pulihkan kategori (SUPERADMIN)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Kategori dipulihkan."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/categories/{id}/permanent": {
+      "delete": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Hapus kategori permanen (SUPERADMIN)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Kategori dihapus permanen."
+          },
+          "400": {
+            "description": "Kategori masih punya laporan (termasuk yang sudah dihapus); pindahkan laporannya lebih dulu."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/categories/cleanup": {
+      "post": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Hapus permanen kategori yang sudah lama di-soft-delete (SUPERADMIN)",
+        "description": "Default `daysOld` = 90.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DaysOld"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ringkasan pembersihan."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/chat/reports": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Daftar laporan yang punya percakapan, dengan pesan terakhir dan jumlah belum dibaca",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar ruang chat.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Chat list retrieved successfully",
+                  "data": {
+                    "reports": [
+                      {
+                        "id": 1,
+                        "registrationNumber": "SP/01/08/10/2026",
+                        "title": "AC ruang kuliah B.204 rusak sejak dua minggu",
+                        "status": "IN_PROGRESS",
+                        "isAnonymous": false,
+                        "user": {
+                          "name": "Budi Santoso"
+                        },
+                        "lastMessage": {
+                          "content": "Baik, teknisi Biro Umum dijadwalkan memeriksa besok pukul 09.00.",
+                          "createdAt": "2026-10-08T08:09:22.913Z",
+                          "senderRole": "ADMIN"
+                        },
+                        "unreadCount": 1
+                      }
+                    ],
+                    "pagination": {
+                      "page": 1,
+                      "limit": 20,
+                      "total": 3,
+                      "totalPages": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/api/chat/unread-count": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Total pesan belum dibaca oleh pengguna yang login",
+        "responses": {
+          "200": {
+            "description": "Jumlah pesan belum dibaca (dihitung per pengguna).",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Unread count retrieved",
+                  "data": {
+                    "unreadCount": 2
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/api/chat/reports/{reportId}/messages": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ReportIdPath"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Riwayat pesan sebuah laporan",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pesan urut dari yang terlama.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "report": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "integer"
+                                },
+                                "userId": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "isAnonymous": {
+                                  "type": "boolean"
+                                }
+                              }
+                            },
+                            "messages": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/Message"
+                              }
+                            },
+                            "pagination": {
+                              "$ref": "#/components/schemas/PagePagination"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Kirim pesan",
+        "description": "Hanya pengguna terverifikasi. Untuk melampirkan berkas, unggah dulu ke `/upload` lalu kirim token-nya di `attachmentTokens`. Sertakan `clientMessageId` unik agar pengiriman ulang (retry) tidak membuat pesan ganda: request dengan ID yang sama mengembalikan pesan yang sama dengan status 200, bukan 201. Peserta lain menerima event `chat:message` dan notifikasi email bila sedang offline.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "example": "Mati total, Bu. Lampu indikatornya juga tidak menyala."
+                  },
+                  "replyToId": {
+                    "type": "integer",
+                    "description": "ID pesan yang dibalas."
+                  },
+                  "attachmentTokens": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Token dari endpoint upload."
+                  },
+                  "clientMessageId": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 64,
+                    "example": "cmsg-0002-budi"
+                  },
+                  "idempotencyKey": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 64,
+                    "description": "Alias lama untuk `clientMessageId`."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replay idempoten; pesan dengan `clientMessageId` yang sama sudah ada."
+          },
+          "201": {
+            "description": "Pesan terkirim.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Message"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/chat/reports/{reportId}/upload": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Unggah lampiran chat (sebelum pesan dikirim)",
+        "description": "Berkas disimpan sementara dan hanya bisa dipakai untuk laporan ini oleh pengunggah yang sama. Token berlaku 24 jam; yang tidak terpakai dibersihkan otomatis. Maks. 10 berkas, 5 MB per berkas; JPEG, PNG, WebP, PDF, DOC, DOCX.\n",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ReportIdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "files"
+                ],
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Token lampiran diterbitkan.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "File uploaded successfully",
+                  "data": {
+                    "attachments": [
+                      {
+                        "token": "<upload-token>",
+                        "fileName": "jadwal.pdf",
+                        "fileType": "application/pdf",
+                        "fileSize": 48213,
+                        "expiresAt": "2026-10-09T08:09:22.988Z"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tidak ada berkas, berkas terlalu besar, atau tipe tidak diizinkan."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
+    },
+    "/v1/api/chat/reports/{reportId}/messages/read": {
+      "patch": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Tandai semua pesan di laporan ini sudah dibaca (oleh pengguna yang login)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ReportIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pesan ditandai dibaca; peserta lain menerima event `chat:read`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Messages marked as read"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/chat/messages/{messageId}": {
+      "delete": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Hapus pesan (soft delete)",
+        "description": "Pengirim pesan, ADMIN dengan kategori terkait, atau SUPERADMIN. Tercatat di audit log.",
+        "parameters": [
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pesan dihapus; peserta menerima event `chat:message:deleted`."
+          },
+          "403": {
+            "description": "Pesan tidak ada atau bukan hak pengguna."
+          }
+        }
+      }
+    },
+    "/v1/api/reports": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Daftar laporan untuk admin (paginasi kursor)",
+        "description": "Peran ADMIN atau SUPERADMIN. ADMIN tanpa penugasan kategori menerima daftar kosong.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          },
+          {
+            "name": "lastItemId",
+            "in": "query",
+            "description": "Kursor; isi dengan `pagination.lastItemId` dari halaman sebelumnya.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Cari di judul dan deskripsi.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ReportStatus"
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Priority"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "assignedToId",
+            "in": "query",
+            "description": "`me` = ditugaskan ke saya, `unassigned` = belum ada petugas, atau ID admin.",
+            "schema": {
+              "type": "string",
+              "example": "me"
+            }
+          },
+          {
+            "name": "createdAt",
+            "in": "query",
+            "description": "Hanya laporan yang dibuat N hari terakhir.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "example": 7
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IncludeDeleted"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Satu halaman laporan, terbaru lebih dulu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "data": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/ReportListItem"
+                              }
+                            },
+                            "pagination": {
+                              "$ref": "#/components/schemas/CursorPagination"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Success",
+                  "data": {
+                    "data": [
+                      {
+                        "id": 1,
+                        "registrationNumber": "SP/01/08/10/2026",
+                        "title": "AC ruang kuliah B.204 rusak sejak dua minggu",
+                        "status": "IN_PROGRESS",
+                        "priority": "HIGH",
+                        "isAnonymous": false,
+                        "userId": 2,
+                        "category": {
+                          "slug": "sarana-dan-prasarana",
+                          "name": "Sarana dan Prasarana"
+                        },
+                        "user": {
+                          "id": 2,
+                          "name": "Budi Santoso",
+                          "nim": "2110003001",
+                          "email": "budi.santoso@mahasiswa.bunghatta.ac.id"
+                        },
+                        "closedAt": null,
+                        "createdAt": "2026-10-08T08:09:22.356Z"
+                      }
+                    ],
+                    "pagination": {
+                      "totalItems": 1,
+                      "itemsPerPage": 10,
+                      "hasNextPage": false,
+                      "lastItemId": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Buat laporan baru",
+        "description": "Hanya pengguna terverifikasi. `isAnonymous=true` hanya diterima untuk kategori dengan `allowAnonymous=true`. Prioritas awal mengikuti `defaultPriority` kategori. Lampiran diunggah terpisah lewat `POST /v1/api/reports/{reportId}/attachments`. Rate limit: 5 laporan per pengguna per jam.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "description",
+                  "categoryId"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 10
+                  },
+                  "categoryId": {
+                    "type": "integer"
+                  },
+                  "isAnonymous": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "example": {
+                "title": "AC ruang kuliah B.204 rusak sejak dua minggu",
+                "description": "Pendingin ruangan di ruang B.204 Gedung B tidak berfungsi sejak awal bulan.",
+                "categoryId": 2
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Laporan dibuat dengan status PENDING.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Report"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Akun belum terverifikasi atau kategori tidak mengizinkan laporan anonim."
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
+    },
+    "/v1/api/reports/user": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Daftar laporan milik pengguna yang login",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          },
+          {
+            "name": "lastItemId",
+            "in": "query",
+            "description": "Kursor; isi dengan `pagination.lastItemId` dari halaman sebelumnya.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Cari di judul dan deskripsi (tidak peka huruf besar/kecil).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ReportStatus"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "createdAt",
+            "in": "query",
+            "description": "Hanya laporan yang dibuat N hari terakhir.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "example": 7
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Satu halaman laporan milik sendiri (struktur sama dengan daftar admin).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "data": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/ReportListItem"
+                              }
+                            },
+                            "pagination": {
+                              "$ref": "#/components/schemas/CursorPagination"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/api/reports/stats": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Jumlah laporan per status",
+        "description": "ADMIN/SUPERADMIN; untuk ADMIN dihitung dari kategori yang ditugaskan saja.",
+        "responses": {
+          "200": {
+            "description": "Statistik.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Report statistics retrieved successfully",
+                  "data": {
+                    "total": 3,
+                    "pending": 0,
+                    "inReview": 0,
+                    "inProgress": 1,
+                    "resolved": 1,
+                    "rejected": 1,
+                    "canceled": 0
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/reports/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/IdPath"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Detail laporan beserta lampiran dan pesan",
+        "description": "Boleh diakses pemilik laporan, ADMIN dengan kategori terkait, atau SUPERADMIN. Membuka laporan anonim sebagai admin dicatat di audit log (`VIEW_ANONYMOUS`).\n",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IncludeDeleted"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail laporan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ReportDetail"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Edit laporan (pemilik, hanya saat PENDING)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "minProperties": 1,
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 10
+                  },
+                  "categoryId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Laporan diperbarui.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Laporan berhasil diperbarui",
+                  "data": {
+                    "id": 2,
+                    "title": "Nilai UTS Basis Data kelas A belum muncul di portal akademik",
+                    "categoryId": 4,
+                    "status": "PENDING",
+                    "registrationNumber": "AK/01/08/10/2026"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Status bukan PENDING, tidak ada perubahan, atau validasi gagal."
+          },
+          "403": {
+            "description": "Bukan pemilik laporan atau akun belum terverifikasi."
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Batalkan (mahasiswa) atau soft-delete (admin) laporan",
+        "description": "Mahasiswa: hanya laporan miliknya yang masih PENDING, dan aksinya mengubah status menjadi CANCELED (pesan \"Laporan berhasil dibatalkan\"). Admin: soft delete (bisa dipulihkan) untuk laporan dalam cakupannya.\n",
+        "responses": {
+          "200": {
+            "description": "Laporan dibatalkan atau dihapus sementara."
+          },
+          "400": {
+            "description": "Mahasiswa mencoba menghapus laporan yang tidak lagi PENDING."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/api/reports/{id}/status": {
+      "patch": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Ubah status laporan (admin)",
+        "description": "Mengikuti state machine pada skema `ReportStatus`. `reason` wajib untuk REJECTED dan CANCELED dan akan ditampilkan ke pelapor. Pelapor mendapat email notifikasi bila SMTP aktif.\n",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "$ref": "#/components/schemas/ReportStatus"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3
+                  }
+                }
+              },
+              "examples": {
+                "tinjau": {
+                  "value": {
+                    "status": "IN_REVIEW"
+                  }
+                },
+                "tolak": {
+                  "value": {
+                    "status": "REJECTED",
+                    "reason": "Jadwal praktikum sudah direvisi oleh prodi; silakan cek jadwal terbaru di portal."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status diperbarui.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Status updated",
+                  "data": {
+                    "id": 1,
+                    "status": "IN_REVIEW",
+                    "closedAt": null,
+                    "rejectedReason": null,
+                    "canceledReason": null,
+                    "userId": 2,
+                    "title": "AC ruang kuliah B.204 rusak sejak dua minggu",
+                    "registrationNumber": "SP/01/08/10/2026"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Transisi tidak diizinkan atau alasan tidak diisi.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "error",
+                  "message": "Tidak bisa mengubah status dari RESOLVED ke PENDING. Transisi yang diizinkan: IN_REVIEW"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/api/reports/{id}/priority": {
+      "patch": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Ubah prioritas laporan (admin)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "priority"
+                ],
+                "properties": {
+                  "priority": {
+                    "$ref": "#/components/schemas/Priority"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Prioritas diperbarui.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Priority updated",
+                  "data": {
+                    "id": 1,
+                    "priority": "HIGH",
+                    "title": "AC ruang kuliah B.204 rusak sejak dua minggu",
+                    "registrationNumber": "SP/01/08/10/2026"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/api/reports/{id}/assign": {
+      "patch": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Tetapkan atau lepas petugas laporan (admin)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "assignedToId": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "ID admin; `null` untuk melepas petugas."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Petugas diperbarui (\"Report assigned\" atau \"Report unassigned\").",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Report assigned",
+                  "data": {
+                    "id": 1,
+                    "assignedToId": 4,
+                    "title": "AC ruang kuliah B.204 rusak sejak dua minggu",
+                    "registrationNumber": "SP/01/08/10/2026",
+                    "assignedTo": {
+                      "id": 4,
+                      "name": "Rina Kurniawati",
+                      "email": "rina.kurnia@bunghatta.ac.id"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Petugas bukan admin atau tidak punya akses ke kategori laporan."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/reports/{id}/restore": {
+      "post": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Pulihkan laporan yang di-soft-delete (admin dalam cakupan)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Laporan dipulihkan (\"Report restored\")."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/reports/{id}/permanent": {
+      "delete": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Hapus laporan permanen (SUPERADMIN)",
+        "description": "Menghapus laporan beserta lampiran dan pesannya. Tidak bisa dibatalkan.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Laporan dihapus permanen."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/reports/{reportId}/attachments": {
+      "post": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Unggah lampiran laporan",
+        "description": "Pemilik laporan (hanya saat PENDING) atau admin dalam cakupan. Maks. 10 berkas, 5 MB per berkas; JPEG, PNG, WebP, PDF, DOC, DOCX. Gambar dikompresi otomatis. Rate limit: 10 unggahan per menit.\n",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ReportIdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "files"
+                ],
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Lampiran tersimpan (catatan, respons ini tidak memakai bungkus standar).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Attachment"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Berkas terlalu besar, tipe tidak diizinkan, atau laporan tidak lagi PENDING."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
+    },
+    "/v1/api/users": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Daftar semua pengguna (admin)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IncludeDeleted"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar pengguna, terbaru lebih dulu.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Users retrieved successfully",
+                  "data": [
+                    {
+                      "id": 5,
+                      "name": "Andi Pratama",
+                      "email": "andi.pratama@mahasiswa.bunghatta.ac.id",
+                      "nim": "2210004005",
+                      "role": "MAHASISWA",
+                      "isVerified": false,
+                      "createdAt": "2026-10-08T08:09:21.471Z",
+                      "ktmPath": "/uploads/ktm/42a0faf52940ae291d012c54075d424e.png",
+                      "deletedAt": null
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/users/stats": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Statistik jumlah pengguna (admin)",
+        "responses": {
+          "200": {
+            "description": "Statistik.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "User statistics retrieved successfully",
+                  "data": {
+                    "total": 5,
+                    "deleted": 0,
+                    "verified": 4,
+                    "unverified": 1
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/users/unverified/students": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Mahasiswa yang menunggu verifikasi (admin)",
+        "responses": {
+          "200": {
+            "description": "Daftar mahasiswa belum terverifikasi beserta path KTM untuk diperiksa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "unverifiedStudents": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/User"
+                              }
+                            },
+                            "count": {
+                              "type": "integer",
+                              "example": 1
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/users/unverified/admins": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Admin yang belum terverifikasi (admin)",
+        "responses": {
+          "200": {
+            "description": "Daftar admin belum terverifikasi.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Unverified admins retrieved successfully",
+                  "data": {
+                    "unverifiedAdmins": [],
+                    "count": 0
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/users/verify/{id}": {
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Verifikasi akun mahasiswa (admin)",
+        "description": "Ditolak bila akun tidak memiliki KTM. Pengguna menerima email pemberitahuan (bila SMTP aktif).",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Akun terverifikasi.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/User"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Pengguna tidak ditemukan atau tidak punya KTM (\"User tidak memiliki KTM — tidak dapat diverifikasi\")."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/users/reject/{id}": {
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Tolak pendaftaran mahasiswa (admin)",
+        "description": "Akun di-soft-delete dan pendaftar menerima email berisi alasan penolakan.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "reason"
+                ],
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "example": "Foto KTM tidak terbaca, silakan daftar ulang dengan foto yang jelas."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Pendaftaran ditolak."
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/users/search/{email}": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Cari pengguna berdasarkan email (admin)",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "email"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pengguna ditemukan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/User"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/api/users/profile/me": {
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Perbarui profil sendiri",
+        "description": "Hanya `name`, `email`, dan `nim` yang diterima (field lain diabaikan). Mengganti email wajib menyertakan `currentPassword` dan mencabut semua sesi. Peran dan password tidak bisa diubah lewat endpoint ini.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "nim": {
+                    "type": "string",
+                    "minLength": 8
+                  },
+                  "currentPassword": {
+                    "type": "string",
+                    "description": "Wajib bila email diganti."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profil diperbarui.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/User"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validasi gagal, email sudah dipakai, atau password saat ini salah/kosong."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/api/users/preferences/me": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Ambil preferensi UI milik sendiri",
+        "responses": {
+          "200": {
+            "description": "Objek preferensi (kosong bila belum pernah disimpan).",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Preferences retrieved",
+                  "data": {
+                    "theme": "light",
+                    "language": "id",
+                    "notifications": {
+                      "email": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Simpan preferensi UI milik sendiri",
+        "description": "Body berupa objek JSON bebas; menggantikan preferensi sebelumnya.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preferences"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preferensi tersimpan.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "Preferences saved",
+                  "data": {
+                    "theme": "light",
+                    "language": "id",
+                    "notifications": {
+                      "email": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Body bukan objek."
+          }
+        }
+      }
+    },
+    "/v1/api/users/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/IdPath"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Detail pengguna",
+        "description": "Pengguna bisa melihat dirinya sendiri; admin bisa melihat pengguna dalam kewenangannya.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IncludeDeleted"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data pengguna.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "User retrieved successfully",
+                  "data": {
+                    "id": 2,
+                    "name": "Budi Santoso",
+                    "email": "budi.santoso@mahasiswa.bunghatta.ac.id",
+                    "nim": "2110003001",
+                    "role": "MAHASISWA",
+                    "isVerified": true,
+                    "createdAt": "2026-10-08T08:09:20.691Z",
+                    "updatedAt": "2026-10-08T08:09:21.508Z",
+                    "deletedAt": null
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Ubah data pengguna lain (admin)",
+        "description": "Hanya `name`, `email`, `nim`. ADMIN hanya untuk akun MAHASISWA.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "nim": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Data diperbarui."
+          },
+          "400": {
+            "description": "Tidak ada field yang diubah atau validasi gagal."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Soft delete pengguna (admin)",
+        "description": "Tidak bisa menghapus diri sendiri atau superadmin terakhir.",
+        "responses": {
+          "200": {
+            "description": "Pengguna dihapus sementara."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/users/{id}/stats": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Statistik laporan milik seorang pengguna",
+        "description": "Pengguna itu sendiri atau admin.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Jumlah laporan per status.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "statusCode": 200,
+                  "message": "User statistics retrieved successfully",
+                  "data": {
+                    "total": 2,
+                    "pending": 0,
+                    "inReview": 0,
+                    "inProgress": 1,
+                    "resolved": 1,
+                    "rejected": 0,
+                    "canceled": 0,
+                    "approved": 1,
+                    "active": 2
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/users/{id}/restore": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Pulihkan pengguna yang di-soft-delete (admin)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pengguna dipulihkan."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/users/{id}/permanent": {
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Hapus pengguna permanen (SUPERADMIN)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pengguna dihapus permanen."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/api/users/cleanup": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Hapus permanen pengguna yang sudah lama di-soft-delete (SUPERADMIN)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DaysOld"
+          }
+        ],
+        "description": "Default `daysOld` = 90.",
+        "responses": {
+          "200": {
+            "description": "Ringkasan jumlah yang dibersihkan (\"Cleaned up users deleted more than N days ago\")."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token dari `POST /v1/api/auth/login` (field `accessToken`). Kirim sebagai header `Authorization: Bearer <token>`. Berlaku 15 menit; perbarui lewat `POST /v1/api/auth/refresh-token`.\n"
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "refreshToken",
+        "description": "Cookie httpOnly berisi refresh token, di-set otomatis saat login (berlaku 7 hari)."
+      }
+    },
+    "parameters": {
+      "IdPath": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "integer",
+          "example": 1
+        }
+      },
+      "ReportIdPath": {
+        "name": "reportId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "integer",
+          "example": 1
+        }
+      },
+      "UserIdPath": {
+        "name": "userId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "integer",
+          "example": 4
+        }
+      },
+      "IncludeDeleted": {
+        "name": "includeDeleted",
+        "in": "query",
+        "description": "Sertakan data yang sudah di-soft-delete.",
+        "schema": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "DaysOld": {
+        "name": "daysOld",
+        "in": "query",
+        "description": "Umur minimum (hari) sejak data di-soft-delete.",
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Access token tidak ada, tidak valid, atau kedaluwarsa.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
+            },
+            "example": {
+              "error": "Access token required"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Peran atau cakupan kategori pengguna tidak mengizinkan aksi ini.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "status": "error",
+              "statusCode": 403,
+              "message": "Access denied. Super-admin privileges required.",
+              "errors": null,
+              "timestamp": "2026-10-08T08:09:23.634Z"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Data tidak ditemukan.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Input tidak lolos validasi (express-validator).",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ValidationError"
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Permintaan ditolak oleh aturan bisnis (mis. transisi status tidak valid).",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Batas laju (rate limit) terlampaui.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "status": "error",
+              "statusCode": 429,
+              "message": "Terlalu banyak percobaan login. Coba lagi dalam 15 menit."
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "error"
+          },
+          "statusCode": {
+            "type": "integer",
+            "example": 400
+          },
+          "message": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "object",
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ValidationError": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "error"
+          },
+          "statusCode": {
+            "type": "integer",
+            "example": 400
+          },
+          "message": {
+            "type": "string",
+            "example": "Invalid value"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "example": "title"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Invalid value"
+                },
+                "location": {
+                  "type": "string",
+                  "example": "body"
+                },
+                "value": {
+                  "example": "ab"
+                }
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SuccessEnvelope": {
+        "type": "object",
+        "description": "Bungkus standar respons sukses (`utils/responseFormatter.js`).",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "success"
+          },
+          "statusCode": {
+            "type": "integer",
+            "example": 200
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {},
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "MAHASISWA",
+          "ADMIN",
+          "SUPERADMIN"
+        ]
+      },
+      "ReportStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "IN_REVIEW",
+          "IN_PROGRESS",
+          "RESOLVED",
+          "REJECTED",
+          "CANCELED"
+        ],
+        "description": "Transisi yang diizinkan (`utils/reportTransitions.js`): PENDING → IN_REVIEW/REJECTED/CANCELED; IN_REVIEW → IN_PROGRESS/RESOLVED/REJECTED/CANCELED; IN_PROGRESS → RESOLVED/REJECTED/CANCELED; RESOLVED → IN_REVIEW; REJECTED → IN_REVIEW; CANCELED → PENDING.\n"
+      },
+      "Priority": {
+        "type": "string",
+        "enum": [
+          "LOW",
+          "MEDIUM",
+          "HIGH",
+          "URGENT"
+        ]
+      },
+      "AuditEntity": {
+        "type": "string",
+        "enum": [
+          "USER",
+          "REPORT",
+          "CATEGORY",
+          "ASSIGNMENT"
+        ]
+      },
+      "AuditAction": {
+        "type": "string",
+        "enum": [
+          "SOFT_DELETE",
+          "RESTORE",
+          "HARD_DELETE",
+          "UPDATE_STATUS",
+          "VERIFY_MAHASISWA",
+          "VIEW_ANONYMOUS",
+          "CREATE",
+          "UPDATE",
+          "PROMOTE_ADMIN",
+          "DEMOTE_ADMIN",
+          "GRANT_CATEGORY",
+          "REVOKE_CATEGORY"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 2
+          },
+          "name": {
+            "type": "string",
+            "example": "Budi Santoso"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "budi.santoso@mahasiswa.bunghatta.ac.id"
+          },
+          "nim": {
+            "type": "string",
+            "nullable": true,
+            "example": "2110003001"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "isVerified": {
+            "type": "boolean",
+            "example": true
+          },
+          "ktmPath": {
+            "type": "string",
+            "nullable": true,
+            "example": "/uploads/ktm/c05dd06b2e88cd62026c95484efdbf2c.png"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/Preferences"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "UserSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 2
+          },
+          "name": {
+            "type": "string",
+            "example": "Budi Santoso"
+          },
+          "nim": {
+            "type": "string",
+            "nullable": true,
+            "example": "2110003001"
+          },
+          "email": {
+            "type": "string",
+            "example": "budi.santoso@mahasiswa.bunghatta.ac.id"
+          }
+        }
+      },
+      "Preferences": {
+        "type": "object",
+        "nullable": true,
+        "description": "Objek bebas (maks. beberapa KB) untuk preferensi UI.",
+        "example": {
+          "theme": "light",
+          "language": "id",
+          "notifications": {
+            "email": true
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 4
+          },
+          "name": {
+            "type": "string",
+            "example": "Akademik"
+          },
+          "slug": {
+            "type": "string",
+            "example": "akademik"
+          },
+          "defaultPriority": {
+            "$ref": "#/components/schemas/Priority"
+          },
+          "allowAnonymous": {
+            "type": "boolean",
+            "example": false
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "_count": {
+            "type": "object",
+            "properties": {
+              "reports": {
+                "type": "integer",
+                "example": 2
+              }
+            }
+          }
+        }
+      },
+      "Attachment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "filePath": {
+            "type": "string",
+            "example": "/uploads/reports/attachments/ce7dc08267b21c76b017203337bd1a2f.jpg"
+          },
+          "fileName": {
+            "type": "string",
+            "example": "foto-ac-b204.jpg"
+          },
+          "fileType": {
+            "type": "string",
+            "example": "image/jpeg"
+          },
+          "reportId": {
+            "type": "integer",
+            "example": 1
+          },
+          "messageId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Report": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "registrationNumber": {
+            "type": "string",
+            "example": "SP/01/08/10/2026",
+            "description": "<KODE KATEGORI>/<urutan>/<tanggal>/<bulan>/<tahun>"
+          },
+          "title": {
+            "type": "string",
+            "example": "AC ruang kuliah B.204 rusak sejak dua minggu"
+          },
+          "description": {
+            "type": "string",
+            "example": "Pendingin ruangan di ruang B.204 Gedung B tidak berfungsi sejak awal bulan."
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReportStatus"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/Priority"
+          },
+          "isAnonymous": {
+            "type": "boolean",
+            "example": false
+          },
+          "userId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Selalu `null` untuk laporan anonim (termasuk bagi admin dan superadmin).",
+            "example": 2
+          },
+          "categoryId": {
+            "type": "integer",
+            "example": 2
+          },
+          "assignedToId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 4
+          },
+          "rejectedReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "canceledReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "closedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "ReportListItem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Report"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "object",
+                "properties": {
+                  "slug": {
+                    "type": "string",
+                    "example": "sarana-dan-prasarana"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Sarana dan Prasarana"
+                  }
+                }
+              },
+              "user": {
+                "description": "Untuk laporan anonim berisi `{ id: null, name: \"Anonim\" }`.",
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/UserSummary"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "ReportDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ReportListItem"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              },
+              "messages": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "CursorPagination": {
+        "type": "object",
+        "description": "Paginasi berbasis kursor; kirim `lastItemId` dari respons sebelumnya untuk halaman berikutnya.",
+        "properties": {
+          "totalItems": {
+            "type": "integer",
+            "example": 3
+          },
+          "itemsPerPage": {
+            "type": "integer",
+            "example": 10
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "example": true
+          },
+          "lastItemId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 2
+          }
+        }
+      },
+      "PagePagination": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "example": 50
+          },
+          "total": {
+            "type": "integer",
+            "example": 3
+          },
+          "totalPages": {
+            "type": "integer",
+            "example": 1
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "content": {
+            "type": "string",
+            "example": "Terima kasih laporannya. Apakah AC mati total atau hanya tidak dingin?"
+          },
+          "senderId": {
+            "type": "integer",
+            "example": 4
+          },
+          "reportId": {
+            "type": "integer",
+            "example": 1
+          },
+          "clientMessageId": {
+            "type": "string",
+            "nullable": true,
+            "example": "cmsg-0001-rina"
+          },
+          "replyToId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "isRead": {
+            "type": "boolean",
+            "deprecated": true,
+            "description": "Usang; status baca kini per pengguna (tabel `message_reads`)."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "sender": {
+            "type": "object",
+            "description": "Untuk pelapor anonim, nama diganti pseudonim.",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 4
+              },
+              "name": {
+                "type": "string",
+                "example": "Rina Kurniawati"
+              },
+              "role": {
+                "$ref": "#/components/schemas/Role"
+              }
+            }
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            }
+          },
+          "replyTo": {
+            "nullable": true,
+            "type": "object"
+          }
+        }
+      },
+      "AuditLog": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 11
+          },
+          "entityType": {
+            "$ref": "#/components/schemas/AuditEntity"
+          },
+          "action": {
+            "$ref": "#/components/schemas/AuditAction"
+          },
+          "entityId": {
+            "type": "integer",
+            "example": 1
+          },
+          "actorId": {
+            "type": "integer",
+            "example": 4
+          },
+          "actorName": {
+            "type": "string",
+            "example": "Rina Kurniawati"
+          },
+          "actorRole": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "ip": {
+            "type": "string",
+            "example": "10.0.0.12"
+          },
+          "userAgent": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "example": {
+              "oldStatus": "IN_REVIEW",
+              "newStatus": "IN_PROGRESS",
+              "reason": null,
+              "registrationNumber": "SP/01/08/10/2026"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BulkResult": {
+        "type": "object",
+        "description": "Hasil operasi massal. Item yang ditolak (tidak ada, di luar cakupan kategori, atau transisi tidak valid) masuk ke `skipped`, sedangkan item lain tetap diproses.\n",
+        "properties": {
+          "updated": {
+            "type": "integer",
+            "description": "Untuk update-status",
+            "example": 1
+          },
+          "verified": {
+            "type": "integer",
+            "description": "Untuk users/verify"
+          },
+          "deleted": {
+            "type": "integer",
+            "description": "Untuk */delete"
+          },
+          "restored": {
+            "type": "integer",
+            "description": "Untuk */restore"
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "example": 999
+                },
+                "reason": {
+                  "type": "string",
+                  "example": "tidak ditemukan atau sudah dihapus"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

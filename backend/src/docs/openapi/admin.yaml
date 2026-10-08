@@ -1,0 +1,549 @@
+paths:
+  /v1/api/admin/dashboard/stats:
+    get:
+      tags: [Admin]
+      summary: Statistik lengkap untuk dasbor admin
+      description: >
+        Ringkasan laporan, kategori teratas, aktivitas terbaru, dan tren 7 hari.
+        Untuk ADMIN, `users` bernilai null dan `scope` berisi kategori yang
+        ditugaskan; untuk SUPERADMIN `scope.type` = `GLOBAL`.
+      responses:
+        '200':
+          description: Statistik dasbor.
+          content:
+            application/json:
+              example:
+                status: success
+                statusCode: 200
+                message: Dashboard statistics retrieved successfully
+                data:
+                  users: null
+                  reports: { total: 3, deleted: 0, active: 3, pending: 0, inReview: 0, inProgress: 1, resolved: 1, rejected: 1, canceled: 0 }
+                  categories: { total: 2, active: 2, topCategories: [ { id: 4, name: Akademik, reportCount: 2 } ] }
+                  recent: { reports: [], users: [], auditLogs: [] }
+                  trends: { reports: [ { date: '2026-10-08', count: 4 } ] }
+                  scope: { type: CATEGORY, categoryIds: [4, 2] }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/admin/export/reports:
+    get:
+      tags: [Admin]
+      summary: Ekspor laporan ke CSV
+      description: Data pelapor anonim tetap disamarkan di CSV. ADMIN hanya mendapat laporan di kategorinya.
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ReportStatus' }
+        - name: categoryId
+          in: query
+          schema: { type: integer }
+        - name: startDate
+          in: query
+          schema: { type: string, format: date, example: '2026-09-01' }
+        - name: endDate
+          in: query
+          schema: { type: string, format: date, example: '2026-09-30' }
+      responses:
+        '200':
+          description: Berkas CSV (`laporan_<tanggal>.csv`).
+          content:
+            text/csv:
+              schema: { type: string }
+              example: "No,No. Registrasi,Judul,Deskripsi,Status,Prioritas,Kategori,..."
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/admin/export/users:
+    get:
+      tags: [Admin]
+      summary: Ekspor direktori pengguna ke CSV (SUPERADMIN)
+      responses:
+        '200':
+          description: 'Berkas CSV (`users_<tanggal>.csv`) dengan kolom No, Nama, Email, NIM, Role, Terverifikasi, Jumlah Laporan, Tanggal Daftar.'
+          content:
+            text/csv:
+              schema: { type: string }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/admin-governance/admins:
+    get:
+      tags: [Admin Governance]
+      summary: Daftar ADMIN dan SUPERADMIN beserta penugasan kategorinya
+      responses:
+        '200':
+          description: Daftar admin.
+          content:
+            application/json:
+              example:
+                status: success
+                statusCode: 200
+                message: Success
+                data:
+                  - id: 4
+                    name: Rina Kurniawati
+                    email: rina.kurnia@bunghatta.ac.id
+                    role: ADMIN
+                    isVerified: true
+                    categoryAssignments:
+                      - { id: 1, categoryId: 4, assignedAt: '2026-10-08T08:09:21.599Z', category: { id: 4, name: Akademik, slug: akademik }, assignedBy: { id: 1, name: Super Admin } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/admin-governance/users/{userId}/promote-admin:
+    post:
+      tags: [Admin Governance]
+      summary: Jadikan pengguna ADMIN
+      description: Setelah dipromosikan, berikan penugasan kategori agar admin bisa melihat laporan.
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200':
+          description: Dipromosikan.
+          content:
+            application/json:
+              example: { status: success, statusCode: 200, message: Promoted to ADMIN, data: { id: 4, name: Rina Kurniawati, email: rina.kurnia@bunghatta.ac.id, role: ADMIN } }
+        '400': { description: 'Pengguna tidak ditemukan atau berperan SUPERADMIN.' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/admin-governance/users/{userId}/demote-admin:
+    post:
+      tags: [Admin Governance]
+      summary: Turunkan ADMIN menjadi MAHASISWA
+      description: Semua penugasan kategori dihapus, sesi dicabut, dan socket pengguna diputus.
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200': { description: 'Diturunkan ("Demoted to MAHASISWA").' }
+        '400': { description: 'Pengguna tidak ditemukan, bukan admin, atau SUPERADMIN (pakai demote-superadmin).' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/admin-governance/users/{userId}/promote-superadmin:
+    post:
+      tags: [Admin Governance]
+      summary: Jadikan ADMIN sebagai SUPERADMIN
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200': { description: 'Dipromosikan ("Promoted to SUPERADMIN").' }
+        '400': { description: Hanya ADMIN yang sudah ada yang bisa dipromosikan. }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/admin-governance/users/{userId}/demote-superadmin:
+    post:
+      tags: [Admin Governance]
+      summary: Turunkan SUPERADMIN menjadi ADMIN
+      description: Ditolak bila target adalah SUPERADMIN terakhir (dijaga advisory lock PostgreSQL).
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200': { description: 'Diturunkan ("Demoted to ADMIN").' }
+        '400':
+          description: Bukan SUPERADMIN, atau SUPERADMIN terakhir.
+          content:
+            application/json:
+              example: { status: error, message: Cannot demote the last SUPERADMIN. Promote another user first. }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/admin-governance/users/{userId}/categories:
+    post:
+      tags: [Admin Governance]
+      summary: Berikan akses kategori kepada ADMIN
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [categoryId]
+              properties:
+                categoryId: { type: integer, example: 4 }
+      responses:
+        '200':
+          description: Akses diberikan (idempoten).
+          content:
+            application/json:
+              example: { status: success, statusCode: 200, message: Category granted, data: { id: 1, adminId: 4, categoryId: 4, assignedAt: '2026-10-08T08:09:21.599Z', category: { id: 4, name: Akademik, slug: akademik } } }
+        '400': { description: 'Target bukan ADMIN (mahasiswa harus dipromosikan dulu; superadmin sudah punya semua akses) atau kategori tidak ada.' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/admin-governance/users/{userId}/categories/{categoryId}:
+    delete:
+      tags: [Admin Governance]
+      summary: Cabut akses kategori dari ADMIN
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+        - name: categoryId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: '"Category revoked", atau "Already revoked" bila memang tidak ada.' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/audit-logs:
+    get:
+      tags: [Audit Logs]
+      summary: Cari audit log dengan filter dan paginasi offset
+      parameters:
+        - name: entityType
+          in: query
+          schema: { $ref: '#/components/schemas/AuditEntity' }
+        - name: action
+          in: query
+          schema: { $ref: '#/components/schemas/AuditAction' }
+        - name: actorId
+          in: query
+          schema: { type: integer }
+        - name: entityId
+          in: query
+          schema: { type: integer }
+        - name: startDate
+          in: query
+          schema: { type: string, format: date }
+        - name: endDate
+          in: query
+          schema: { type: string, format: date }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: Audit log, terbaru lebih dulu.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          logs: { type: array, items: { $ref: '#/components/schemas/AuditLog' } }
+                          pagination:
+                            type: object
+                            properties:
+                              total: { type: integer, example: 16 }
+                              limit: { type: integer, example: 50 }
+                              offset: { type: integer, example: 0 }
+                              hasMore: { type: boolean, example: false }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/audit-logs/stats:
+    get:
+      tags: [Audit Logs]
+      summary: Ringkasan jumlah audit log per entitas dan aksi
+      responses:
+        '200':
+          description: Statistik dan 10 log terbaru.
+          content:
+            application/json:
+              example:
+                status: success
+                statusCode: 200
+                message: Audit statistics retrieved successfully
+                data:
+                  total: 16
+                  byEntityType: { ASSIGNMENT: 2, REPORT: 10, USER: 4 }
+                  byAction: { VERIFY_MAHASISWA: 3, UPDATE: 3, PROMOTE_ADMIN: 1, UPDATE_STATUS: 6, GRANT_CATEGORY: 2, VIEW_ANONYMOUS: 1 }
+                  recentLogs: []
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/audit-logs/entity/{entityType}/{entityId}:
+    get:
+      tags: [Audit Logs]
+      summary: Riwayat audit satu entitas (mis. satu laporan)
+      parameters:
+        - name: entityType
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/AuditEntity' }
+        - name: entityId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Daftar audit log entitas tersebut.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: '#/components/schemas/AuditLog' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/audit-logs/actor/{actorId}:
+    get:
+      tags: [Audit Logs]
+      summary: Riwayat aksi seorang pelaku
+      parameters:
+        - name: actorId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Daftar audit log pelaku tersebut. }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/audit-logs/cleanup:
+    post:
+      tags: [Audit Logs]
+      summary: Hapus audit log lama
+      description: Default `daysOld` = 365.
+      parameters:
+        - name: daysOld
+          in: query
+          schema: { type: integer, minimum: 1, default: 365 }
+      responses:
+        '200': { description: Jumlah log yang dihapus. }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/api/bulk-operations/users/verify:
+    post:
+      tags: [Bulk Operations]
+      summary: Verifikasi banyak mahasiswa (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userIds]
+              properties:
+                userIds: { type: array, minItems: 1, maxItems: 100, items: { type: integer }, example: [2, 3] }
+      responses:
+        '200':
+          description: Hasil per item.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/BulkResult' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/api/bulk-operations/users/delete:
+    post:
+      tags: [Bulk Operations]
+      summary: Soft delete banyak pengguna (admin; ADMIN hanya target MAHASISWA)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userIds]
+              properties:
+                userIds: { type: array, minItems: 1, maxItems: 100, items: { type: integer }, example: [2, 3] }
+      responses:
+        '200':
+          description: Hasil per item.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/BulkResult' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/api/bulk-operations/users/restore:
+    post:
+      tags: [Bulk Operations]
+      summary: Pulihkan banyak pengguna (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userIds]
+              properties:
+                userIds: { type: array, minItems: 1, maxItems: 100, items: { type: integer }, example: [2, 3] }
+      responses:
+        '200':
+          description: Hasil per item.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/BulkResult' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/api/bulk-operations/reports/update-status:
+    post:
+      tags: [Bulk Operations]
+      summary: Ubah status banyak laporan (admin, sesuai cakupan kategori)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reportIds, status]
+              properties:
+                reportIds: { type: array, minItems: 1, maxItems: 100, items: { type: integer } }
+                status: { $ref: '#/components/schemas/ReportStatus' }
+                reason: { type: string, minLength: 3, description: Wajib untuk REJECTED dan CANCELED. }
+            example: { reportIds: [1, 999], status: IN_PROGRESS }
+      responses:
+        '200':
+          description: Hasil per item.
+          content:
+            application/json:
+              example:
+                status: success
+                statusCode: 200
+                message: Successfully updated 0 reports
+                data:
+                  updated: 0
+                  reportIds: []
+                  newStatus: IN_PROGRESS
+                  skipped:
+                    - { id: 1, reason: transisi IN_PROGRESS → IN_PROGRESS tidak valid }
+                    - { id: 999, reason: tidak ditemukan atau sudah dihapus }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/api/bulk-operations/reports/delete:
+    post:
+      tags: [Bulk Operations]
+      summary: Soft delete banyak laporan (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reportIds]
+              properties:
+                reportIds: { type: array, minItems: 1, maxItems: 100, items: { type: integer }, example: [1, 4] }
+      responses:
+        '200':
+          description: Hasil per item.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/BulkResult' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/api/bulk-operations/reports/restore:
+    post:
+      tags: [Bulk Operations]
+      summary: Pulihkan banyak laporan (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reportIds]
+              properties:
+                reportIds: { type: array, minItems: 1, maxItems: 100, items: { type: integer }, example: [1, 4] }
+      responses:
+        '200':
+          description: Hasil per item.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/BulkResult' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/api/bulk-operations/categories/delete:
+    post:
+      tags: [Bulk Operations]
+      summary: Soft delete banyak kategori (SUPERADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [categoryIds]
+              properties:
+                categoryIds: { type: array, minItems: 1, maxItems: 100, items: { type: integer }, example: [22] }
+      responses:
+        '200':
+          description: Hasil per item.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/BulkResult' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/api/bulk-operations/categories/restore:
+    post:
+      tags: [Bulk Operations]
+      summary: Pulihkan banyak kategori (SUPERADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [categoryIds]
+              properties:
+                categoryIds: { type: array, minItems: 1, maxItems: 100, items: { type: integer }, example: [22] }
+      responses:
+        '200':
+          description: Hasil per item.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/BulkResult' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/health/live:
+    get:
+      tags: [Health]
+      summary: Liveness probe (proses berjalan)
+      security: []
+      responses:
+        '200':
+          description: Proses hidup.
+          content:
+            application/json:
+              example: { status: success, state: live, uptime: 174.3, timestamp: '2026-10-08T08:09:23.534Z' }
+  /api/health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe (PostgreSQL dan Redis terjangkau)
+      security: []
+      responses:
+        '200':
+          description: Siap melayani.
+          content:
+            application/json:
+              example: { status: success, state: ready, checks: { database: ok, redis: ok }, timestamp: '2026-10-08T08:09:23.544Z' }
+        '503': { description: Database atau Redis tidak terjangkau. }
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Health check gabungan (kompatibilitas lama; dipakai HEALTHCHECK Dockerfile backend)
+      security: []
+      responses:
+        '200': { description: Sehat. }
+        '500': { description: Tidak sehat. }

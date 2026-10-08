@@ -10,48 +10,6 @@ const isSuperAdminMiddleware = require('../middlewares/isSuperAdminMiddleware');
 router.use(authMiddleware);
 router.use(isAdminMiddleware);
 
-/**
- * @swagger
- * /v1/api/admin/dashboard/stats:
- *   get:
- *     tags: [Admin]
- *     summary: Comprehensive dashboard statistics
- *     responses:
- *       200: { description: Dashboard stats payload }
- *
- * /v1/api/admin/export/reports:
- *   get:
- *     tags: [Admin]
- *     summary: Export reports as CSV
- *     parameters:
- *       - in: query
- *         name: status
- *         schema: { type: string }
- *       - in: query
- *         name: startDate
- *         schema: { type: string, format: date }
- *       - in: query
- *         name: endDate
- *         schema: { type: string, format: date }
- *       - in: query
- *         name: categoryId
- *         schema: { type: integer }
- *     responses:
- *       200:
- *         description: CSV file
- *         content:
- *           text/csv: {}
- *
- * /v1/api/admin/export/users:
- *   get:
- *     tags: [Admin]
- *     summary: Export users as CSV
- *     responses:
- *       200:
- *         description: CSV file
- *         content:
- *           text/csv: {}
- */
 router.get('/dashboard/stats', adminDashboardController.getDashboardStats);
 
 // Export endpoints

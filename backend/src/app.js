@@ -172,34 +172,6 @@ if (enableSwagger) {
 }
 
 // Health checks
-/**
- * @swagger
- * /api/health/live:
- *   get:
- *     tags: [Health]
- *     summary: Liveness probe (process up)
- *     security: []
- *     responses:
- *       200: { description: Process is live }
- *
- * /api/health/ready:
- *   get:
- *     tags: [Health]
- *     summary: Readiness probe (DB reachable)
- *     security: []
- *     responses:
- *       200: { description: Ready to serve traffic }
- *       503: { description: Dependencies not reachable }
- *
- * /api/health:
- *   get:
- *     tags: [Health]
- *     summary: Aggregate health check
- *     security: []
- *     responses:
- *       200: { description: Service healthy }
- *       500: { description: Service unhealthy }
- */
 // Liveness: process is up (does not depend on external services)
 app.get('/api/health/live', (req, res) => {
   res.status(200).json({
