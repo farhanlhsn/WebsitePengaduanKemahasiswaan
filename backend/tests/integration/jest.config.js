@@ -11,8 +11,10 @@
  */
 
 const path = require('path');
+const esmTransform = require('../esmTransform');
 
 module.exports = {
+  ...esmTransform,
   rootDir: path.resolve(__dirname, '../..'),
   testEnvironment: 'node',
   testMatch: ['<rootDir>/tests/integration/**/*.test.js'],
