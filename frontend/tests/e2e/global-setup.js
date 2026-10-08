@@ -7,6 +7,7 @@ import { writeFileSync, readFileSync, unlinkSync, existsSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildBackendEnv } from './helpers/backendEnv.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '../../..');
@@ -170,21 +171,11 @@ export default async function globalSetup() {
   const ownsDocker = await startPostgresIfNeeded(databaseUrl);
   const frontendUrl = `http://127.0.0.1:${frontendPortStr}`;
 
-  const backendEnv = {
-    ...process.env,
-    DATABASE_URL: databaseUrl,
-    JWT_SECRET: process.env.JWT_SECRET || 'e2e_jwt_secret_'.padEnd(64, 'x'),
-    JWT_REFRESH_SECRET:
-      process.env.JWT_REFRESH_SECRET || 'e2e_refresh_secret_'.padEnd(64, 'x'),
-    NODE_ENV: 'test',
-    E2E_BOOTSTRAP: 'true',
-    PORT: backendPortStr,
-    FRONTEND_URL: frontendUrl,
-  };
-  delete backendEnv.SMTP_HOST;
-  delete backendEnv.SMTP_USER;
-  delete backendEnv.REDIS_URL;
-  backendEnv.ALLOW_IN_MEMORY_RATE_LIMIT = 'true';
+  const backendEnv = buildBackendEnv(process.env, {
+    databaseUrl,
+    backendPort: backendPortStr,
+    frontendUrl,
+  });
 
   console.log('[e2e-setup] Applying migrations...');
   execSync('npx prisma migrate deploy', {
