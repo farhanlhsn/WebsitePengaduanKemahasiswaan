@@ -5,6 +5,20 @@ const { acquireSuperAdminGuardLock } = require('../utils/superAdminLock');
 const { getLogger } = require('../utils/logger');
 const log = getLogger('user:service');
 
+// Kolom aman untuk daftar verifikasi: tanpa password dan tokenVersion.
+const UNVERIFIED_USER_SELECT = {
+  id: true,
+  nim: true,
+  name: true,
+  email: true,
+  ktmPath: true,
+  role: true,
+  isVerified: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+};
+
 class UserServices {
   async getUserById(userId, includeDeleted = false) {
     try {
@@ -341,7 +355,8 @@ class UserServices {
   async getUnverifiedStudent() {
     try {
       const unverifiedStudents = await SoftDeleteHelper.findMany(prisma.user, {
-        where: { role: 'MAHASISWA', isVerified: false }
+        where: { role: 'MAHASISWA', isVerified: false },
+        select: UNVERIFIED_USER_SELECT,
       });
       const count = unverifiedStudents.length;
       const result = {
@@ -360,7 +375,8 @@ class UserServices {
   async getUnverifiedAdmin() {
     try {
       const unverifiedAdmins = await SoftDeleteHelper.findMany(prisma.user, {
-        where: { role: 'ADMIN', isVerified: false }
+        where: { role: 'ADMIN', isVerified: false },
+        select: UNVERIFIED_USER_SELECT,
       });
       const count = unverifiedAdmins.length;
       const result = {
