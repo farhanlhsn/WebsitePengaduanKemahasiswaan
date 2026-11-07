@@ -11,11 +11,11 @@ const AdminHelpPage = () => {
       <Box>
         <AdminSectionHeader
           title="Pusat Bantuan"
-          subtitle="Temukan jawaban untuk pertanyaan Anda dengan cepat"
+          subtitle="Panduan menangani laporan, verifikasi, dan pengelolaan sistem"
           onMobileMenuClick={onMobileMenuClick}
           showRefresh={false}
         />
-        <HelpPage isEmbedded />
+        <HelpPage isEmbedded audience="admin" />
       </Box>
     </Fade>
   );

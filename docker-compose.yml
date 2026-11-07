@@ -72,6 +72,8 @@ services:
       args:
         VITE_API_URL: /v1/api
         VITE_SOCKET_URL: ""
+        VITE_USER_MANUAL_URL: ${VITE_USER_MANUAL_URL:-}
+        VITE_PRIVACY_POLICY_URL: ${VITE_PRIVACY_POLICY_URL:-}
     ports:
       - "8080:80"
     depends_on:

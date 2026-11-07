@@ -1,6 +1,6 @@
 # Dokumentasi Serah Terima — Website Pengaduan Kemahasiswaan
 
-*Per 8 Oktober 2026 · Disusun oleh Muhammad Farhan Al Hasan*
+*Per 8 Oktober 2026, diperbarui 7 November 2026 · Disusun oleh Muhammad Farhan Al Hasan*
 
 ## 1. Ringkasan Proyek
 
@@ -22,7 +22,7 @@ Sistem dikembangkan sebagai Computing Project Kelompok 3. Seluruh kode ada di br
 | User Manual (dengan screenshot) | Mahasiswa, admin, superadmin | [`docs/UserManual.md`](UserManual.md) |
 | Referensi API (OpenAPI, 85 endpoint) dan event Socket.IO | Developer | [`docs/api/`](api/README.md); Swagger UI di `/api/docs` |
 | Panduan Developer | Developer | [`docs/DeveloperGuide.md`](DeveloperGuide.md) |
-| Production Runbook | Tim TI | [`docs/ProductionRunbook.md`](ProductionRunbook.md) |
+| Production Runbook (acuan utama deploy dan operasional) | Tim TI | [`docs/ProductionRunbook.md`](ProductionRunbook.md) |
 | User Acceptance Test | Tim proyek, kampus | [`docs/UserAcceptanceTest.md`](UserAcceptanceTest.md) |
 | Riwayat perubahan | Developer, tim TI | [`CHANGELOG.md`](../CHANGELOG.md) |
 | Daftar revisi SRS dan SDD | Tim proyek | [`docs/RevisiSRS-SDD.md`](RevisiSRS-SDD.md) |
@@ -142,7 +142,7 @@ Database PostgreSQL memiliki 11 tabel yang didefinisikan di `backend/prisma/sche
 | `chat_pending_uploads` | Berkas chat yang sudah diunggah tapi pesannya belum terkirim | Laporan + pengunggah |
 | `AuditLog` | Jejak aksi: entitas, aksi, pelaku, IP, metadata | Tidak berelasi (disimpan apa adanya) |
 
-Nilai enum penting: peran `MAHASISWA` / `ADMIN` / `SUPERADMIN`; prioritas `LOW` / `MEDIUM` / `HIGH` / `URGENT`; status laporan seperti di bagian 2. Kolom `messages.isRead` sudah usang dan digantikan tabel `message_reads`.
+Nilai enum penting: peran `MAHASISWA` / `ADMIN` / `SUPERADMIN`; prioritas `LOW` / `MEDIUM` / `HIGH` / `URGENT`; status laporan seperti di bagian 2. Kolom `messages.isRead` sudah usang dan digantikan tabel `message_reads`. Diagram relasi (ERD) ada di [`docs/DeveloperGuide.md` bagian 3.5](DeveloperGuide.md#35-model-data-erd).
 
 Untuk melihat isi database secara visual, jalankan `npm run prisma:studio` di folder `backend` (hanya di lingkungan pengembangan).
 
@@ -178,10 +178,12 @@ Cara tercepat adalah Docker Compose: satu perintah menjalankan database, Redis, 
 
 ### Cara A — Docker Compose
 
-1. Salin berkas contoh: `cp backend/.env.example backend/.env`, lalu isi `JWT_SECRET` dan `JWT_REFRESH_SECRET` dengan string acak minimal 32 karakter (`openssl rand -base64 32`).
+1. Salin berkas contoh: `cp backend/.env.example backend/.env`. Nilai contoh cukup untuk development.
 2. Jalankan `docker compose up --build`.
-3. Buat data awal (kategori + akun superadmin): `docker compose exec backend npm run seed`.
+3. Buat data awal (kategori + akun superadmin): `docker compose exec backend npm run seed`. Login memakai `SEED_SUPERADMIN_EMAIL` dan `SEED_SUPERADMIN_PASSWORD` dari `backend/.env`.
 4. Buka frontend di `http://localhost:8080`; API di `http://localhost:6060/v1/api`.
+
+Compose development memakai password database `postgres` dan membuka semua port, jadi hanya untuk komputer pengembang.
 
 ### Cara B — Manual
 
@@ -204,30 +206,9 @@ npm run dev                   # http://localhost:5173
 
 Catatan: `backend/.env` menimpa variabel lingkungan dari shell. Jangan pernah mengarahkan `.env` lokal ke database produksi. Lihat `docs/DeveloperGuide.md` bagian 2.
 
-### Variabel lingkungan backend (`backend/.env`)
+### Variabel lingkungan
 
-| Variabel | Wajib | Keterangan |
-| --- | --- | --- |
-| `DATABASE_URL` | Ya | Koneksi PostgreSQL |
-| `JWT_SECRET`, `JWT_REFRESH_SECRET` | Ya | Minimal 32 karakter, tidak boleh nilai contoh; backend menolak start di produksi bila lemah |
-| `FRONTEND_URL` | Ya (produksi) | Domain frontend untuk CORS dan tautan di email; boleh beberapa, dipisah koma |
-| `REDIS_URL` | Ya (produksi) | Penyimpanan rate limit; di dev bisa diganti `ALLOW_IN_MEMORY_RATE_LIMIT=true` |
-| `PORT`, `NODE_ENV` | Tidak | Default `6060` dan `development` |
-| `TRUST_PROXY` | Produksi | Jumlah proxy di depan backend (mis. `1` atau `2`) agar IP klien terbaca benar |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Tidak | Email reset password dan notifikasi; bila kosong, email tidak terkirim |
-| `ALLOWED_EMAIL_DOMAINS` | Tidak | Batasi domain email pendaftar, mis. `mahasiswa.bunghatta.ac.id` |
-| `SEED_SUPERADMIN_EMAIL`, `SEED_SUPERADMIN_NAME`, `SEED_SUPERADMIN_PASSWORD` | Saat seed | Akun superadmin pertama; dibuat hanya jika belum ada superadmin |
-| `ENABLE_SWAGGER`, `LOG_LEVEL`, `TZ` | Tidak | Swagger di produksi, tingkat log, zona waktu |
-
-`JWT_EXPIRES_IN` di `.env.example` tidak dipakai; masa berlaku token ditulis langsung di kode.
-
-### Variabel lingkungan frontend (`frontend/.env`)
-
-| Variabel | Keterangan |
-| --- | --- |
-| `VITE_API_URL` | URL API, mis. `http://localhost:6060/v1/api`; di Docker diisi `/v1/api` |
-| `VITE_SOCKET_URL` | URL Socket.IO bila berbeda dari API |
-| `VITE_ENABLE_SSO` | Biarkan `false`; SSO belum diimplementasikan di backend |
+Daftar lengkap variabel backend dan frontend ada di [README bagian Environment Variables](../README.md#environment-variables-backend). Untuk produksi, pembagian berkas `.env` root dan `backend/.env` dijelaskan di [Runbook bagian 3](ProductionRunbook.md#3-konfigurasi).
 
 ### Menjalankan pengujian
 
@@ -241,67 +222,24 @@ cd frontend && npm run test:e2e               # Playwright E2E
 
 ## 7. Deployment dan Operasional
 
-Produksi dijalankan dengan `docker-compose.prod.yml` di satu server Linux, di belakang reverse proxy HTTPS milik kampus. Langkah yang lebih rinci ada di `docs/ProductionRunbook.md`.
+Produksi dijalankan dengan `docker-compose.prod.yml` di satu server Linux, di belakang reverse proxy HTTPS milik kampus. **Semua langkah operasional ada di [`docs/ProductionRunbook.md`](ProductionRunbook.md)**; bagian ini hanya ringkasan.
 
 ### Spesifikasi server yang disarankan
 
 Batas sumber daya di compose produksi berjumlah 2,5 vCPU dan sekitar 1,3 GB RAM (backend 1 CPU/512 MB, PostgreSQL 1 CPU/512 MB, Redis 0,5 CPU/256 MB, ditambah Nginx). Server dengan 2 vCPU, 4 GB RAM, dan disk 40 GB sudah memberi ruang untuk sistem operasi, log, dan lampiran.
 
-### Langkah deploy pertama
+### Ringkasan operasional
 
-1. Klon repositori ke server dan masuk ke foldernya.
-2. Salin `.env.example` ke `.env` di folder root, lalu isi `FRONTEND_URL` (domain HTTPS), `POSTGRES_PASSWORD`, `PUBLIC_HTTP_PORT`, dan `SEED_SUPERADMIN_*` dengan nilai baru yang kuat.
-3. Salin `backend/.env.example` ke `backend/.env`, isi `JWT_SECRET`, `JWT_REFRESH_SECRET`, `NODE_ENV=production`, dan `SMTP_*`.
-4. Bangun dan jalankan:
-
-   ```bash
-   docker compose -f docker-compose.prod.yml build
-   docker compose -f docker-compose.prod.yml up -d
-   docker compose -f docker-compose.prod.yml exec backend npm run seed   # sekali saja
-   curl -f http://localhost:8085/api/health/ready
-   ```
-
-5. Arahkan reverse proxy HTTPS kampus (sertifikat TLS, mis. Let's Encrypt) ke port `PUBLIC_HTTP_PORT` (default `8085`).
-6. Login sebagai superadmin dan segera ganti password-nya.
-
-### Pembaruan versi
-
-```bash
-git pull origin main
-docker compose -f docker-compose.prod.yml build
-docker compose -f docker-compose.prod.yml up -d    # kontainer migrate menjalankan migrasi otomatis
-```
-
-### Data yang harus dicadangkan
-
-| Data | Lokasi | Cara backup |
+| Kegiatan | Inti langkah | Rincian |
 | --- | --- | --- |
-| Database | Volume Docker `pgdata` | `docker compose -f docker-compose.prod.yml exec db pg_dump -U postgres -F c pengaduan > pengaduan-$(date +%Y%m%d).dump`, harian |
-| Lampiran dan KTM | Volume Docker `upload_data` (`/app/uploads`) | Salin isi volume, mis. `docker run --rm -v <proyek>_upload_data:/data -v $PWD:/backup alpine tar czf /backup/uploads.tgz /data`, harian |
-| Konfigurasi | `.env` dan `backend/.env` | Simpan di brankas kata sandi kampus, bukan di Git |
-
-Restore database: `pg_restore --clean --if-exists -d pengaduan <berkas>.dump`, lalu cek `/api/health/ready` dan login superadmin. Uji restore minimal sekali per semester.
-
-### Pemantauan
-
-| Yang dipantau | Batas | Tindakan |
-| --- | --- | --- |
-| `/api/health/live` | Tidak 200 lebih dari 1 menit | Restart kontainer backend |
-| `/api/health/ready` | 503 (DB atau Redis mati) | Periksa kontainer `db` dan `redis` |
-| Disk volume `upload_data` | Di atas 80% | Tambah disk atau arsipkan lampiran laporan lama |
-| Error 5xx | Di atas 1% permintaan | Periksa log: `docker compose -f docker-compose.prod.yml logs backend` |
-
-Pemeriksaan uptime eksternal (mis. UptimeRobot) cukup diarahkan ke `https://<domain>/api/health/live`.
-
-### Gangguan umum
-
-| Gejala | Penyebab umum | Solusi |
-| --- | --- | --- |
-| Semua pengguna gagal login | `JWT_SECRET` berubah | Kembalikan secret atau minta pengguna login ulang |
-| Chat tidak tersambung | Reverse proxy tidak meneruskan WebSocket | Tambahkan header `Upgrade` dan `Connection: upgrade` untuk `/socket.io/` |
-| Email reset tidak terkirim | `SMTP_*` kosong atau salah | Isi kredensial SMTP kampus, restart backend |
-| Error 429 (terlalu banyak permintaan) | IP klien terbaca sebagai IP proxy | Sesuaikan `TRUST_PROXY` dengan jumlah proxy di depan backend |
-| Unggah berkas gagal | Izin folder/volume uploads | Pastikan volume `upload_data` dapat ditulis user `node` |
+| Konfigurasi | Dua berkas: `.env` root (password database, port, superadmin awal, tautan Pusat Bantuan) dan `backend/.env` (rahasia JWT, SMTP) | Runbook bagian 3 |
+| Reverse proxy HTTPS | Proxy kampus meneruskan semua jalur ke `PUBLIC_HTTP_PORT` (default `8085`) dengan dukungan WebSocket; port itu tidak boleh terbuka langsung ke internet | Runbook bagian 4 |
+| Deploy pertama | `docker compose -f docker-compose.prod.yml up -d --build`, lalu sekali `exec backend npm run seed`; login superadmin dan ganti password | Runbook bagian 5 |
+| Pembaruan versi | Backup, `git pull`, `up -d --build` (migrasi berjalan otomatis) | Runbook bagian 6 |
+| Rollback | Kembali ke commit sebelumnya dan build ulang; bila ada migrasi baru, pulihkan database dari backup | Runbook bagian 7 |
+| Backup dan restore | Harian: `pg_dump` database dan arsip volume `upload_data`; uji restore per semester | Runbook bagian 8 |
+| Pemantauan | `/api/health/live` dan `/api/health/ready`, disk, log `docker compose logs backend` | Runbook bagian 9 |
+| Gangguan umum | Tabel gejala, penyebab, dan solusi | Runbook bagian 11 |
 
 ## 8. Keamanan dan Pengelolaan Akun
 
@@ -311,9 +249,9 @@ Saat serah terima, semua rahasia (secret) dan password wajib dibuat baru oleh pi
 
 | Rahasia | Lokasi | Cara membuat / mengganti |
 | --- | --- | --- |
-| `JWT_SECRET`, `JWT_REFRESH_SECRET` | `backend/.env` | `npm run rotate-secrets` di folder `backend`, salin hasilnya, restart backend (semua sesi lama otomatis tidak berlaku) |
+| `JWT_SECRET`, `JWT_REFRESH_SECRET` | `backend/.env` | `openssl rand -hex 64` (atau `npm run rotate-secrets`), lalu buat ulang kontainer backend; semua sesi lama otomatis tidak berlaku (Runbook bagian 10) |
 | `POSTGRES_PASSWORD` | `.env` root | String acak kuat; ubah sebelum volume `pgdata` pertama kali dibuat |
-| `SEED_SUPERADMIN_PASSWORD` | `.env` root | Minimal 12 karakter; ganti lagi lewat menu Profil setelah login pertama |
+| `SEED_SUPERADMIN_PASSWORD` | `.env` root | Minimal 12 karakter; setelah login pertama ganti lewat **Pengaturan → Keamanan Akun → Ubah Password Admin** |
 | `SMTP_PASS` | `backend/.env` | Akun email resmi kampus (mis. app password) |
 
 ### Akun dan peran
@@ -337,9 +275,15 @@ Saat serah terima, semua rahasia (secret) dan password wajib dibuat baru oleh pi
 
 Sistem menyimpan NIM, nama, email, foto KTM, dan isi pengaduan yang bisa bersifat sensitif (mis. kekerasan seksual). Akses ke server, database, dan volume `upload_data` sebaiknya dibatasi pada petugas TI yang ditunjuk, dan backup disimpan terenkripsi.
 
+Setiap login dari IP publik, backend mengirim alamat IP pengguna ke layanan pihak ketiga `ip-api.com` (lewat HTTP tanpa enkripsi) untuk menampilkan perkiraan lokasi di daftar perangkat aktif (`services/authServices.js`, `getLocationFromIP`). Hal ini perlu disebut dalam kebijakan privasi, atau fiturnya dimatikan bila kampus tidak mengizinkan.
+
+Kebijakan privasi untuk pengguna belum ada. Setelah kampus menyusunnya, isi `VITE_PRIVACY_POLICY_URL` agar tautannya muncul di Pusat Bantuan.
+
 ## 9. Panduan Pengguna
 
-Panduan lengkap bergambar ada di [`docs/UserManual.md`](UserManual.md). Di dalam aplikasi juga tersedia menu **Bantuan** (mahasiswa) dan **Bantuan Admin** berisi tanya jawab singkat.
+Panduan lengkap bergambar ada di [`docs/UserManual.md`](UserManual.md). Di dalam aplikasi, menu **Pusat Bantuan** berisi tanya jawab dan panduan cepat yang berbeda untuk mahasiswa dan untuk admin/superadmin (`frontend/src/pages/help/helpContent.js`). Isinya mengikuti User Manual; bila salah satunya diubah, perbarui yang lain.
+
+Agar mudah diakses pengguna, ekspor User Manual ke PDF dan unggah ke situs kampus, lalu isi `VITE_USER_MANUAL_URL` (Runbook bagian 3.1). Tautan **Panduan Pengguna** akan muncul di Pusat Bantuan.
 
 ## 10. Pemeliharaan, Keterbatasan, dan Rekomendasi
 
@@ -347,13 +291,13 @@ Panduan lengkap bergambar ada di [`docs/UserManual.md`](UserManual.md). Di dalam
 
 | Kegiatan | Frekuensi | Perintah / tempat |
 | --- | --- | --- |
-| Backup database dan lampiran | Harian | Lihat bagian 7 |
-| Uji restore backup | Per semester | `pg_restore` ke server uji |
+| Backup database dan lampiran | Harian | Runbook bagian 8.1 |
+| Uji restore backup | Per semester | Runbook bagian 8.2, ke server uji |
 | Pembaruan dependensi keamanan | Bulanan | `npm audit` di `backend` dan `frontend`, lalu jalankan semua tes |
 | Pembaruan image Docker (Postgres, Redis, Nginx, Node) | Per semester | Bangun ulang image, uji di staging |
 | Tinjau audit log dan akun admin | Bulanan | Menu Riwayat Audit dan Kelola Admin |
 | Hapus permanen data lama yang sudah di-soft-delete | Per semester | Menu Sistem & Keamanan (superadmin) |
-| Rotasi `JWT_SECRET` | Tahunan atau saat insiden | `npm run rotate-secrets` |
+| Rotasi `JWT_SECRET` | Tahunan atau saat insiden | Runbook bagian 10 |
 
 Setiap perubahan kode sebaiknya lewat pull request ke `main` agar workflow CI berjalan otomatis.
 
@@ -373,11 +317,12 @@ Rincian dan lokasi kodenya ada di `docs/DeveloperGuide.md` bagian 8.
 - **Petugas laporan tidak tampil di UI admin.** API detail dan daftar laporan tidak mengirim data petugas, meskipun penugasan tersimpan.
 - **Mahasiswa tidak punya tombol untuk membatalkan laporan** (API-nya tersedia). **Ekspor laporan CSV juga belum punya tombol** di UI.
 - **Angka tampilan:** kartu "Aktivitas Laporan" di Profil mahasiswa selalu 0, dan beberapa kartu dasbor admin tidak cocok dengan grafiknya.
-- **Konten statis yang perlu diputuskan kampus:** angka di beranda (1.247 laporan, 94% kepuasan, 24h), nomor hotline dan email yang berbeda antara kartu kontak dan footer, footer bertuliskan nama developer, dan teks "MySQL" di halaman Sistem & Keamanan.
+- **Konten statis yang perlu diputuskan kampus:** angka di beranda (1.247 laporan, 94% kepuasan, 24h), nomor hotline dan email yang berbeda antara kartu kontak beranda, footer, dan Pusat Bantuan (WhatsApp +62 751 461208, `pengaduan@bunghatta.ac.id`, Gedung Rektorat Lt. 2), footer bertuliskan nama developer, dan teks "MySQL" di halaman Sistem & Keamanan.
+- **Unggahan di atas 1 MB ditolak di Docker/produksi.** Nginx di kontainer frontend belum mengatur `client_max_body_size` (bawaan 1 MB), padahal aplikasi mengizinkan 5 MB per berkas; sudah diuji, berkas 2 MB ditolak HTTP 413. Perlu satu baris konfigurasi; lihat DeveloperGuide bagian 8.
 - **Lampiran disimpan di disk server** (volume `upload_data`), sehingga backend hanya bisa berjalan di satu server tanpa penyimpanan bersama.
 - **Email bergantung pada SMTP.** Tanpa `SMTP_*`, reset password dan notifikasi email tidak berfungsi.
 - **Nilai bawaan di `.env.example` lemah** (mis. `POSTGRES_PASSWORD=postgres`, `superadmin12345`) dan hanya untuk contoh. `docker-compose.yml` (development) juga memakai password `postgres` dan membuka port database, jadi jangan dipakai di produksi.
-- **Nilai `TRUST_PROXY`** di `docker-compose.prod.yml` adalah `2` (proxy kampus + Nginx), sedangkan runbook mencontohkan `1`. Sesuaikan dengan jumlah proxy sebenarnya.
+- **Nilai `TRUST_PROXY`** ditulis langsung di `docker-compose.prod.yml` (`2`: proxy kampus + Nginx). Bila jumlah proxy berbeda, ubah di berkas itu (Runbook bagian 3.3).
 - **Folder duplikat `WebsitePengaduanKemahasiswaan-clean/`** (292 berkas) ikut tersimpan di Git dan tidak dipakai aplikasi; aman dihapus.
 - **Kolom `messages.isRead`** sudah usang dan bisa dihapus lewat migrasi berikutnya.
 
@@ -404,7 +349,7 @@ Serah terima dianggap selesai bila semua butir di bawah dicentang dan lembar pen
 ### Langkah oleh tim TI kampus
 
 - [ ] Server produksi tersedia (min. 2 vCPU, 4 GB RAM, 40 GB disk) dengan Docker terpasang
-- [ ] Domain dan sertifikat HTTPS disiapkan
+- [ ] Domain dan sertifikat HTTPS disiapkan; `PUBLIC_HTTP_PORT` tidak dapat diakses langsung dari internet (Runbook bagian 4)
 - [ ] Semua rahasia dibuat baru (`JWT_*`, `POSTGRES_PASSWORD`, `SEED_SUPERADMIN_PASSWORD`, `SMTP_PASS`)
 - [ ] Aplikasi berhasil dijalankan dan `/api/health/ready` merespons 200
 - [ ] Akun superadmin dibuat, password diganti, minimal dua superadmin aktif
@@ -412,6 +357,8 @@ Serah terima dianggap selesai bila semua butir di bawah dicentang dan lembar pen
 - [ ] Email SMTP kampus diuji lewat fitur Lupa Password
 - [ ] Backup harian terjadwal dan satu kali uji restore berhasil
 - [ ] Pemantauan uptime aktif
+- [ ] Kontak eskalasi di Runbook bagian 13 dan kontak di Pusat Bantuan sudah diisi/dikonfirmasi
+- [ ] User Manual (PDF) dan kebijakan privasi dipublikasikan, lalu `VITE_USER_MANUAL_URL` dan `VITE_PRIVACY_POLICY_URL` diisi
 - [ ] Akses pengembang ke server dan repositori dicabut setelah serah terima
 
 ### Lembar pengesahan

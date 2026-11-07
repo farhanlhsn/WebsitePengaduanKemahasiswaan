@@ -88,6 +88,128 @@ npx prisma generate
 
 `src/jobs/cleanupJob.js` berjalan setiap hari pukul 03.00 (waktu server). Tugas ini menghapus refresh token kedaluwarsa, token reset password lama, dan unggahan chat yang tidak terpakai. Job dijaga advisory lock PostgreSQL agar hanya satu instance yang menjalankannya.
 
+### 3.5 Model data (ERD)
+
+Diagram ini diturunkan dari `backend/prisma/schema.prisma` (11 tabel). Bila skema berubah, perbarui diagram ini dalam pull request yang sama.
+
+```mermaid
+erDiagram
+  users {
+    int id PK
+    string nim UK "nullable"
+    string email UK
+    string password "hash bcrypt"
+    string ktmPath
+    enum role "MAHASISWA | ADMIN | SUPERADMIN"
+    bool isVerified
+    int tokenVersion "naik = semua sesi dicabut"
+    json preferences
+    datetime deletedAt "soft delete"
+  }
+  categories {
+    int id PK
+    string name UK
+    string slug UK
+    enum defaultPriority
+    bool allowAnonymous
+    datetime deletedAt
+  }
+  admin_category_assignments {
+    int id PK
+    int adminId FK
+    int categoryId FK
+    int assignedById FK
+  }
+  reports {
+    int id PK
+    string registrationNumber UK
+    enum status
+    enum priority
+    bool isAnonymous
+    int userId FK "nullable"
+    int categoryId FK "nullable"
+    int assignedToId FK "nullable"
+    string rejectedReason
+    string canceledReason
+    datetime closedAt
+    datetime deletedAt
+  }
+  attachments {
+    int id PK
+    int reportId FK
+    int messageId FK "nullable"
+    string filePath
+    datetime deletedAt
+  }
+  messages {
+    int id PK
+    int reportId FK
+    int senderId FK
+    int replyToId FK "nullable"
+    string clientMessageId "idempotensi"
+    bool isRead "usang"
+    datetime deletedAt
+  }
+  message_reads {
+    int id PK
+    int messageId FK
+    int userId FK
+  }
+  refresh_tokens {
+    int id PK
+    string tokenHash UK "SHA-256"
+    int userId FK
+    string deviceId
+    datetime expiresAt
+  }
+  password_reset_tokens {
+    int id PK
+    string tokenHash UK
+    int userId FK
+    datetime expiresAt
+    datetime usedAt
+  }
+  chat_pending_uploads {
+    int id PK
+    string token UK
+    int reportId FK
+    int uploaderId FK
+    datetime expiresAt
+  }
+  AuditLog {
+    int id PK
+    enum entityType
+    enum action
+    int entityId
+    int actorId "tanpa FK"
+    json metadata
+  }
+
+  users |o--o{ reports : "melapor (userId)"
+  users |o--o{ reports : "ditugaskan (assignedToId)"
+  categories |o--o{ reports : "mengelompokkan"
+  users ||--o{ admin_category_assignments : "admin"
+  users ||--o{ admin_category_assignments : "pemberi"
+  categories ||--o{ admin_category_assignments : "ditugaskan ke"
+  reports ||--o{ attachments : "punya"
+  messages |o--o{ attachments : "lampiran chat"
+  reports ||--o{ messages : "percakapan"
+  users ||--o{ messages : "mengirim"
+  messages |o--o{ messages : "membalas"
+  messages ||--o{ message_reads : "dibaca"
+  users ||--o{ message_reads : "membaca"
+  users ||--o{ refresh_tokens : "sesi perangkat"
+  users ||--o{ password_reset_tokens : "reset"
+  reports ||--o{ chat_pending_uploads : "unggahan tertunda"
+  users ||--o{ chat_pending_uploads : "pengunggah"
+```
+
+Catatan:
+
+- `reports.userId` bernilai `null` untuk laporan anonim; jangan menulis kode yang mengandalkan relasi pelapor ada.
+- `AuditLog` sengaja tidak berelasi supaya log tetap ada walau entitasnya dihapus permanen.
+- Kebanyakan tabel memakai *soft delete* (`deletedAt`); query daftar wajib menyaring `deletedAt: null`.
+
 ## 4. Frontend
 
 | Folder | Isi |
@@ -97,6 +219,7 @@ npx prisma generate
 | `src/services/` | `axiosClient.js` (instans Axios + interceptor refresh token single-flight), `api.js` (fungsi API umum), `chatApi.js`, `adminGovernanceApi.js`, `socketService.js`. |
 | `src/stores/` | State Zustand: `authStore` (disimpan sebagian di localStorage, **tanpa** token), `reportStore`, `chatStore`, `categoryStore`, `userStore`, `settingsStore`. |
 | `src/utils/` | `statusConfig.js` (satu sumber label dan warna status), `sanitizeHtml.js` (DOMPurify), `getApiErrorMessage.js`, dsb. |
+| `src/pages/help/helpContent.js` | Isi Pusat Bantuan (FAQ mahasiswa dan admin) serta tautan User Manual/kebijakan privasi dari `VITE_USER_MANUAL_URL`/`VITE_PRIVACY_POLICY_URL`. Selaraskan dengan `docs/UserManual.md`. |
 
 Aturan penting:
 
@@ -114,7 +237,7 @@ Kirim, tandai dibaca, dan hapus pesan selalu lewat REST; Socket.IO hanya memanca
 
 | Perintah | Isi | Kebutuhan |
 | --- | --- | --- |
-| `cd backend && npm test -- --runInBand` | 215 unit test (middleware, service, kebijakan) | — |
+| `cd backend && npm test -- --runInBand` | Unit test (middleware, service, kebijakan) | — |
 | `cd backend && npm run test:integration` | Integration test (anonimitas, akses chat, governance, sesi) | Docker (Postgres uji di port 55432) |
 | `cd frontend && npm run lint -- --max-warnings=0` | ESLint | — |
 | `cd frontend && npm run test:run` | Component test (Vitest Browser) | Chromium Playwright (`npm run test:e2e:install`) |
@@ -129,12 +252,14 @@ Workflow GitHub Actions (`.github/workflows/ci.yml`) menjalankan Gitleaks, `npm 
 - Gabungkan lewat pull request ke `main`; jangan push langsung ke `main`.
 - Rilis ke produksi mengikuti `docs/ProductionRunbook.md`. Catat perubahan yang terlihat oleh pengguna di `CHANGELOG.md`.
 
-## 8. Keterbatasan dan bug yang diketahui (Oktober 2026)
+## 8. Keterbatasan dan bug yang diketahui (diperbarui November 2026)
 
-Ditemukan saat menyusun dokumentasi serah terima. Belum diperbaiki di kode.
+Ditemukan saat menyusun dan memeriksa dokumentasi serah terima. Belum diperbaiki di kode.
 
 | Prioritas | Masalah | Lokasi | Dampak |
 | --- | --- | --- | --- |
+| Tinggi | Nginx di kontainer frontend tidak mengatur `client_max_body_size`, sehingga memakai batas bawaan 1 MB per permintaan. Sudah diuji dengan `frontend/nginx.conf` asli: unggahan 900 KB diteruskan, 2 MB ditolak 413. E2E berjalan lewat Vite (bukan Nginx), jadi tidak menangkapnya. | `frontend/nginx.conf` | Di Docker/produksi, PDF/DOC di atas 1 MB, atau beberapa foto dalam satu unggahan, ditolak HTTP 413 padahal aplikasi mengizinkan 5 MB per berkas. Perbaikan: tambahkan `client_max_body_size 55m;` di blok `server`. |
+| Sedang | Setiap login dari IP publik mengirim IP pengguna ke `http://ip-api.com` (HTTP tanpa enkripsi) untuk perkiraan lokasi perangkat. | `services/authServices.js` (`getLocationFromIP`) | Data pribadi dikirim ke pihak ketiga; perlu disebut di kebijakan privasi, dibuat opsional, atau diganti layanan HTTPS. |
 | Rendah | Respons `PUT /users/verify/:id`, `GET /users/search/:email`, dan `PUT /users/profile/me` masih menyertakan `tokenVersion` dan `preferences` (bukan password; controller sudah membuang field password). | `services/userServices.js`, `controllers/userControllers.js` | Informasi internal ikut terkirim; sebaiknya pakai `select` eksplisit juga. |
 | Sedang | Detail dan daftar laporan tidak mengembalikan `assignedToId`/`assignedTo`. | `services/reportServices.js` | UI admin tidak bisa menampilkan petugas yang sudah ditugaskan. |
 | Sedang | Mahasiswa tidak punya tombol untuk membatalkan laporan PENDING. Tombolnya ada di `pages/ReportDetailPage.jsx`, yang tidak lagi dipakai routing. | frontend | Pembatalan hanya bisa dilakukan admin. `ReportDetailPage.jsx` dan `AdminReportDetailPage.jsx` adalah kode mati. |
@@ -148,3 +273,21 @@ Ditemukan saat menyusun dokumentasi serah terima. Belum diperbaiki di kode.
 | Rendah | Origin CORS Socket.IO memakai `FRONTEND_URL` utuh (tidak dipisah koma) dan daftar localhost statis. | `sockets/chatHandler.js` | Bermasalah bila frontend dan backend beda origin dengan beberapa domain. Tidak berdampak pada setup Nginx same-origin. |
 | Rendah | `JWT_EXPIRES_IN` di `backend/.env.example` tidak dipakai; masa berlaku access token (15 menit) dan refresh token (7 hari) ditulis langsung di kode. | `services/authServices.js`, `controllers/authControllers.js` | Mengubah variabel tersebut tidak berpengaruh. |
 | Rendah | Folder `WebsitePengaduanKemahasiswaan-clean/` (salinan lama, 292 berkas) ikut tersimpan di Git. | root repo | Membingungkan; aman dihapus. |
+| Rendah | `UPLOAD_DIR` dan `FILE_SIZE_LIMIT` di `backend/.env.example` juga tidak dibaca kode (sama seperti `JWT_EXPIRES_IN`). | `backend/.env.example` | Mengubahnya tidak berpengaruh; batas 5 MB ditulis di konfigurasi Multer (`routes/authRoutes.js`, `routes/chatRoutes.js`, `services/attachmentServices.js`). |
+| Rendah | Kontak di Pusat Bantuan (WhatsApp, email, lokasi) ditulis langsung di kode dan belum dikonfirmasi kampus. | `pages/HelpPage.jsx` | Perlu diganti dengan kontak resmi. |
+
+## 9. Peta dokumentasi
+
+Saat mengubah kode, perbarui dokumen yang terdampak dalam pull request yang sama.
+
+| Bila Anda mengubah... | Perbarui juga |
+| --- | --- |
+| Route, validator, atau bentuk respons | `backend/src/docs/openapi/*.yaml`, lalu `npm run docs:openapi` (bagian 3.2) |
+| Event Socket.IO | `docs/api/SocketEvents.md` |
+| Skema Prisma | ERD di bagian 3.5 dan tabel di `docs/SerahTerima.md` bagian 4 |
+| Alur yang terlihat pengguna (form, status, batas unggah, menu) | `docs/UserManual.md` (dan screenshot di `docs/user-manual/images/`) serta `frontend/src/pages/help/helpContent.js` |
+| Variabel lingkungan | Tabel env di `README.md`, `.env.example` yang terkait, dan Runbook bagian 3 bila dipakai di produksi |
+| Docker Compose, Nginx, atau langkah deploy | `docs/ProductionRunbook.md` (acuan utama); README dan SerahTerima hanya meringkas |
+| Perubahan yang terlihat pengguna/admin/operasional | `CHANGELOG.md` bagian **Belum dirilis** |
+
+Folder `docs/superpowers/` berisi catatan perencanaan internal (spesifikasi dan rencana kerja Agustus 2026). Isinya adalah riwayat, bukan kondisi sistem saat ini; lihat README di folder tersebut.

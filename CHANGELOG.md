@@ -12,9 +12,26 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 - `docs/api/README.md` (konvensi API, paginasi, rate limit, unggah berkas) dan `docs/api/SocketEvents.md` (event Socket.IO chat).
 - `docs/DeveloperGuide.md` dan berkas changelog ini.
 
+- Pusat Bantuan admin kini punya FAQ dan panduan cepat sendiri (verifikasi, status laporan, penugasan kategori, anonimitas, tugas superadmin); sebelumnya admin melihat FAQ mahasiswa.
+- Pusat Bantuan menampilkan tautan **Panduan Pengguna** dan **Kebijakan Privasi** bila `VITE_USER_MANUAL_URL` / `VITE_PRIVACY_POLICY_URL` diisi (build arg di kedua berkas compose).
+- Diagram ERD (mermaid) dan peta dokumentasi di `docs/DeveloperGuide.md`; README untuk `docs/superpowers/`.
+
 ### Diubah
 - Anotasi `@swagger` dipindahkan dari file route dan `app.js` ke file YAML per modul; `config/swagger.js` kini hanya membaca folder `src/docs/openapi/`.
 - Dokumen serah terima, user manual bergambar, dan daftar revisi SRS/SDD ditambahkan di `docs/`.
+- `docs/ProductionRunbook.md` ditulis ulang sebagai acuan utama deploy: pembagian `.env` root dan `backend/.env`, reverse proxy yang meneruskan ke `PUBLIC_HTTP_PORT`, `TRUST_PROXY`, rollback lewat commit, backup/restore lewat `docker compose exec -T`, rotasi rahasia, dan kontak eskalasi. README dan `docs/SerahTerima.md` kini meringkas dan merujuk ke runbook.
+- README: langkah Docker development (buat `backend/.env`, seed), port produksi `8085`, prasyarat Node.js 20 dan Redis, tabel variabel lingkungan lengkap.
+- `frontend/README.md` diganti dari template Vite menjadi panduan frontend proyek.
+- Isi Pusat Bantuan mahasiswa dipindah ke `frontend/src/pages/help/helpContent.js` dan diselaraskan dengan User Manual.
+
+### Diperbaiki
+- Pusat Bantuan mahasiswa tidak lagi menyebut kolom "fakultas", verifikasi email, janji tanggapan 24 jam, atau kebijakan privasi yang belum ada; ditambah tanya jawab laporan anonim, status, edit/batal, dan sesi perangkat.
+- Formulir "Kirim Tiket Bantuan" yang hanya menampilkan pesan terkirim tanpa mengirim apa pun diganti tombol email ke Bagian Kemahasiswaan; tautan "Buku Panduan", "Kebijakan Privasi", dan "Laporkan Bug" yang tidak mengarah ke mana pun dihapus.
+- Tautan WhatsApp di Pusat Bantuan kini sesuai nomor yang ditampilkan.
+- Runbook lama berisi langkah yang tidak berjalan: `export JWT_SECRET`/`TRUST_PROXY` di shell (tidak dibaca compose), contoh reverse proxy ke `backend:6060` (jaringan internal), rollback `docker compose pull` (tidak ada registry), dan `pg_dump -h` (database tidak dibuka keluar).
+
+### Dihapus
+- `FIXES_UI.md` di root; isinya dipindah ke entri 2026-06-07 s.d. 2026-07-04 di bawah.
 
 ## 2026-10-08 — Perbaikan keamanan dan dependensi (PR #10–#12)
 
@@ -68,6 +85,13 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 - Refresh token disimpan sebagai hash SHA-256 dan dirotasi; deteksi pemakaian ulang. **Migrasi `20260607130000_token_hash_migration` membuat semua sesi lama tidak berlaku.**
 - Unggahan chat terikat ke laporan (`chat_pending_uploads`), pesan idempoten lewat `clientMessageId`.
 - Hardening autentikasi, RBAC, unggahan, dan siklus sesi.
+
+### Diubah
+- Ikon lonceng admin membuka ringkasan akun dan laporan yang perlu perhatian; ikon lonceng mahasiswa membuka pembaruan laporan, dengan badge belum dibaca berdasarkan waktu terakhir menu dibuka.
+- Detail laporan admin dan mahasiswa dibuka dalam dialog di atas daftar. URL lama `/report/:id` dan `/admin/reports/:id` dialihkan ke daftar dan otomatis membuka dialog tersebut. (Berkas halaman detail lama masih tersisa sebagai kode mati; lihat DeveloperGuide bagian 8.)
+- Aksi per baris/kartu (laporan, pengguna, verifikasi, kategori, audit log, perangkat, admin) memakai menu titik tiga secara konsisten.
+- Tabel utama tidak lagi memaksa scroll horizontal: kolom sekunder disembunyikan per breakpoint, daftar kategori menjadi kartu di layar kecil.
+- Tata letak lebih ringkas, dan istilah diseragamkan ke Bahasa Indonesia (Dasbor, Analitik, Segarkan, Prioritas Bawaan, Unggah, Menunggu, Selesai, Ditolak, Dihapus sementara).
 
 ### Diperbaiki
 - Tampilan responsif halaman admin (pengaturan, keamanan, verifikasi, analitik) dan sidebar.
