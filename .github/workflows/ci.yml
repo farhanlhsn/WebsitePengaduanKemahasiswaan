@@ -145,6 +145,12 @@ jobs:
           docker compose config
           docker compose -f docker-compose.prod.yml config
 
+      # E2E berjalan lewat Vite, bukan Nginx; tes ini menjaga batas unggah
+      # di frontend/nginx.conf (bawaan Nginx 1 MB menolak unggahan dengan 413).
+      - name: Test nginx upload limit
+        working-directory: frontend
+        run: npm run test:nginx
+
       - name: Build images
         run: |
           docker compose build

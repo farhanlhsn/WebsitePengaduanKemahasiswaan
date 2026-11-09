@@ -16,6 +16,9 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 - Anotasi `@swagger` dipindahkan dari file route dan `app.js` ke file YAML per modul; `config/swagger.js` kini hanya membaca folder `src/docs/openapi/`.
 - Dokumen serah terima, user manual bergambar, dan daftar revisi SRS/SDD ditambahkan di `docs/`.
 
+### Diperbaiki
+- Unggahan di atas 1 MB (misalnya PDF 3 MB atau beberapa foto sekaligus) ditolak HTTP 413 saat aplikasi berjalan di Docker/produksi, karena Nginx di kontainer frontend memakai batas bawaan 1 MB. `frontend/nginx.conf` kini mengizinkan permintaan hingga 55 MB (`client_max_body_size`), cukup untuk 10 berkas × 5 MB. Regresi dijaga `npm run test:nginx` di job CI `docker`.
+
 ## 2026-10-08 — Perbaikan keamanan dan dependensi (PR #10–#12)
 
 ### Keamanan
