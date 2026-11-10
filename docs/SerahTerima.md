@@ -87,7 +87,7 @@ flowchart LR
 | --- | --- | --- |
 | Frontend | React (Vite), Material UI, Zustand, Socket.IO Client, Recharts, TailwindCSS | React 19, MUI 7 |
 | Web server / reverse proxy | Nginx (`nginx:alpine`) | — |
-| Backend | Node.js, Express, Prisma ORM, Socket.IO | Node 20, Express 4, Prisma 6 |
+| Backend | Node.js, Express, Prisma ORM, Socket.IO | Node 22, Express 4, Prisma 6 |
 | Database | PostgreSQL | 16 |
 | Cache / rate limit | Redis | 7 |
 | Autentikasi | JWT (access token 15 menit + refresh token 7 hari), bcryptjs | — |
