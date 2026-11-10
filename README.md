@@ -218,7 +218,7 @@ Admin tanpa assignment kategori melihat daftar kosong. Superadmin terakhir tidak
 Cara manual dipakai bila ingin mengubah kode dengan hot-reload.
 
 ### Prasyarat
-- Node.js 20 atau lebih baru (`nodemailer` 10 tidak berjalan di Node 18) dan npm
+- Node.js 22 LTS, minimal 22.23.4 (versi persisnya ada di `.nvmrc`; jalankan `nvm use`) dan npm
 - PostgreSQL 16
 - Redis 7, atau set `ALLOW_IN_MEMORY_RATE_LIMIT=true` di `backend/.env` untuk development tanpa Redis
 
