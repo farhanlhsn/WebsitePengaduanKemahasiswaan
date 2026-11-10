@@ -26,6 +26,7 @@ Buka dengan `localhost`, bukan `127.0.0.1`, kecuali `FRONTEND_URL` di `backend/.
 | `npm run test:e2e:install` | Unduh Chromium Playwright ke `.playwright-browsers/` (sekali) |
 | `npm run test:run` | Component test (Vitest Browser + Chromium); juga menjalankan unit test |
 | `npm run test:e2e` | Playwright E2E; menyiapkan backend dan database uji otomatis lewat `tests/e2e/global-setup.js` (butuh Docker) |
+| `npm run test:nginx` | Menjalankan `nginx.conf` di kontainer `nginx:alpine` dan memastikan unggahan hingga 55 MB diteruskan serta yang lebih besar ditolak 413 (butuh Docker) |
 
 ## Struktur singkat
 

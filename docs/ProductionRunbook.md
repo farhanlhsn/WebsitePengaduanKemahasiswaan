@@ -128,7 +128,7 @@ Menutup akses langsung ke port aplikasi:
 - **Proxy di server yang sama:** isi `PUBLIC_HTTP_PORT=127.0.0.1:8085` di `.env` root.
 - **Proxy di server lain:** izinkan port tersebut hanya dari IP proxy. Port yang dipublikasikan Docker melewati aturan `ufw`, jadi pakai chain `DOCKER-USER` di iptables atau firewall jaringan/cloud.
 
-> **Masalah yang diketahui:** Nginx di dalam kontainer frontend (`frontend/nginx.conf`) belum mengatur `client_max_body_size`, sehingga memakai batas bawaan Nginx 1 MB per permintaan. Unggahan yang lebih besar, misalnya PDF 3 MB atau beberapa foto sekaligus, ditolak dengan HTTP 413 walaupun proxy luar sudah 55 MB (sudah diuji). Lihat `docs/DeveloperGuide.md` bagian 8.
+> Nginx di dalam kontainer frontend (`frontend/nginx.conf`) juga membatasi permintaan hingga 55 MB, cukup untuk 10 berkas × 5 MB. Bila batas di proxy luar diubah, samakan keduanya: batas yang lebih kecil di salah satunya membuat unggahan ditolak HTTP 413.
 
 ## 5. Deploy Pertama
 
@@ -175,9 +175,12 @@ Setelah itu:
 5. Bangun dan jalankan ulang (migrasi berjalan otomatis):
 
    ```bash
-   docker compose -f docker-compose.prod.yml up -d --build
+   docker compose -f docker-compose.prod.yml build --pull
+   docker compose -f docker-compose.prod.yml up -d
    curl -f http://127.0.0.1:8085/api/health/ready
    ```
+
+   `--pull` mengambil ulang image dasar backend dan frontend (`node`, `nginx:alpine`) sehingga patch keamanan Alpine dan Nginx ikut masuk. Tanpa itu Docker memakai salinan lama di cache server.
 
 6. Uji singkat: login superadmin, buka daftar laporan, kirim satu pesan chat uji.
 7. Catat commit baru di riwayat deploy.
@@ -295,7 +298,7 @@ Rotasi rahasia JWT setidaknya setahun sekali, atau segera bila ada dugaan keboco
 | Pengguna keluar setiap memuat ulang halaman | Situs dibuka lewat HTTP, cookie `Secure` tidak tersimpan | Akses hanya lewat HTTPS |
 | Semua pengguna harus login ulang | Rahasia JWT berubah | Perilaku normal setelah rotasi |
 | Chat tidak tersambung atau terus terputus | Reverse proxy tidak meneruskan WebSocket | Pastikan blok `/socket.io/` di bagian 4 |
-| Unggah berkas ditolak 413 | Batas ukuran permintaan di proxy | `client_max_body_size` di proxy luar; lihat juga catatan di bagian 4 |
+| Unggah berkas ditolak 413 | Batas ukuran permintaan di proxy luar lebih kecil dari 55 MB | Naikkan `client_max_body_size` di proxy luar menjadi `55m` (bagian 4) |
 | Banyak pengguna sekaligus mendapat 429 | Semua permintaan terbaca dari IP proxy | Sesuaikan `TRUST_PROXY` (bagian 3.3) |
 | Email tidak terkirim | `SMTP_*` kosong atau salah | Perbaiki `backend/.env`, buat ulang backend, periksa log |
 | Unggah berkas gagal dengan error izin | Volume `upload_data` tidak dapat ditulis user `node` | Periksa kepemilikan isi volume |

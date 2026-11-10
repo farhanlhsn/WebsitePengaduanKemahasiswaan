@@ -15,7 +15,7 @@ Browser ──HTTPS──► Nginx (frontend/nginx.conf)
 
 | Bagian | Teknologi | Titik masuk |
 | --- | --- | --- |
-| Backend | Node.js 20, Express 4, Prisma 6, Socket.IO 4 | `backend/src/server.js` → `src/app.js` |
+| Backend | Node.js 22, Express 4, Prisma 6, Socket.IO 4 | `backend/src/server.js` → `src/app.js` |
 | Frontend | React 19, Vite, MUI 7, Zustand, Axios, Socket.IO client | `frontend/src/main.jsx` → `src/pages/routes.jsx` |
 | Database | PostgreSQL 16 | `backend/prisma/schema.prisma` |
 
@@ -28,6 +28,7 @@ Ikuti README (Docker Compose atau manual). Beberapa hal yang tidak tertulis di s
 - **CORS memakai origin persis.** Bila frontend dibuka di `http://127.0.0.1:5173` sementara `FRONTEND_URL=http://localhost:5173`, login akan gagal karena CORS. Gunakan host yang sama.
 - **Swagger UI**: `http://localhost:6060/api/docs`.
 - **Prisma Studio** untuk melihat data: `cd backend && npm run prisma:studio`.
+- **Versi Node.js ditulis di lima tempat:** `.nvmrc`, `engines` di `backend/package.json` dan `frontend/package.json`, serta baris `FROM node:...` di `backend/Dockerfile` dan `frontend/Dockerfile`. Saat Node merilis patch keamanan, naikkan semuanya sekaligus.
 
 ## 3. Backend
 
@@ -242,8 +243,9 @@ Kirim, tandai dibaca, dan hapus pesan selalu lewat REST; Socket.IO hanya memanca
 | `cd frontend && npm run lint -- --max-warnings=0` | ESLint | — |
 | `cd frontend && npm run test:run` | Component test (Vitest Browser) | Chromium Playwright (`npm run test:e2e:install`) |
 | `cd frontend && npm run test:e2e` | Playwright E2E (auth, laporan, chat, admin, governance) | Docker; bootstrap otomatis di `tests/e2e/global-setup.js` |
+| `cd frontend && npm run test:nginx` | Batas unggah Nginx kontainer frontend (`client_max_body_size`); E2E berjalan lewat Vite sehingga tidak mengujinya | Docker (image `nginx:alpine`) |
 
-Workflow GitHub Actions (`.github/workflows/ci.yml`) menjalankan Gitleaks, `npm audit` (high), unit test, integration test, lint, component test, build, validasi docker compose, dan E2E untuk setiap push ke `main`/`develop` dan setiap pull request ke `main`. Pastikan semuanya hijau sebelum merge.
+Workflow GitHub Actions (`.github/workflows/ci.yml`) menjalankan Gitleaks, `npm audit` (high), unit test, integration test, lint, component test, build, validasi docker compose, tes batas unggah Nginx, build image Docker, dan E2E untuk setiap push ke `main`/`develop` dan setiap pull request ke `main`. Pastikan semuanya hijau sebelum merge.
 
 ## 7. Alur kerja Git
 
@@ -258,7 +260,6 @@ Ditemukan saat menyusun dan memeriksa dokumentasi serah terima. Belum diperbaiki
 
 | Prioritas | Masalah | Lokasi | Dampak |
 | --- | --- | --- | --- |
-| Tinggi | Nginx di kontainer frontend tidak mengatur `client_max_body_size`, sehingga memakai batas bawaan 1 MB per permintaan. Sudah diuji dengan `frontend/nginx.conf` asli: unggahan 900 KB diteruskan, 2 MB ditolak 413. E2E berjalan lewat Vite (bukan Nginx), jadi tidak menangkapnya. | `frontend/nginx.conf` | Di Docker/produksi, PDF/DOC di atas 1 MB, atau beberapa foto dalam satu unggahan, ditolak HTTP 413 padahal aplikasi mengizinkan 5 MB per berkas. Perbaikan: tambahkan `client_max_body_size 55m;` di blok `server`. |
 | Sedang | Setiap login dari IP publik mengirim IP pengguna ke `http://ip-api.com` (HTTP tanpa enkripsi) untuk perkiraan lokasi perangkat. | `services/authServices.js` (`getLocationFromIP`) | Data pribadi dikirim ke pihak ketiga; perlu disebut di kebijakan privasi, dibuat opsional, atau diganti layanan HTTPS. |
 | Rendah | Respons `PUT /users/verify/:id`, `GET /users/search/:email`, dan `PUT /users/profile/me` masih menyertakan `tokenVersion` dan `preferences` (bukan password; controller sudah membuang field password). | `services/userServices.js`, `controllers/userControllers.js` | Informasi internal ikut terkirim; sebaiknya pakai `select` eksplisit juga. |
 | Sedang | Detail dan daftar laporan tidak mengembalikan `assignedToId`/`assignedTo`. | `services/reportServices.js` | UI admin tidak bisa menampilkan petugas yang sudah ditugaskan. |

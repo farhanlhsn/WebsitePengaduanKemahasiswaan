@@ -181,6 +181,7 @@ cd frontend && npm run lint -- --max-warnings=0
 cd frontend && npm run test:run          # alias test:component
 cd frontend && npm run build
 cd frontend && npm run test:e2e
+cd frontend && npm run test:nginx        # batas unggah Nginx (butuh Docker)
 docker compose config
 docker compose build
 docker compose -f docker-compose.prod.yml config
@@ -356,6 +357,7 @@ Semua variabel `VITE_*` dibaca saat **build**. Di Docker, nilainya dikirim sebag
 | `npm run test:run` | Alias component tests (Vitest) |
 | `npm run test:component` | Jalankan component tests (Vitest Browser) |
 | `npm run test:e2e` | Jalankan Playwright E2E (bootstrap otomatis) |
+| `npm run test:nginx` | Uji batas unggah Nginx kontainer frontend (butuh Docker) |
 
 ## 📄 Lisensi
 

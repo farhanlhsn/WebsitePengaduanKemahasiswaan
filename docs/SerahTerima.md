@@ -174,7 +174,7 @@ Cara tercepat adalah Docker Compose: satu perintah menjalankan database, Redis, 
 ### Prasyarat
 
 - Git, Docker Engine + Docker Compose v2 (untuk cara Docker)
-- Node.js 20, PostgreSQL 16, Redis 7 (untuk cara manual)
+- Node.js 22 (versi persisnya di `.nvmrc`), PostgreSQL 16, Redis 7 (untuk cara manual)
 
 ### Cara A — Docker Compose
 
@@ -235,7 +235,7 @@ Batas sumber daya di compose produksi berjumlah 2,5 vCPU dan sekitar 1,3 GB RAM 
 | Konfigurasi | Dua berkas: `.env` root (password database, port, superadmin awal, tautan Pusat Bantuan) dan `backend/.env` (rahasia JWT, SMTP) | Runbook bagian 3 |
 | Reverse proxy HTTPS | Proxy kampus meneruskan semua jalur ke `PUBLIC_HTTP_PORT` (default `8085`) dengan dukungan WebSocket; port itu tidak boleh terbuka langsung ke internet | Runbook bagian 4 |
 | Deploy pertama | `docker compose -f docker-compose.prod.yml up -d --build`, lalu sekali `exec backend npm run seed`; login superadmin dan ganti password | Runbook bagian 5 |
-| Pembaruan versi | Backup, `git pull`, `up -d --build` (migrasi berjalan otomatis) | Runbook bagian 6 |
+| Pembaruan versi | Backup, `git pull`, `build --pull`, `up -d` (migrasi berjalan otomatis) | Runbook bagian 6 |
 | Rollback | Kembali ke commit sebelumnya dan build ulang; bila ada migrasi baru, pulihkan database dari backup | Runbook bagian 7 |
 | Backup dan restore | Harian: `pg_dump` database dan arsip volume `upload_data`; uji restore per semester | Runbook bagian 8 |
 | Pemantauan | `/api/health/live` dan `/api/health/ready`, disk, log `docker compose logs backend` | Runbook bagian 9 |
@@ -318,7 +318,6 @@ Rincian dan lokasi kodenya ada di `docs/DeveloperGuide.md` bagian 8.
 - **Mahasiswa tidak punya tombol untuk membatalkan laporan** (API-nya tersedia). **Ekspor laporan CSV juga belum punya tombol** di UI.
 - **Angka tampilan:** kartu "Aktivitas Laporan" di Profil mahasiswa selalu 0, dan beberapa kartu dasbor admin tidak cocok dengan grafiknya.
 - **Konten statis yang perlu diputuskan kampus:** angka di beranda (1.247 laporan, 94% kepuasan, 24h), nomor hotline dan email yang berbeda antara kartu kontak beranda, footer, dan Pusat Bantuan (WhatsApp +62 751 461208, `pengaduan@bunghatta.ac.id`, Gedung Rektorat Lt. 2), footer bertuliskan nama developer, dan teks "MySQL" di halaman Sistem & Keamanan.
-- **Unggahan di atas 1 MB ditolak di Docker/produksi.** Nginx di kontainer frontend belum mengatur `client_max_body_size` (bawaan 1 MB), padahal aplikasi mengizinkan 5 MB per berkas; sudah diuji, berkas 2 MB ditolak HTTP 413. Perlu satu baris konfigurasi; lihat DeveloperGuide bagian 8.
 - **Lampiran disimpan di disk server** (volume `upload_data`), sehingga backend hanya bisa berjalan di satu server tanpa penyimpanan bersama.
 - **Email bergantung pada SMTP.** Tanpa `SMTP_*`, reset password dan notifikasi email tidak berfungsi.
 - **Nilai bawaan di `.env.example` lemah** (mis. `POSTGRES_PASSWORD=postgres`, `superadmin12345`) dan hanya untuk contoh. `docker-compose.yml` (development) juga memakai password `postgres` dan membuka port database, jadi jangan dipakai di produksi.
