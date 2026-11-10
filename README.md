@@ -210,7 +210,7 @@ Admin tanpa assignment kategori melihat daftar kosong. Superadmin terakhir tidak
 ## ⚙️ Instalasi & Menjalankan
 
 ### Prasyarat
-- Node.js (v18+, disarankan v20+)
+- Node.js 22 LTS, minimal 22.23.4 (versi persisnya ada di `.nvmrc`; jalankan `nvm use`)
 - PostgreSQL (v15+, disarankan v16)
 - npm atau yarn
 

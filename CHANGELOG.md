@@ -9,6 +9,7 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 ### Keamanan
 - Dependensi diperbarui karena advisory yang terbit 18–30 Oktober 2026 menggagalkan `npm audit` di CI. Semuanya versi patch atau minor. Backend: `multer` 2.4.0 → 2.5.0 (DoS lewat unggahan), `body-parser` 1.20.8 → 1.20.9 (DoS lewat badan permintaan terkompresi), `follow-redirects` 1.16.0 → 1.16.3 (header kredensial ikut saat redirect), `nodemailer` 10.0.16 → 10.4.0 (parser alamat email), `sanitize-html` 2.18.0 → 2.18.1, `qs`, `ip-address`. Frontend: `dompurify` 3.4.16 → 3.4.17 dan `follow-redirects` 1.16.3; dependensi dev `vite` 6.4.6, `vitest` 4.1.12, `sharp` 0.35.5, dan lainnya.
 - `npm audit --omit=dev` kini bersih di backend dan frontend. Sisa 18 temuan low/moderate di dependensi dev backend (rantai Jest) hanya bisa diperbaiki dengan versi mayor.
+- Runtime Node.js dinaikkan dari 20 ke 22 LTS di Dockerfile backend/frontend dan CI. Node 20 sudah end-of-life sejak 30 April 2026 dan tidak lagi menerima patch keamanan, sementara `sanitize-html` ≥ 2.18 mensyaratkan Node ≥ 22.12. `engines` di `package.json` kini `>=22.23.4` (rilis keamanan 20 Oktober 2026) dan `.nvmrc` ditambahkan. Developer perlu Node 22 secara lokal (`nvm install && nvm use`).
 
 ### Ditambahkan
 - Dokumentasi OpenAPI lengkap untuk 85 endpoint REST (`backend/src/docs/openapi/*.yaml`), dengan contoh request/response dari API asli.
