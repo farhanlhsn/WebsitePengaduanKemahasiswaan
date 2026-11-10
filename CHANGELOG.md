@@ -9,7 +9,7 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 ### Keamanan
 - Dependensi diperbarui karena advisory yang terbit 18–30 Oktober 2026 menggagalkan `npm audit` di CI. Semuanya versi patch atau minor. Backend: `multer` 2.4.0 → 2.5.0 (DoS lewat unggahan), `body-parser` 1.20.8 → 1.20.9 (DoS lewat badan permintaan terkompresi), `follow-redirects` 1.16.0 → 1.16.3 (header kredensial ikut saat redirect), `nodemailer` 10.0.16 → 10.4.0 (parser alamat email), `sanitize-html` 2.18.0 → 2.18.1, `qs`, `ip-address`. Frontend: `dompurify` 3.4.16 → 3.4.17 dan `follow-redirects` 1.16.3; dependensi dev `vite` 6.4.6, `vitest` 4.1.12, `sharp` 0.35.5, dan lainnya.
 - `npm audit --omit=dev` kini bersih di backend dan frontend. Sisa 18 temuan low/moderate di dependensi dev backend (rantai Jest) hanya bisa diperbaiki dengan versi mayor.
-- Runtime Node.js dinaikkan dari 20 ke 22 LTS di Dockerfile backend/frontend dan CI. Node 20 sudah end-of-life sejak 30 April 2026 dan tidak lagi menerima patch keamanan, sementara `sanitize-html` ≥ 2.18 mensyaratkan Node ≥ 22.12. `engines` di `package.json` kini `>=22.23.4` (rilis keamanan 20 Oktober 2026) dan `.nvmrc` ditambahkan. Developer perlu Node 22 secara lokal (`nvm install && nvm use`). Tag image Docker dikunci ke `node:22.23.4-alpine` supaya build tidak memakai Node 22 lama dari cache.
+- Runtime Node.js dinaikkan dari 20 ke 26 LTS ("Lithium", didukung sampai 30 April 2029) di Dockerfile backend/frontend dan CI, lewat Node 22 di PR #16. Node 20 sudah end-of-life sejak 30 April 2026 dan tidak lagi menerima patch keamanan, sementara `sanitize-html` ≥ 2.18 mensyaratkan Node ≥ 22.12. Versinya dikunci ke 26.13.0 di `.nvmrc`, `engines` di `package.json` (`>=26.13.0`), dan tag image Docker `node:26.13.0-alpine`; CI membaca `.nvmrc`. Developer perlu Node 26 secara lokal (`nvm install && nvm use`).
 
 ### Ditambahkan
 - Dokumentasi OpenAPI lengkap untuk 85 endpoint REST (`backend/src/docs/openapi/*.yaml`), dengan contoh request/response dari API asli.
@@ -24,7 +24,7 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 - Anotasi `@swagger` dipindahkan dari file route dan `app.js` ke file YAML per modul; `config/swagger.js` kini hanya membaca folder `src/docs/openapi/`.
 - Dokumen serah terima, user manual bergambar, dan daftar revisi SRS/SDD ditambahkan di `docs/`.
 - `docs/ProductionRunbook.md` ditulis ulang sebagai acuan utama deploy: pembagian `.env` root dan `backend/.env`, reverse proxy yang meneruskan ke `PUBLIC_HTTP_PORT`, `TRUST_PROXY`, rollback lewat commit, backup/restore lewat `docker compose exec -T`, rotasi rahasia, dan kontak eskalasi. README dan `docs/SerahTerima.md` kini meringkas dan merujuk ke runbook. Langkah pembaruan memakai `build --pull` agar image dasar ikut mendapat patch keamanan.
-- README: langkah Docker development (buat `backend/.env`, seed), port produksi `8085`, prasyarat Node.js 22 dan Redis, tabel variabel lingkungan lengkap.
+- README: langkah Docker development (buat `backend/.env`, seed), port produksi `8085`, prasyarat Node.js 26 dan Redis, tabel variabel lingkungan lengkap.
 - `frontend/README.md` diganti dari template Vite menjadi panduan frontend proyek.
 - Isi Pusat Bantuan mahasiswa dipindah ke `frontend/src/pages/help/helpContent.js` dan diselaraskan dengan User Manual.
 

@@ -26,7 +26,7 @@
     "test:nginx": "bash scripts/test-nginx-upload-limit.sh"
   },
   "engines": {
-    "node": ">=22.23.4"
+    "node": ">=26.13.0"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
