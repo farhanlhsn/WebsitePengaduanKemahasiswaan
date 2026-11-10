@@ -1,11 +1,11 @@
 # Stage 1: Install production dependencies
-FROM node:22-alpine AS deps
+FROM node:22.23.4-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 
 # Stage 2: Generate Prisma Client
-FROM node:22-alpine AS build
+FROM node:22.23.4-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -13,7 +13,7 @@ COPY prisma ./prisma
 RUN npx prisma generate
 
 # Stage 3: Production image
-FROM node:22-alpine AS production
+FROM node:22.23.4-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
 

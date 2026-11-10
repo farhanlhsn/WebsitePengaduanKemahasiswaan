@@ -1,24 +1,46 @@
-# React + Vite
+# Frontend — Sistem Pengaduan Kemahasiswaan UBH
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplikasi web untuk mahasiswa, admin, dan superadmin: React 19 (Vite), Material UI 7, Zustand, Axios, Socket.IO client, dan Recharts. Gambaran sistem, instalasi lengkap, dan variabel lingkungan ada di [README root](../README.md). Aturan kode frontend (penyimpanan token, pemanggilan API, label status, sanitasi HTML) ada di [DeveloperGuide bagian 4](../docs/DeveloperGuide.md#4-frontend).
 
-Currently, two official plugins are available:
+## Menjalankan untuk pengembangan
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Backend harus berjalan lebih dulu (lihat README root).
 
-## Expanding the ESLint configuration
+```bash
+npm install
+cp .env.example .env     # VITE_API_URL=http://localhost:6060/v1/api
+npm run dev              # http://localhost:5173
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Buka dengan `localhost`, bukan `127.0.0.1`, kecuali `FRONTEND_URL` di `backend/.env` juga memakai `127.0.0.1`; CORS mencocokkan origin persis.
 
-## Environment Variables
+## Perintah
 
-Create a local env file in `frontend` before running the app:
+| Perintah | Kegunaan |
+| --- | --- |
+| `npm run dev` | Server pengembangan Vite dengan hot-reload |
+| `npm run build` | Build produksi ke `dist/` |
+| `npm run preview` | Menyajikan hasil build secara lokal |
+| `npm run lint` | ESLint; CI menjalankan `npm run lint -- --max-warnings=0` |
+| `npx vitest run --project unit` | Unit test (jsdom), tidak butuh browser |
+| `npm run test:e2e:install` | Unduh Chromium Playwright ke `.playwright-browsers/` (sekali) |
+| `npm run test:run` | Component test (Vitest Browser + Chromium); juga menjalankan unit test |
+| `npm run test:e2e` | Playwright E2E; menyiapkan backend dan database uji otomatis lewat `tests/e2e/global-setup.js` (butuh Docker) |
+| `npm run test:nginx` | Menjalankan `nginx.conf` di kontainer `nginx:alpine` dan memastikan unggahan hingga 55 MB diteruskan serta yang lebih besar ditolak 413 (butuh Docker) |
 
-1. Copy `.env.example` to `.env`
-2. Adjust values if your backend runs on a different host/port
+## Struktur singkat
 
-Available variables:
+| Folder | Isi |
+| --- | --- |
+| `src/pages/` | Halaman dan `routes.jsx`; halaman admin di `pages/admin/`; isi Pusat Bantuan di `pages/help/helpContent.js` |
+| `src/components/` | Komponen per domain (`admin/`, `chat/`, `dashboard/`, `report/`, `auth/`, `ui/`) |
+| `src/services/` | `axiosClient.js` (refresh token otomatis), pemanggil API, `socketService.js` |
+| `src/stores/` | State global Zustand |
+| `src/utils/` | `statusConfig.js`, `sanitizeHtml.js`, dan utilitas lain |
+| `tests/` | `unit/`, `component/`, `e2e/` |
 
-- `VITE_API_URL`: Base API URL used by axios (example: `http://localhost:6060/v1/api`)
-- `VITE_SOCKET_URL`: Socket.IO server URL (example: `http://localhost:6060`)
+## Docker
+
+`Dockerfile` membangun aplikasi lalu menyajikannya dengan Nginx. `nginx.conf` meneruskan `/v1/api`, `/api`, `/socket.io`, dan `/uploads` ke kontainer `backend`, sehingga browser hanya berbicara dengan satu origin.
+
+Variabel `VITE_*` dibaca saat build dan dikirim sebagai build arg oleh `docker-compose*.yml`: `VITE_API_URL`, `VITE_SOCKET_URL`, `VITE_USER_MANUAL_URL`, dan `VITE_PRIVACY_POLICY_URL`. Mengubah nilainya memerlukan build ulang image. Deploy produksi mengikuti [`docs/ProductionRunbook.md`](../docs/ProductionRunbook.md).

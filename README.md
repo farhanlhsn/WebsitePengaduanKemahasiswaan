@@ -130,7 +130,7 @@ Referensi lengkap 85 endpoint (parameter, body, contoh respons, hak akses) ada d
 | [`docs/RevisiSRS-SDD.md`](docs/RevisiSRS-SDD.md) | Tim proyek: bagian SRS/SDD yang perlu diperbarui |
 | [`docs/DeveloperGuide.md`](docs/DeveloperGuide.md) | Developer: struktur kode, cara menambah endpoint/migrasi, pengujian, bug yang diketahui |
 | [`docs/api/`](docs/api/README.md) | Referensi API REST (OpenAPI) dan Socket.IO |
-| [`docs/ProductionRunbook.md`](docs/ProductionRunbook.md) | Tim operasional: deploy, backup, restore, monitoring |
+| [`docs/ProductionRunbook.md`](docs/ProductionRunbook.md) | Tim operasional: **acuan utama** deploy produksi, pembaruan, rollback, backup/restore, monitoring |
 | [`docs/UserAcceptanceTest.md`](docs/UserAcceptanceTest.md) | Skenario UAT |
 | [`CHANGELOG.md`](CHANGELOG.md) | Riwayat perubahan |
 | `docs/*.pdf` | Proposal, SRS, SDD, dan laporan akhir Computing Project |
@@ -140,29 +140,35 @@ Referensi lengkap 85 endpoint (parameter, body, contoh respons, hak akses) ada d
 ### Local development
 
 ```bash
-docker compose up --build
+cp backend/.env.example backend/.env             # wajib ada; nilai contoh cukup untuk development
+docker compose up --build                        # db, redis, migrasi, backend, frontend
+docker compose exec backend npm run seed         # sekali: 23 kategori + superadmin pertama
 ```
+
+Login superadmin memakai `SEED_SUPERADMIN_EMAIL` dan `SEED_SUPERADMIN_PASSWORD` dari `backend/.env`. Kosongkan `SMTP_HOST` di `backend/.env` bila tidak ingin mencoba mengirim email.
 
 | Service | URL |
 |---|---|
 | Frontend | http://localhost:8080 |
 | Backend API | http://localhost:6060/v1/api |
-| PostgreSQL | localhost:5432 |
+| Swagger UI | http://localhost:6060/api/docs |
+| PostgreSQL | localhost:5432 (user/password `postgres`) |
 | Redis | localhost:6379 |
 
-Frontend mem-proxy `/v1/api`, `/api`, dan `/socket.io` ke backend via nginx (same-origin).
+Frontend mem-proxy `/v1/api`, `/api`, `/socket.io`, dan `/uploads` ke backend via nginx (same-origin). Compose development memakai password database `postgres` dan membuka semua port, jadi **jangan dipakai di produksi**.
 
 ### Production
 
+Ikuti [`docs/ProductionRunbook.md`](docs/ProductionRunbook.md). Ringkasnya:
+
 ```bash
-export POSTGRES_PASSWORD='<strong-password>'
-export SEED_SUPERADMIN_PASSWORD='<strong-password>'
-docker compose -f docker-compose.prod.yml up --build -d
+cp .env.example .env                  # FRONTEND_URL, POSTGRES_PASSWORD, SEED_SUPERADMIN_PASSWORD, ...
+cp backend/.env.example backend/.env  # JWT_SECRET, JWT_REFRESH_SECRET (openssl rand -hex 64), SMTP_*
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml exec backend npm run seed   # sekali
 ```
 
-Kedua variabel di atas **wajib** — compose gagal start jika kosong (tidak ada default lemah).
-
-Hanya reverse proxy/frontend (`PUBLIC_HTTP_PORT`, default `8080`) yang diekspos. Backend, PostgreSQL, dan Redis berada pada jaringan internal Docker.
+Hanya kontainer frontend (Nginx) yang membuka port ke host (`PUBLIC_HTTP_PORT`, default `8085`); di depannya wajib ada reverse proxy HTTPS. Backend, PostgreSQL, dan Redis berada di jaringan internal Docker.
 
 ## 🧪 Testing & Quality Gates
 
@@ -175,6 +181,7 @@ cd frontend && npm run lint -- --max-warnings=0
 cd frontend && npm run test:run          # alias test:component
 cd frontend && npm run build
 cd frontend && npm run test:e2e
+cd frontend && npm run test:nginx        # batas unggah Nginx (butuh Docker)
 docker compose config
 docker compose build
 docker compose -f docker-compose.prod.yml config
@@ -199,7 +206,7 @@ Validasi MIME, ekstensi, dan magic bytes. Nama file disimpan acak; nama asli dis
 | Kelola admin tier | — | ❌ | ✅ |
 | Bulk ops user (verify/delete/restore) | — | ✅ (hanya target MAHASISWA, per-item) | ✅ |
 | Bulk ops kategori | — | ❌ | ✅ |
-| Export CSV pengguna | — | ❌ | ✅ |
+| Export CSV pengguna lewat API (`/admin/export/users`) | — | ❌ (tombol Ekspor di UI mengunduh daftar yang sedang tampil) | ✅ |
 | Cleanup / permanent delete user | — | ❌ | ✅ |
 | CRUD kategori | — | ❌ | ✅ |
 | Lihat laporan | Milik sendiri | Kategori assignment | Semua |
@@ -209,10 +216,12 @@ Admin tanpa assignment kategori melihat daftar kosong. Superadmin terakhir tidak
 
 ## ⚙️ Instalasi & Menjalankan
 
+Cara manual dipakai bila ingin mengubah kode dengan hot-reload.
+
 ### Prasyarat
-- Node.js 22 LTS, minimal 22.23.4 (versi persisnya ada di `.nvmrc`; jalankan `nvm use`)
-- PostgreSQL (v15+, disarankan v16)
-- npm atau yarn
+- Node.js 22 LTS, minimal 22.23.4 (versi persisnya ada di `.nvmrc`; jalankan `nvm use`) dan npm
+- PostgreSQL 16
+- Redis 7, atau set `ALLOW_IN_MEMORY_RATE_LIMIT=true` di `backend/.env` untuk development tanpa Redis
 
 ### Backend
 
@@ -233,7 +242,7 @@ npx prisma generate
 # Jalankan migrasi database
 npx prisma migrate dev
 
-# Seed data kategori
+# Seed 23 kategori bawaan + superadmin pertama (dari SEED_SUPERADMIN_*)
 npm run seed
 
 # Jalankan server (development)
@@ -251,33 +260,48 @@ cd frontend
 # Install dependencies
 npm install
 
+# Konfigurasi environment variables (VITE_API_URL=http://localhost:6060/v1/api)
+cp .env.example .env
+
 # Jalankan development server
 npm run dev
 ```
 
-Frontend berjalan di `http://localhost:5173` (default Vite).
+Frontend berjalan di `http://localhost:5173` (default Vite). Buka dengan host yang sama seperti `FRONTEND_URL` di `backend/.env` (`localhost`, bukan `127.0.0.1`), karena CORS mencocokkan origin persis.
 
 ### Environment Variables (Backend)
 
-| Variable | Deskripsi |
-|---|---|
-| `PORT` | Port server backend (default: `6060`) |
-| `DATABASE_URL` | Connection string PostgreSQL |
-| `JWT_SECRET` | Secret key untuk access token |
-| `JWT_REFRESH_SECRET` | Secret key untuk refresh token |
-| `FRONTEND_URL` | URL frontend yang diizinkan CORS |
-| `REDIS_URL` | URL Redis untuk rate limit store (wajib production; override `ALLOW_IN_MEMORY_RATE_LIMIT=true` untuk dev) |
-| `TRUST_PROXY` | Hop count / CIDR proxy untuk `X-Forwarded-For` (production: `1`) |
-| `ALLOW_IN_MEMORY_RATE_LIMIT` | Set `true` untuk dev/test tanpa Redis |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Konfigurasi email notifikasi/reset password |
-| `SEED_SUPERADMIN_EMAIL`, `SEED_SUPERADMIN_NAME`, `SEED_SUPERADMIN_PASSWORD` | Bootstrap akun superadmin saat seed |
+Tabel ini adalah referensi lengkap variabel backend. Untuk produksi, lihat juga pembagian berkas `.env` di [Runbook bagian 3](docs/ProductionRunbook.md#3-konfigurasi).
+
+| Variable | Wajib | Deskripsi |
+|---|---|---|
+| `DATABASE_URL` | Ya | Connection string PostgreSQL |
+| `JWT_SECRET`, `JWT_REFRESH_SECRET` | Ya | Minimal 32 karakter dan bukan nilai contoh; backend menolak start di produksi bila lemah. Buat dengan `openssl rand -hex 64` |
+| `FRONTEND_URL` | Produksi | Origin frontend untuk CORS dan tautan di email; boleh beberapa, dipisah koma (default `http://localhost:5173`) |
+| `REDIS_URL` | Produksi | Penyimpanan rate limit. Di development bisa diganti `ALLOW_IN_MEMORY_RATE_LIMIT=true` |
+| `PORT`, `NODE_ENV` | Tidak | Default `6060` dan `development` |
+| `TRUST_PROXY` | Produksi | Jumlah proxy di depan backend, untuk membaca IP klien dari `X-Forwarded-For`. Compose produksi memakai `2` (proxy HTTPS kampus + Nginx frontend) |
+| `ALLOW_IN_MEMORY_RATE_LIMIT` | Tidak | `true` untuk dev/test tanpa Redis |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Tidak | Email reset password dan notifikasi; tanpa `SMTP_HOST`/`SMTP_USER` email dimatikan |
+| `ALLOWED_EMAIL_DOMAINS` | Tidak | Batasi domain email pendaftar, mis. `mahasiswa.bunghatta.ac.id` (kosong = semua domain) |
+| `SEED_SUPERADMIN_EMAIL`, `SEED_SUPERADMIN_NAME`, `SEED_SUPERADMIN_PASSWORD` | Saat seed | Superadmin pertama, dibuat hanya bila belum ada superadmin. Di produksi password minimal 12 karakter |
+| `ENABLE_SWAGGER` | Tidak | `true` mengaktifkan Swagger UI di produksi (di luar produksi selalu aktif) |
+| `LOG_LEVEL` | Tidak | Default `info` |
+| `TZ` | Tidak | Zona waktu job pembersihan 03.00, default `Asia/Jakarta` |
+| `GEOLOCATION_TEST_MODE` | Tidak | `true` agar login dari IP lokal tetap dicari lokasinya (hanya untuk pengujian) |
+
+`JWT_EXPIRES_IN`, `UPLOAD_DIR`, dan `FILE_SIZE_LIMIT` di `backend/.env.example` tidak dibaca kode; masa berlaku token dan batas unggah ditulis langsung di kode.
 
 ### Environment Variables (Frontend)
 
+Semua variabel `VITE_*` dibaca saat **build**. Di Docker, nilainya dikirim sebagai build arg dari `.env` root; mengubahnya memerlukan build ulang image frontend.
+
 | Variable | Deskripsi |
 |---|---|
-| `VITE_API_URL` | Base URL API, contoh `http://localhost:6060/v1/api` |
+| `VITE_API_URL` | Base URL API, contoh `http://localhost:6060/v1/api` (di Docker: `/v1/api`) |
 | `VITE_SOCKET_URL` | Base URL Socket.IO jika berbeda dari API |
+| `VITE_USER_MANUAL_URL` | Tautan "Panduan Pengguna" di Pusat Bantuan (http(s) atau path `/...`); kosong = disembunyikan |
+| `VITE_PRIVACY_POLICY_URL` | Tautan "Kebijakan Privasi" di Pusat Bantuan; kosong = disembunyikan |
 | `VITE_ENABLE_SSO` | Tampilkan tombol SSO di login/register (`true`/`false`; backend SSO belum tersedia — biarkan `false`) |
 | `VITE_SSO_PROVIDER`, `VITE_SSO_PROVIDER_NAME` | Provider & label tombol SSO (hanya relevan bila SSO aktif) |
 
@@ -313,7 +337,9 @@ Frontend berjalan di `http://localhost:5173` (default Vite).
 |---|---|
 | `npm run dev` | Jalankan server dengan hot-reload (nodemon) |
 | `npm start` | Jalankan server production |
-| `npm run seed` | Seed data kategori ke database |
+| `npm run seed` | Seed 23 kategori bawaan + superadmin pertama (idempoten) |
+| `npm run rotate-secrets` | Cetak nilai acak baru untuk `JWT_SECRET` dan `JWT_REFRESH_SECRET` |
+| `npm run docs:openapi` | Ekspor ulang `docs/api/openapi.json` dari `src/docs/openapi/*.yaml` |
 | `npm test` | Jalankan unit test backend |
 | `npm run test:integration` | Jalankan integration test backend (butuh Docker) |
 | `npm run test:integration:up` | Start Postgres test container |
@@ -331,6 +357,7 @@ Frontend berjalan di `http://localhost:5173` (default Vite).
 | `npm run test:run` | Alias component tests (Vitest) |
 | `npm run test:component` | Jalankan component tests (Vitest Browser) |
 | `npm run test:e2e` | Jalankan Playwright E2E (bootstrap otomatis) |
+| `npm run test:nginx` | Uji batas unggah Nginx kontainer frontend (butuh Docker) |
 
 ## 📄 Lisensi
 
