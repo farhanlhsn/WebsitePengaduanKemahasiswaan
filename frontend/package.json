@@ -22,7 +22,8 @@
     "test:component": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers vitest run",
     "test:run": "npm run test:component",
     "test:e2e": "E2E_BASE_URL=http://127.0.0.1:5199 E2E_FRONTEND_PORT=5199 E2E_BACKEND_PORT=6061 PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers playwright test",
-    "test:e2e:install": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers playwright install chromium"
+    "test:e2e:install": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers playwright install chromium",
+    "test:nginx": "bash scripts/test-nginx-upload-limit.sh"
   },
   "engines": {
     "node": ">=22.23.4"
