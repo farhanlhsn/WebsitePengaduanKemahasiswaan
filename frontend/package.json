@@ -56,8 +56,8 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react-swc": "^3.10.2",
-    "@vitest/browser": "^4.1.10",
-    "@vitest/browser-playwright": "^4.1.10",
+    "@vitest/browser": "^4.1.12",
+    "@vitest/browser-playwright": "^4.1.12",
     "autoprefixer": "^10.4.21",
     "axios-mock-adapter": "^2.1.0",
     "eslint": "^9.29.0",
@@ -73,7 +73,7 @@
     "terser": "^5.43.1",
     "vite": "^6.3.5",
     "vite-plugin-compression": "^0.5.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.12"
   },
   "overrides": {
     "rollup": "4.59.0",
