@@ -33,6 +33,7 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 - Formulir "Kirim Tiket Bantuan" yang hanya menampilkan pesan terkirim tanpa mengirim apa pun diganti tombol email ke Bagian Kemahasiswaan; tautan "Buku Panduan", "Kebijakan Privasi", dan "Laporkan Bug" yang tidak mengarah ke mana pun dihapus.
 - Tautan WhatsApp di Pusat Bantuan kini sesuai nomor yang ditampilkan.
 - Runbook lama berisi langkah yang tidak berjalan: `export JWT_SECRET`/`TRUST_PROXY` di shell (tidak dibaca compose), contoh reverse proxy ke `backend:6060` (jaringan internal), rollback `docker compose pull` (tidak ada registry), dan `pg_dump -h` (database tidak dibuka keluar).
+- Healthcheck kontainer frontend selalu `unhealthy` setelah image dibangun dengan `nginx:alpine` terbaru (Alpine 3.24): `wget` mencoba `localhost` lewat IPv6 (`::1`), sedangkan `frontend/nginx.conf` hanya mendengarkan IPv4. Healthcheck kini memanggil `127.0.0.1`.
 - Unggahan di atas 1 MB (misalnya PDF 3 MB atau beberapa foto sekaligus) ditolak HTTP 413 saat aplikasi berjalan di Docker/produksi, karena Nginx di kontainer frontend memakai batas bawaan 1 MB. `frontend/nginx.conf` kini mengizinkan permintaan hingga 55 MB (`client_max_body_size`), cukup untuk 10 berkas × 5 MB. Regresi dijaga `npm run test:nginx` di job CI `docker`.
 
 ### Dihapus
