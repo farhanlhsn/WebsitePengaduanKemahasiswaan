@@ -31,6 +31,9 @@ async function authenticateSocket(token) {
 
   return {
     valid: true,
+    // Masa berlaku dari payload yang sudah diverifikasi; dipakai untuk
+    // memutus socket saat access token habis.
+    exp: decoded.exp ?? null,
     user: {
       userId: user.id,
       role: user.role,

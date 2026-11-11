@@ -61,6 +61,18 @@ const loginLimiter = createLimiter({
 });
 
 // Register: 20 per IP per hour (uses default IP key)
+// Batas per akun (email), melengkapi batas per IP. IP bisa dipalsukan lewat
+// X-Forwarded-For bila port aplikasi terbuka langsung tanpa proxy kampus;
+// batas ini tetap menghentikan tebak-password terhadap satu akun.
+const loginEmailLimiter = createLimiter({
+  name: 'login-email',
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Terlalu banyak percobaan login untuk akun ini. Coba lagi dalam 15 menit.',
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => `login_email_${String(req.body?.email || '').trim().toLowerCase()}`,
+});
+
 const registerLimiter = createLimiter({
   name: 'register',
   windowMs: 60 * 60 * 1000,
@@ -105,6 +117,7 @@ const createReportLimiter = createLimiter({
 module.exports = {
   globalLimiter,
   loginLimiter,
+  loginEmailLimiter,
   registerLimiter,
   forgotPasswordLimiter,
   refreshTokenLimiter,

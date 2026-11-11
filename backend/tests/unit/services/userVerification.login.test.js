@@ -6,6 +6,7 @@
 jest.mock('../../../src/utils/prisma', () => ({
   user: {
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
     update: jest.fn(),
   },
   refreshToken: {
@@ -70,7 +71,7 @@ describe('login rejects soft-deleted users (audit B4)', () => {
   beforeEach(() => jest.clearAllMocks());
 
   test('deleted user gets generic wrong-credential error', async () => {
-    prisma.user.findUnique.mockResolvedValue({
+    prisma.user.findFirst.mockResolvedValue({
       id: 1,
       email: 'del@kampus.ac.id',
       password: '$2a$10$irrelevant',
@@ -86,10 +87,24 @@ describe('login rejects soft-deleted users (audit B4)', () => {
   });
 
   test('unknown user gets the same generic error (no enumeration)', async () => {
-    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.findFirst.mockResolvedValue(null);
 
     await expect(
       authServices.login({ email: 'ghost@kampus.ac.id', password: 'x' }, {})
     ).rejects.toThrow('email/password salah');
+  });
+
+  test('email lookup ignores letter case', async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+
+    await expect(
+      authServices.login({ email: '  Budi@Kampus.AC.ID ', password: 'x' }, {})
+    ).rejects.toThrow('email/password salah');
+
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { email: { equals: 'budi@kampus.ac.id', mode: 'insensitive' } },
+      })
+    );
   });
 });

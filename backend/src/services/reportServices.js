@@ -70,6 +70,7 @@ class ReportServices {
             }
           },
           messages: {
+            where: { deletedAt: null },
             select: {
               id: true,
               content: true,
@@ -370,6 +371,7 @@ class ReportServices {
           rejectedReason: true,
           canceledReason: true,
           userId: true,
+          isAnonymous: true,
           title: true,
           registrationNumber: true,
         }

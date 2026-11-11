@@ -11,7 +11,7 @@ import { io } from 'socket.io-client';
 
 const socket = io(SOCKET_URL, {
   transports: ['websocket', 'polling'],
-  auth: { token: accessToken },        // atau header Authorization: Bearer <token>
+  auth: (cb) => cb({ token: getAccessToken() }), // fungsi: token terbaru di setiap (re)connect
 });
 
 socket.on('connect_error', (err) => {
@@ -21,13 +21,24 @@ socket.on('connect_error', (err) => {
 
 Setelah terautentikasi, socket otomatis masuk ke ruang pribadi `user_<userId>`. Ruang ini dipakai untuk notifikasi daftar chat dan pencabutan akses.
 
-Saat access token diperbarui, putuskan koneksi lalu sambungkan ulang dengan token baru. Token yang dicabut (logout semua perangkat, ganti password, diturunkan perannya) menghasilkan `AUTH_REVOKED`.
+Server memutus socket (`disconnect` dengan alasan `io server disconnect`) dalam keadaan berikut. Sebelum diputus, server mengirim `chat:error` berisi kodenya:
+
+| Pemicu | Kode |
+| --- | --- |
+| Access token kedaluwarsa (sama dengan masa berlaku token, 15 menit) | `TOKEN_EXPIRED` |
+| Password diganti atau direset, email diganti | `AUTH_REVOKED` |
+| Akun dihapus | `USER_DELETED` |
+| Logout satu perangkat atau semua perangkat lain | `SESSION_CHANGED` |
+| Kategori laporan diubah pemiliknya (semua socket di ruang laporan itu) | `ACCESS_CHANGED` |
+| Admin diturunkan atau akses kategorinya dicabut | lewat `access:revoked` |
+
+socket.io-client tidak menyambung ulang sendiri setelah diputus server. Klien perlu memperbarui access token (`POST /auth/refresh-token`), menyambung ulang, lalu memanggil `joinRoom` lagi; hak akses diperiksa dari awal. Untuk `AUTH_REVOKED` dan `USER_DELETED` jangan menyambung ulang. `frontend/src/services/socketService.js` sudah menangani ini.
 
 ## Event dari klien ke server
 
 | Event | Payload | Ack (callback) | Keterangan |
 | --- | --- | --- | --- |
-| `joinRoom` | `{ reportId: number }` | `{ ok: true, roomId: "report_1" }` atau `{ ok: false, code, message }` | Masuk ke ruang chat laporan. Hak akses diperiksa sama seperti REST. Satu socket hanya berada di satu ruang laporan; ruang sebelumnya otomatis ditinggalkan. |
+| `joinRoom` | `{ reportId: number }` | `{ ok: true, roomId: "report_1" }` atau `{ ok: false, code, message }` | Masuk ke ruang chat laporan. Hak akses diperiksa sama seperti REST. Satu socket hanya berada di satu ruang laporan; ruang sebelumnya otomatis ditinggalkan. Batas 30 kali per menit per socket. |
 | `leaveRoom` | `{ reportId: number }` | `{ ok: true }` atau `{ ok: false, code: "ROOM_NOT_JOINED" }` | Keluar dari ruang laporan. |
 | `chat:typing` | `{ reportId: number, isTyping: boolean }` | — | Hanya setelah `joinRoom`. Batas 120 event per menit per socket. |
 
@@ -42,8 +53,8 @@ Saat access token diperbarui, putuskan koneksi lalu sambungkan ulang dengan toke
 | `room:joined` | Peserta lain di ruang | `{ userId, timestamp }` | Seseorang `joinRoom` |
 | `room:left` | Peserta lain di ruang | `{ userId, timestamp }` | `leaveRoom`, pindah ruang, atau terputus |
 | `chat:list:update` | Ruang `user_<id>` setiap peserta yang berhak | `{ reportId, hasNew: true, timestamp }` | Ada pesan baru; klien memuat ulang daftar chat / jumlah belum dibaca |
-| `access:revoked` | Ruang `user_<id>` admin terkait | `{ reason: "DEMOTED" \| "CATEGORY_REVOKED", categoryId }` | Admin diturunkan (socket langsung diputus) atau akses kategori dicabut |
-| `chat:error` | Socket pengirim | `{ code, message, timestamp }` | Payload salah, akses ditolak, atau rate limit |
+| `access:revoked` | Ruang `user_<id>` admin terkait | `{ reason: "DEMOTED" \| "CATEGORY_REVOKED", categoryId }` | Admin diturunkan atau akses kategori dicabut; socket langsung diputus |
+| `chat:error` | Socket pengirim, atau semua socket yang akan diputus server | `{ code, message, timestamp }` | Payload salah, akses ditolak, rate limit, atau sesi berubah |
 
 ### Kode error
 
@@ -56,7 +67,10 @@ Saat access token diperbarui, putuskan koneksi lalu sambungkan ulang dengan toke
 | `ACCESS_DENIED` | Tidak berhak atas laporan tersebut |
 | `ROOM_NOT_JOINED` | Event ruang dikirim sebelum `joinRoom` |
 | `INVALID_PAYLOAD` | `reportId` / `isTyping` tidak valid |
-| `RATE_LIMITED` | Terlalu banyak event `chat:typing` |
+| `RATE_LIMITED` | Terlalu banyak event `chat:typing` atau `joinRoom` |
+| `TOKEN_EXPIRED` | Access token kedaluwarsa; socket diputus, sambung ulang dengan token baru |
+| `SESSION_CHANGED` | Perangkat di-logout; socket diputus, sambung ulang bila sesi masih sah |
+| `ACCESS_CHANGED` | Kategori laporan berubah; socket diputus, sambung ulang lalu `joinRoom` lagi |
 
 ## Anonimitas
 

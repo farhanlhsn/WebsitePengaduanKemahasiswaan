@@ -78,12 +78,14 @@ Penyimpanan counter memakai Redis (`REDIS_URL`). Kunci IP dihitung dari `X-Forwa
 | --- | --- | --- |
 | Global (semua request) | 500 / 15 menit | IP |
 | Login gagal | 20 / 15 menit | IP |
+| Login gagal per akun | 10 / 15 menit | Email (huruf kecil) |
 | Registrasi | 20 / jam | IP |
 | Lupa / reset password | 3 / 15 menit | IP |
 | Refresh token | 60 / 15 menit | IP |
 | Buat laporan | 5 / jam | Pengguna |
 | Unggah berkas | 10 / menit | Pengguna |
 | Event `chat:typing` (socket) | 120 / menit | Socket |
+| Event `joinRoom` (socket) | 30 / menit | Socket |
 
 Setiap limiter memakai prefix Redis sendiri (`rl:<nama>:`, mis. `rl:login:`, `rl:global:`), sehingga kuotanya tidak saling memengaruhi. Respons 429 berisi pesan berbahasa Indonesia dan header standar `RateLimit-*`.
 
@@ -92,10 +94,10 @@ Setiap limiter memakai prefix Redis sendiri (`rl:<nama>:`, mis. `rl:login:`, `rl
 | Konteks | Endpoint | Field | Tipe | Batas |
 | --- | --- | --- | --- | --- |
 | KTM | `POST /auth/registerStudent` | `ktm` | JPEG, PNG, WebP | 5 MB |
-| Lampiran laporan | `POST /reports/{id}/attachments` | `files` (maks. 10) | JPEG, PNG, WebP, PDF, DOC, DOCX | 5 MB/berkas |
+| Lampiran laporan | `POST /reports/{id}/attachments` | `files` (maks. 10 per unggahan, 20 per laporan) | JPEG, PNG, WebP, PDF, DOC, DOCX | 5 MB/berkas |
 | Lampiran chat | `POST /chat/reports/{id}/upload` lalu `attachmentTokens` saat kirim pesan | `files` (maks. 10) | sama | 5 MB/berkas |
 
-Validasi dilakukan pada MIME, ekstensi, dan *magic bytes* (`utils/fileValidation.js`). Gambar dikompresi dengan Sharp. Berkas disajikan di `/uploads/...` hanya untuk pengguna login: dengan header Bearer, atau dengan cookie refresh token untuk tag `<img>` di browser. `fileAccessMiddleware` lalu memeriksa kepemilikan atau hak akses laporan. Berkas selain gambar dikirim sebagai unduhan. Path `/uploads/chat-pending` tidak dapat diakses langsung.
+Validasi dilakukan pada MIME, ekstensi, dan *magic bytes* (`utils/fileValidation.js`). Gambar dikompresi dengan Sharp, yang sekaligus membuang metadata EXIF (termasuk lokasi GPS); gambar yang gagal diproses ditolak. Berkas disajikan di `/uploads/...` hanya untuk pengguna login: dengan header Bearer, atau dengan cookie refresh token untuk tag `<img>` di browser. `fileAccessMiddleware` lalu memeriksa kepemilikan atau hak akses laporan. Berkas selain gambar dikirim sebagai unduhan. Path `/uploads/chat-pending` tidak dapat diakses langsung.
 
 ## Memperbarui dokumentasi
 

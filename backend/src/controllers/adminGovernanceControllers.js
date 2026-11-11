@@ -20,8 +20,8 @@ function auditContext(req) {
  * - `disconnect=true` dipakai saat demote (tokenVersion naik → sesi socket
  *   memang sudah tidak valid), sehingga socket pasif diputus sekarang juga
  *   alih-alih terus menerima broadcast chat.
- * - `disconnect=false` dipakai saat revoke kategori (sesi masih valid untuk
- *   kategori lain) — frontend yang memutuskan keluar room terkait.
+ * - Revoke kategori juga memutus socket: sesi masih valid untuk kategori lain,
+ *   jadi klien menyambung ulang dan joinRoom memeriksa akses dari awal.
  */
 function notifyAccessRevoked(req, userId, { reason, categoryId = null, disconnect = false }) {
   const io = req.app.get('io');
@@ -162,7 +162,10 @@ exports.revokeCategory = async (req, res) => {
     }
     const result = await adminGovernanceServices.revokeCategory(adminId, categoryId, req.user.userId);
     if (result.revoked) {
-      notifyAccessRevoked(req, adminId, { reason: 'CATEGORY_REVOKED', categoryId, disconnect: false });
+      // Diputus juga: socket yang sudah bergabung ke room laporan kategori ini
+      // tetap menerima broadcast chat bila hanya diberi tahu. Klien menyambung
+      // ulang dan joinRoom memeriksa akses dari awal.
+      notifyAccessRevoked(req, adminId, { reason: 'CATEGORY_REVOKED', categoryId, disconnect: true });
       auditLogServices
         .createAuditLog({
           ...auditContext(req),

@@ -16,7 +16,7 @@ router.use(authMiddleware); // All routes below require authentication
 router.get('/', isAdminMiddleware, [query('includeDeleted').optional().isBoolean().toBoolean()], validate, userController.getAllUsers);              // GET /api/users?includeDeleted=true
 router.get('/stats', isAdminMiddleware, userController.getUserStats);        // GET /api/users/stats
 router.get('/unverified/students', isAdminMiddleware, userController.getUnverifiedStudents);  // GET /api/users/unverified/students
-router.get('/unverified/admins', isAdminMiddleware, userController.getUnverifiedAdmins);      // GET /api/users/unverified/admins
+router.get('/unverified/admins', isSuperAdminMiddleware, userController.getUnverifiedAdmins);      // GET /api/users/unverified/admins
 router.put('/verify/:id', isAdminMiddleware, [param('id').isInt().withMessage('id must be an integer')], validate, userController.verifyStudent);  // PUT /api/users/verify/123
 router.put('/reject/:id', isAdminMiddleware, [param('id').isInt().withMessage('id must be an integer'), body('reason').trim().notEmpty().withMessage('Reason is required')], validate, userController.rejectStudent);  // PUT /api/users/reject/123
 router.get('/search/:email', isAdminMiddleware, [param('email').isEmail().withMessage('Invalid email')], validate, userController.getUserByEmail);  // GET /api/users/search/:email (admin only)

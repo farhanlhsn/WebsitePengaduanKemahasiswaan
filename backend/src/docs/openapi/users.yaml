@@ -55,7 +55,7 @@ paths:
   /v1/api/users/unverified/admins:
     get:
       tags: [Users]
-      summary: Admin yang belum terverifikasi (admin)
+      summary: Admin yang belum terverifikasi (superadmin)
       responses:
         '200':
           description: Daftar admin belum terverifikasi.
@@ -208,7 +208,11 @@ paths:
     put:
       tags: [Users]
       summary: Ubah data pengguna lain (admin)
-      description: Hanya `name`, `email`, `nim`. ADMIN hanya untuk akun MAHASISWA.
+      description: >-
+        Hanya `name` dan `nim`. ADMIN hanya untuk akun MAHASISWA. `email` boleh
+        dikirim bila nilainya sama dengan email saat ini; mengganti email ditolak
+        403 karena email baru menerima tautan reset password. Pemilik akun
+        mengganti email lewat `PUT /users/profile/me`.
       requestBody:
         required: true
         content:
@@ -217,12 +221,12 @@ paths:
               type: object
               properties:
                 name: { type: string }
-                email: { type: string, format: email }
+                email: { type: string, format: email, description: Harus sama dengan email saat ini. }
                 nim: { type: string, minLength: 8 }
       responses:
         '200': { description: Data diperbarui. }
         '400': { description: Tidak ada field yang diubah atau validasi gagal. }
-        '403': { $ref: '#/components/responses/Forbidden' }
+        '403': { description: Tidak berwenang atas akun ini, atau mencoba mengganti email. }
     delete:
       tags: [Users]
       summary: Soft delete pengguna (admin)

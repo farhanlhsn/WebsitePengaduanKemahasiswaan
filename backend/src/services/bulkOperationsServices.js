@@ -6,6 +6,7 @@ const {
   getTargetUserOrThrow,
 } = require('../utils/userGovernancePolicy');
 const { ROLES } = require('../utils/rbac');
+const { acquireSuperAdminGuardLock } = require('../utils/superAdminLock');
 const { getLogger } = require('../utils/logger');
 
 const log = getLogger('bulk-ops:service');
@@ -113,14 +114,29 @@ class BulkOperationsServices {
 
       for (const target of targets) {
         try {
+          let result;
           if (target.role === ROLES.SUPERADMIN) {
-            // Re-count superadmin aktif tepat sebelum eksekusi (anti race).
             await assertCanManageUser(actor, target, 'soft_delete');
+            // Audit B2: hitung ulang superadmin aktif di bawah advisory lock
+            // yang sama dengan demote/delete tunggal, supaya dua aksi konkuren
+            // tidak menghabiskan semua superadmin.
+            result = await prisma.$transaction(async (tx) => {
+              await acquireSuperAdminGuardLock(tx);
+              const remaining = await tx.user.count({
+                where: { role: ROLES.SUPERADMIN, deletedAt: null, NOT: { id: target.id } },
+              });
+              if (remaining < 1) throw new Error('Cannot delete the last active SUPERADMIN');
+              return tx.user.updateMany({
+                where: { id: target.id, deletedAt: null },
+                data: { deletedAt: new Date(), updatedAt: new Date() },
+              });
+            });
+          } else {
+            result = await prisma.user.updateMany({
+              where: { id: target.id, deletedAt: null },
+              data: { deletedAt: new Date(), updatedAt: new Date() },
+            });
           }
-          const result = await prisma.user.updateMany({
-            where: { id: target.id, deletedAt: null },
-            data: { deletedAt: new Date(), updatedAt: new Date() },
-          });
           if (result.count === 1) {
             deleted += 1;
             deletedIds.push(target.id);

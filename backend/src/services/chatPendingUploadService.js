@@ -152,7 +152,11 @@ async function cleanupExpiredChatPendingUploads() {
 async function reconcileOrphanChatPendingFiles() {
   const filesOnDisk = await listFilesInDir(CHAT_PENDING_DIR);
   const known = await prisma.chatPendingUpload.findMany({ select: { filePath: true } });
-  const knownSet = new Set(known.map((p) => p.filePath));
+  // DB menyimpan path publik (`/uploads/chat-pending/<nama>`), sedangkan
+  // listFilesInDir mengembalikan path absolut di disk — bandingkan nama berkasnya.
+  // Tanpa ini semua berkas pending dianggap yatim dan terhapus setelah 1 jam,
+  // padahal masa berlaku token unggahannya 24 jam.
+  const knownSet = new Set(known.map((p) => path.basename(p.filePath)));
 
   // Audit L1: grace period — file yang baru dibuat (< 1 jam) bisa saja belum
   // punya baris DB karena transaksi upload belum commit saat job berjalan.
@@ -161,7 +165,7 @@ async function reconcileOrphanChatPendingFiles() {
 
   let removed = 0;
   for (const filePath of filesOnDisk) {
-    if (knownSet.has(filePath)) continue;
+    if (knownSet.has(path.basename(filePath))) continue;
     try {
       const stat = await fs.promises.stat(filePath);
       if (now - stat.mtimeMs < GRACE_MS) continue;

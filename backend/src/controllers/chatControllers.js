@@ -1,7 +1,7 @@
 const chatServices = require('../services/chatServices');
 const auditLogServices = require('../services/auditLogServices');
 const ResponseFormatter = require('../utils/responseFormatter');
-const { anonymizeChatMessage, shouldMaskReporter, socketIdentity } = require('../utils/anonymizer');
+const { anonymizeChatMessage, auditActor, shouldMaskReporter, socketIdentity } = require('../utils/anonymizer');
 const { notifyChatListRefresh } = require('../utils/chatNotify');
 const { ChatError } = require('../utils/chatErrors');
 const { deleteFileFromDisk } = require('../utils/fileDisk');
@@ -41,6 +41,21 @@ function redactDeletedReply(message) {
   return message;
 }
 
+/**
+ * Bentuk aman sebuah pesan untuk `viewer`: buang daftar pembaca (berisi userId
+ * mentah), sembunyikan isi balasan yang terhapus, lalu samarkan pengirim pesan
+ * dan pengirim kutipan balasan bila laporannya anonim.
+ */
+function maskMessageFor(message, reportCtx, viewer) {
+  delete message.reads;
+  redactDeletedReply(message);
+  anonymizeChatMessage(message, reportCtx, viewer);
+  if (message.replyTo && !message.replyTo.deleted) {
+    anonymizeChatMessage(message.replyTo, reportCtx, viewer);
+  }
+  return message;
+}
+
 class ChatControllers {
   async getMessages(req, res) {
     try {
@@ -57,12 +72,10 @@ class ChatControllers {
       const reportCtx = result.report;
       if (reportCtx) {
         for (const msg of result.messages) {
-          redactDeletedReply(msg);
-          anonymizeChatMessage(msg, reportCtx, req.user);
-          if (msg.replyTo) {
-            anonymizeChatMessage(msg.replyTo, reportCtx, req.user);
-          }
+          maskMessageFor(msg, reportCtx, req.user);
         }
+        // userId pelapor hanya dipakai untuk masking; jangan ikut ke respons.
+        result.report = { id: reportCtx.id, isAnonymous: reportCtx.isAnonymous };
       }
 
       res.json(ResponseFormatter.success(result, 'Messages retrieved successfully'));
@@ -92,6 +105,7 @@ class ChatControllers {
       const isReplay = message.replayed === true;
       delete message.report;
       delete message.replayed;
+      delete message.reads;
       redactDeletedReply(message);
 
       const io = req.app.get('io');
@@ -104,9 +118,11 @@ class ChatControllers {
           timestamp: new Date().toISOString(),
         };
 
-        if (reportCtx?.isAnonymous && message.senderId === reportCtx.userId) {
+        if (reportCtx?.isAnonymous) {
+          // Room berisi admin: samarkan pengirim dan kutipan balasan dari
+          // pelapor, siapa pun yang mengirim pesan ini.
           const anonPayload = JSON.parse(JSON.stringify(basePayload));
-          anonymizeChatMessage(anonPayload, reportCtx, { userId: -1 });
+          maskMessageFor(anonPayload, reportCtx, { userId: -1 });
           io.to(`report_${reportId}`).emit('chat:message', anonPayload);
         } else {
           io.to(`report_${reportId}`).emit('chat:message', basePayload);
@@ -114,6 +130,8 @@ class ChatControllers {
 
         notifyChatListRefresh(io, parseInt(reportId), { hasNew: true });
       }
+
+      if (reportCtx) maskMessageFor(message, reportCtx, req.user);
 
       res.status(isReplay ? 200 : 201).json(
         ResponseFormatter.success(message, isReplay ? 'Message already sent' : 'Message sent successfully')
@@ -227,11 +245,7 @@ class ChatControllers {
           entityType: 'REPORT',
           action: 'UPDATE',
           entityId: reportId,
-          actorId: req.user.userId,
-          actorName: req.user.name,
-          actorRole: req.user.role,
-          ip: req.ip,
-          userAgent: req.headers['user-agent'],
+          ...auditActor(req, report),
           metadata: { operation: 'DELETE_CHAT_MESSAGE', messageId: parseInt(messageId) },
         });
       } catch (auditError) {

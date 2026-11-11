@@ -116,7 +116,8 @@ function anonymizeReportList(reports, viewer) {
 function anonymizeChatMessage(message, report, viewer) {
   if (!message || !report) return message;
   if (!shouldMaskReporter(report, viewer)) return message;
-  if (message.senderId !== report.userId) return message;
+  // Fail closed: bila senderId tidak ikut di-select, anggap pesan dari pelapor.
+  if (message.senderId !== undefined && message.senderId !== report.userId) return message;
 
   if (message.sender) {
     message.sender = { ...message.sender, name: 'Anonim' };
@@ -126,8 +127,36 @@ function anonymizeChatMessage(message, report, viewer) {
   return message;
 }
 
+/**
+ * Identitas aktor untuk audit log. Bila pelapor anonim bertindak atas
+ * laporannya sendiri (edit, batal, hapus pesan), audit log dibaca superadmin,
+ * jadi aktor dicatat sebagai "Anonim" tanpa id, IP, maupun user agent.
+ * actorId 0 dipakai sebagai penanda karena kolomnya wajib diisi.
+ *
+ * @param {import('express').Request} req
+ * @param {?{isAnonymous?:boolean, userId?:number}} report
+ */
+function auditActor(req, report) {
+  const user = req.user || {};
+  if (
+    report?.isAnonymous &&
+    report.userId != null &&
+    Number(report.userId) === Number(user.userId)
+  ) {
+    return { actorId: 0, actorName: 'Anonim', actorRole: user.role, ip: null, userAgent: null };
+  }
+  return {
+    actorId: user.userId,
+    actorName: user.name,
+    actorRole: user.role,
+    ip: req.ip,
+    userAgent: req.headers?.['user-agent'],
+  };
+}
+
 module.exports = {
   ANON_USER,
+  auditActor,
   ANON_REPORTER_IDENTITY,
   shouldMaskReporter,
   socketIdentity,

@@ -3,6 +3,17 @@ const { getLogger } = require('../utils/logger');
 const log = getLogger('email:service');
 
 /**
+ * Escape nilai yang disisipkan ke template HTML email. Nama, judul laporan,
+ * dan alasan berasal dari pengguna; tanpa escape, penyerang bisa menyisipkan
+ * tautan phishing ke email resmi kampus (mis. email reset password).
+ */
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+/**
  * Email notification service for the complaint system.
  * Gracefully degrades if SMTP is not configured (logs warning, doesn't crash).
  */
@@ -82,24 +93,24 @@ class EmailService {
           <h2 style="color: white; margin: 0;">Pengaduan Kemahasiswaan UBH</h2>
         </div>
         <div style="padding: 24px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
-          <p>Halo <strong>${userName}</strong>,</p>
+          <p>Halo <strong>${esc(userName)}</strong>,</p>
           <p>Status laporan Anda telah diperbarui:</p>
           <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
             <tr>
               <td style="padding: 10px 12px; border: 1px solid #e0e0e0; background: #f5f5f5; width: 140px;"><strong>Judul</strong></td>
-              <td style="padding: 10px 12px; border: 1px solid #e0e0e0;">${reportTitle}</td>
+              <td style="padding: 10px 12px; border: 1px solid #e0e0e0;">${esc(reportTitle)}</td>
             </tr>
             <tr>
               <td style="padding: 10px 12px; border: 1px solid #e0e0e0; background: #f5f5f5;"><strong>No. Registrasi</strong></td>
-              <td style="padding: 10px 12px; border: 1px solid #e0e0e0;">${regNumber}</td>
+              <td style="padding: 10px 12px; border: 1px solid #e0e0e0;">${esc(regNumber)}</td>
             </tr>
             <tr>
               <td style="padding: 10px 12px; border: 1px solid #e0e0e0; background: #f5f5f5;"><strong>Status Lama</strong></td>
-              <td style="padding: 10px 12px; border: 1px solid #e0e0e0;">${statusLabels[oldStatus] || oldStatus}</td>
+              <td style="padding: 10px 12px; border: 1px solid #e0e0e0;">${esc(statusLabels[oldStatus] || oldStatus)}</td>
             </tr>
             <tr>
               <td style="padding: 10px 12px; border: 1px solid #e0e0e0; background: #f5f5f5;"><strong>Status Baru</strong></td>
-              <td style="padding: 10px 12px; border: 1px solid #e0e0e0;"><strong style="color: #1976d2;">${statusLabels[newStatus] || newStatus}</strong></td>
+              <td style="padding: 10px 12px; border: 1px solid #e0e0e0;"><strong style="color: #1976d2;">${esc(statusLabels[newStatus] || newStatus)}</strong></td>
             </tr>
           </table>
           <p>Silakan login ke sistem untuk melihat detail lebih lanjut.</p>
@@ -126,7 +137,7 @@ class EmailService {
           <h2 style="color: white; margin: 0;">Pengaduan Kemahasiswaan UBH</h2>
         </div>
         <div style="padding: 24px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
-          <p>Halo <strong>${userName}</strong>,</p>
+          <p>Halo <strong>${esc(userName)}</strong>,</p>
           <p>Selamat! Akun Anda telah <strong>diverifikasi</strong> oleh admin.</p>
           <p>Anda sekarang dapat:</p>
           <ul>
@@ -158,11 +169,11 @@ class EmailService {
           <h2 style="color: white; margin: 0;">Registrasi Ditolak</h2>
         </div>
         <div style="padding: 24px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
-          <p>Halo <strong>${userName}</strong>,</p>
+          <p>Halo <strong>${esc(userName)}</strong>,</p>
           <p>Mohon maaf, registrasi akun Anda telah <strong>ditolak</strong> oleh admin.</p>
           <p><strong>Alasan:</strong></p>
           <p style="background: #fff3f3; padding: 12px; border-left: 4px solid #d32f2f; border-radius: 4px;">
-            ${reason}
+            ${esc(reason)}
           </p>
           <p>Jika Anda merasa ini adalah kesalahan, silakan daftar ulang dengan data yang benar
           atau hubungi admin kampus untuk informasi lebih lanjut.</p>
@@ -188,11 +199,11 @@ class EmailService {
           <h2 style="color: white; margin: 0;">Reset Password</h2>
         </div>
         <div style="padding: 24px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
-          <p>Halo <strong>${userName}</strong>,</p>
+          <p>Halo <strong>${esc(userName)}</strong>,</p>
           <p>Kami menerima permintaan untuk mereset password akun Anda.</p>
           <p>Klik tombol di bawah untuk mengatur password baru:</p>
           <div style="text-align: center; margin: 24px 0;">
-            <a href="${resetUrl}" style="display: inline-block; padding: 14px 28px; 
+            <a href="${esc(resetUrl)}" style="display: inline-block; padding: 14px 28px; 
                background: #1976d2; color: white; text-decoration: none; border-radius: 6px;
                font-weight: bold; font-size: 16px;">
               Reset Password
@@ -207,7 +218,7 @@ class EmailService {
           <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
           <p style="color: #999; font-size: 11px;">
             Jika tombol tidak berfungsi, salin link berikut ke browser:<br>
-            <a href="${resetUrl}" style="color: #1976d2; word-break: break-all;">${resetUrl}</a>
+            <a href="${esc(resetUrl)}" style="color: #1976d2; word-break: break-all;">${esc(resetUrl)}</a>
           </p>
           <p style="color: #666; font-size: 12px; margin: 0;">
             Sistem Pengaduan Kemahasiswaan — Universitas Bung Hatta
@@ -253,10 +264,10 @@ class EmailService {
           <h2 style="color: white; margin: 0;">Pengaduan Kemahasiswaan UBH</h2>
         </div>
         <div style="padding: 24px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
-          <p>Halo <strong>${userName}</strong>,</p>
-          <p>Anda menerima pesan baru dari <strong>${displaySenderName}</strong> pada laporan:</p>
+          <p>Halo <strong>${esc(userName)}</strong>,</p>
+          <p>Anda menerima pesan baru dari <strong>${esc(displaySenderName)}</strong> pada laporan:</p>
           <p style="background: #f5f5f5; padding: 12px; border-radius: 4px;">
-            <strong>${reportTitle}</strong> (${regNumber})
+            <strong>${esc(reportTitle)}</strong> (${esc(regNumber)})
           </p>
           <p>Silakan login ke sistem untuk membaca dan membalas pesan.</p>
           <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">

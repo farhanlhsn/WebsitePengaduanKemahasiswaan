@@ -13,6 +13,7 @@ const {
   filterUsersForActor,
 } = require('../utils/userGovernancePolicy');
 const { getLogger } = require('../utils/logger');
+const { disconnectUserSockets } = require('../sockets/socketSessions');
 const log = getLogger('user:controller');
 
 function handleGovernanceError(res, error) {
@@ -108,7 +109,7 @@ exports.updateProfile = async (req, res) => {
           );
         }
       }
-      updateData.email = email;
+      updateData.email = String(email).trim().toLowerCase();
     }
 
     if (!name && !nim && !email) {
@@ -126,6 +127,7 @@ exports.updateProfile = async (req, res) => {
         data: { tokenVersion: { increment: 1 } },
       });
       await prisma.refreshToken.deleteMany({ where: { userId } });
+      disconnectUserSockets(req.app.get('io'), userId, 'AUTH_REVOKED');
 
       // Audit L2: perubahan email wajib tercatat.
       try {
@@ -205,14 +207,26 @@ exports.updateUser = async (req, res) => {
     // Security (mass-assignment): hanya field profil yang boleh diubah lewat
     // endpoint ini. Perubahan role/password/verifikasi/tokenVersion harus
     // melalui endpoint khususnya masing-masing — jangan spread req.body ke Prisma.
+    // Email tidak boleh diganti admin: email baru menerima tautan reset
+    // password, sehingga admin bisa mengambil alih akun mahasiswa dan melihat
+    // laporan anonimnya. Pemilik akun mengganti email lewat /users/profile/me
+    // (wajib password saat ini).
+    if (
+      req.body.email !== undefined &&
+      String(req.body.email).trim().toLowerCase() !== String(target.email || '').toLowerCase()
+    ) {
+      return res.status(403).json(
+        ResponseFormatter.error('Email hanya dapat diubah oleh pemilik akun melalui halaman profil', 403)
+      );
+    }
+
     const updateData = {};
     if (req.body.name !== undefined) updateData.name = req.body.name;
-    if (req.body.email !== undefined) updateData.email = req.body.email;
     if (req.body.nim !== undefined) updateData.nim = req.body.nim;
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json(
-        ResponseFormatter.error('Tidak ada field yang dapat diperbarui (hanya name, email, nim)', 400)
+        ResponseFormatter.error('Tidak ada field yang dapat diperbarui (hanya name, nim)', 400)
       );
     }
 
@@ -268,6 +282,7 @@ exports.deleteUser = async (req, res) => {
     const userDetails = await userServices.getUserById(userId, true);
     
     await userServices.deleteUser(userId);
+    disconnectUserSockets(req.app.get('io'), userId, 'USER_DELETED');
     
     // Create audit log
     try {
@@ -560,7 +575,9 @@ exports.getUserStatsById = async (req, res) => {
       return res.status(403).json(ResponseFormatter.error('Access denied', 403));
     }
 
-    const stats = await userServices.getUserStatsById(userId);
+    const stats = await userServices.getUserStatsById(userId, {
+      includeAnonymous: Number(req.user.userId) === userId,
+    });
     res.status(200).json(ResponseFormatter.success(stats, 'User statistics retrieved successfully'));
   } catch (error) {
     log.error('getUserStatsById error', { error: error.message });

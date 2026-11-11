@@ -7,6 +7,7 @@ const { isAllowedDomain, getAllowedDomains } = require('../utils/emailValidator'
 const log = getLogger('auth:controller');
 const { refreshCookieOptions, clearRefreshCookie } = require('../utils/refreshCookie');
 const { hashToken } = require('../utils/tokenHash');
+const { disconnectUserSockets } = require('../sockets/socketSessions');
 
 /**
  * Process KTM file upload and return the file path.
@@ -383,6 +384,9 @@ exports.logoutDevice = async (req, res) => {
     await authServices.logoutDeviceById(userId, id);
 
     log.info('Logout device success', { userId, deviceRecordId: id });
+    // Socket perangkat lain ikut diputus; yang masih punya token sah akan
+    // menyambung ulang dan berakhir paling lambat saat access token kedaluwarsa.
+    disconnectUserSockets(req.app.get('io'), userId);
     res.json({
       status: 'success',
       message: 'Device logged out successfully'
@@ -410,6 +414,7 @@ exports.logoutAllOtherDevices = async (req, res) => {
     await authServices.logoutAllOtherDevices(userId, currentDeviceId);
 
     log.info('Logout other devices success', { userId, currentDeviceId });
+    disconnectUserSockets(req.app.get('io'), userId);
     res.json({
       status: 'success',
       message: 'All other devices logged out successfully'

@@ -71,7 +71,8 @@ describe('updateUser mass-assignment protection (controller)', () => {
       headers: {},
       body: {
         name: 'Nama Baru',
-        email: 'baru@mahasiswa.ac.id',
+        // Email tidak berubah (formulir mengirim ulang nilai lama) — boleh.
+        email: 'MHS@mahasiswa.ac.id',
         nim: '12345678',
         // Injection attempts:
         role: 'SUPERADMIN',
@@ -91,7 +92,6 @@ describe('updateUser mass-assignment protection (controller)', () => {
     expect(calledId).toBe(42);
     expect(calledData).toEqual({
       name: 'Nama Baru',
-      email: 'baru@mahasiswa.ac.id',
       nim: '12345678',
     });
     expect(calledData.role).toBeUndefined();
@@ -99,6 +99,22 @@ describe('updateUser mass-assignment protection (controller)', () => {
     expect(calledData.isVerified).toBeUndefined();
     expect(calledData.tokenVersion).toBeUndefined();
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  test('admin cannot change a user email (account takeover via password reset)', async () => {
+    const req = {
+      params: { id: '42' },
+      user: ADMIN_ACTOR,
+      ip: '127.0.0.1',
+      headers: {},
+      body: { name: 'Nama Baru', email: 'penyerang@contoh.invalid' },
+    };
+    const res = mockRes();
+
+    await userControllers.updateUser(req, res);
+
+    expect(userServices.updateUser).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
   });
 
   test('body containing ONLY privileged fields is rejected with 400', async () => {

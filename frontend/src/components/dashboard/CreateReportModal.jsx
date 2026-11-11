@@ -329,6 +329,14 @@ const CreateReportModal = React.memo(({ open, onClose, categories, onSubmit }) =
                       Identitas Anda (nama, NIM, email) akan disembunyikan dari admin
                       untuk laporan ini. Pesan chat Anda akan tampil sebagai &ldquo;Anonim&rdquo;.
                     </Typography>
+                    {formData.isAnonymous && (
+                      <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 1 }}>
+                        Lampiran PDF atau Word sering menyimpan nama penulis di properti dokumen.
+                        Sebelum mengunggah, hapus nama itu (Word: File &rsaquo; Info &rsaquo; Periksa
+                        Dokumen) atau lampirkan tangkapan layar saja. Data lokasi pada foto dihapus
+                        otomatis.
+                      </Typography>
+                    )}
                   </Box>
                 </Stack>
               </Box>

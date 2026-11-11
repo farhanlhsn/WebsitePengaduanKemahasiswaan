@@ -78,7 +78,10 @@ class AdminGovernanceServices {
       }
       if (target.role === ROLES.ADMIN) {
         // Idempotent — already an admin.
-        return tx.user.findUnique({ where: { id: targetUserId } });
+        return tx.user.findUnique({
+          where: { id: targetUserId },
+          select: { id: true, name: true, email: true, role: true },
+        });
       }
 
       const updated = await tx.user.update({
@@ -146,7 +149,10 @@ class AdminGovernanceServices {
       });
       if (!target || target.deletedAt) throw new Error('Target user not found');
       if (target.role === ROLES.SUPERADMIN) {
-        return tx.user.findUnique({ where: { id: targetUserId } });
+        return tx.user.findUnique({
+          where: { id: targetUserId },
+          select: { id: true, name: true, email: true, role: true },
+        });
       }
       if (target.role !== ROLES.ADMIN) {
         throw new Error('Only existing ADMINs can be promoted to SUPERADMIN');

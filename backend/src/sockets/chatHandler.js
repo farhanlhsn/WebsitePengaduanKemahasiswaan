@@ -3,11 +3,14 @@ const { authenticateSocket } = require('./socketAuth');
 const { assertSocketEventAllowed } = require('./roomAccess');
 const { parsePositiveInt, parseBoolean } = require('./validatePayload');
 const { emitChatError, leaveAndClearRoom, kickSocket } = require('./socketEmitters');
-const { allowTyping, clearTypingBucket } = require('./typingRateLimit');
+const { allowTyping, allowRoomEvent, clearTypingBucket } = require('./typingRateLimit');
 const { socketIdentity } = require('../utils/anonymizer');
 const { getLogger } = require('../utils/logger');
 
 const socketLog = getLogger('socket:io');
+
+// Batas atas setTimeout di Node (~24,8 hari).
+const MAX_TIMER_MS = 2147483647;
 
 function setupSocket(server) {
   const allowedOrigins = [
@@ -39,6 +42,9 @@ function setupSocket(server) {
       }
 
       socket.data.user = result.user;
+      // Simpan masa berlaku access token: koneksi diputus saat token habis,
+      // sama seperti REST, supaya sesi yang sudah dicabut tidak hidup terus.
+      socket.data.tokenExp = result.exp;
       socket.join(`user_${result.user.userId}`);
 
       socketLog.info('Socket authenticated', {
@@ -56,6 +62,13 @@ function setupSocket(server) {
   io.on('connection', (socket) => {
     socket.data.activeRoomId = null;
     socket.data.authorizedReportId = null;
+
+    if (socket.data.tokenExp) {
+      const msLeft = Math.min(socket.data.tokenExp * 1000 - Date.now(), MAX_TIMER_MS);
+      socket.data.expiryTimer = setTimeout(() => {
+        kickSocket(socket, 'TOKEN_EXPIRED').catch(() => {});
+      }, Math.max(msLeft, 0));
+    }
     socket.data.publicIdentity = null;
 
     socketLog.info('User connected', {
@@ -65,6 +78,12 @@ function setupSocket(server) {
 
     socket.on('joinRoom', async (payload, callback) => {
       try {
+        if (!allowRoomEvent(socket.id)) {
+          const response = { ok: false, code: 'RATE_LIMITED', message: 'Terlalu banyak permintaan masuk room.' };
+          if (typeof callback === 'function') callback(response);
+          else emitChatError(socket, response);
+          return;
+        }
         const reportId = parsePositiveInt(payload?.reportId, 'reportId');
         const check = await assertSocketEventAllowed(socket, reportId, { requireJoined: false });
 
@@ -146,6 +165,7 @@ function setupSocket(server) {
     });
 
     socket.on('disconnect', async () => {
+      clearTimeout(socket.data.expiryTimer);
       clearTypingBucket(socket.id);
       socketLog.info('User disconnected', {
         socketId: socket.id,

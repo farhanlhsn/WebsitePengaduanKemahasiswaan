@@ -4,7 +4,7 @@ const adminGovernanceServices = require('../services/adminGovernanceServices');
 const emailService = require('../services/emailService');
 const prisma = require('../utils/prisma');
 const ResponseFormatter = require('../utils/responseFormatter');
-const { anonymizeReport, anonymizeReportList } = require('../utils/anonymizer');
+const { anonymizeReport, anonymizeReportList, auditActor } = require('../utils/anonymizer');
 const { isSuperAdmin, isAdmin } = require('../utils/rbac');
 const { canAccessReport, canAdminManageReport, isReportOwner } = require('../utils/accessPolicy');
 const { getLogger } = require('../utils/logger');
@@ -23,6 +23,7 @@ const log = getLogger('report:controller');
  * Redis tidak dikonfigurasi (dev/test).
  */
 const redisClient = require('../utils/redis');
+const { disconnectReportRoom } = require('../sockets/socketSessions');
 const ANON_VIEW_AUDIT_WINDOW_MS = 5 * 60 * 1000;
 const ANON_VIEW_AUDIT_WINDOW_S = Math.floor(ANON_VIEW_AUDIT_WINDOW_MS / 1000);
 const anonViewAuditCache = new Map();
@@ -379,17 +380,19 @@ exports.editReport = async (req, res) => {
       select: { id: true, title: true, description: true, categoryId: true, status: true, registrationNumber: true }
     });
 
+    // Kategori berubah berarti admin yang berhak ikut berubah: putus socket di
+    // room laporan ini supaya admin kategori lama tidak terus menerima chat.
+    if (updateData.categoryId && Number(updateData.categoryId) !== Number(report.categoryId)) {
+      disconnectReportRoom(req.app.get('io'), id);
+    }
+
     // Audit L2: edit laporan wajib tercatat.
     try {
       await auditLogServices.createAuditLog({
         entityType: 'REPORT',
         action: 'UPDATE',
         entityId: id,
-        actorId: req.user.userId,
-        actorName: req.user.name,
-        actorRole: req.user.role,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
+        ...auditActor(req, report),
         metadata: {
           operation: 'EDIT_REPORT',
           updatedFields: Object.keys(updateData),
@@ -400,7 +403,7 @@ exports.editReport = async (req, res) => {
       log.error('Failed to create audit log for edit report', { error: auditError.message });
     }
 
-    res.status(200).json(ResponseFormatter.success(result, 'Laporan berhasil diperbarui'));
+    res.status(200).json(ResponseFormatter.success(anonymizeReport(result, req.user), 'Laporan berhasil diperbarui'));
   } catch (err) {
     log.warn('editReport error', { error: err.message });
     res.status(400).json(ResponseFormatter.error(err.message));
@@ -509,7 +512,9 @@ exports.updateReportStatus = async (req, res) => {
       }).catch(err => log.error('Failed to fetch report owner for email', { error: err.message }));
     }
     
-    res.status(200).json(ResponseFormatter.success(result, 'Status updated'));
+    // result.userId dipakai untuk email di atas; jangan sampai ikut ke respons
+    // bila laporan anonim (admin tidak boleh melihat pelapor).
+    res.status(200).json(ResponseFormatter.success(anonymizeReport({ ...result }, req.user), 'Status updated'));
   } catch (err) {
     log.warn('updateReportStatus error', { error: err.message });
     const statusCode = err.statusCode || 400;
@@ -553,7 +558,7 @@ exports.restoreReport = async (req, res) => {
       log.error('Failed to create audit log for restore report', { error: auditError.message });
     }
     
-    res.status(200).json(ResponseFormatter.success(result, 'Report restored'));
+    res.status(200).json(ResponseFormatter.success(anonymizeReport(result, req.user), 'Report restored'));
   } catch (err) {
     log.warn('restoreReport error', { error: err.message });
     res.status(400).json(ResponseFormatter.error(err.message));
@@ -594,11 +599,7 @@ exports.deleteReport = async (req, res) => {
           entityType: 'REPORT',
           action: 'UPDATE_STATUS',
           entityId: id,
-          actorId: req.user.userId,
-          actorName: req.user.name,
-          actorRole: req.user.role,
-          ip: req.ip,
-          userAgent: req.headers['user-agent'],
+          ...auditActor(req, report),
           metadata: {
             reportTitle: report.title,
             registrationNumber: report.registrationNumber,
@@ -630,7 +631,7 @@ exports.deleteReport = async (req, res) => {
         }).catch(err => log.error('Failed to fetch report owner for email', { error: err.message }));
       }
       
-      res.status(200).json(ResponseFormatter.success(result, 'Laporan berhasil dibatalkan'));
+      res.status(200).json(ResponseFormatter.success(anonymizeReport({ ...result }, req.user), 'Laporan berhasil dibatalkan'));
     } else {
       result = await ReportServices.deleteReport(id);
       
@@ -655,7 +656,7 @@ exports.deleteReport = async (req, res) => {
         log.error('Failed to create audit log for delete report', { error: auditError.message });
       }
       
-      res.status(200).json(ResponseFormatter.success(result, 'Report deleted'));
+      res.status(200).json(ResponseFormatter.success(anonymizeReport(result, req.user), 'Report deleted'));
     }
   } catch (err) {
     log.warn('deleteReport error', { error: err.message });
