@@ -216,11 +216,13 @@ app.get('/api/health/ready', async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
+    console.error('Readiness check failed:', error.message);
     res.status(503).json({
       status: 'error',
       state: 'not-ready',
       checks,
-      message: error.message,
+      // Detail error hanya di log; endpoint ini publik.
+      message: 'Service not ready',
       timestamp: new Date().toISOString(),
     });
   }
@@ -236,10 +238,10 @@ app.get('/api/health', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
+    console.error('Health check: database connection failed:', error.message);
     res.status(500).json({
       status: 'error',
       message: 'Database connection failed',
-      error: error.message
     });
   }
 });

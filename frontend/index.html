@@ -98,36 +98,5 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     
-    <!-- Performance monitoring script -->
-    <script>
-      // Basic performance monitoring
-      window.addEventListener('load', () => {
-        // Report Web Vitals
-        if ('performance' in window) {
-          // First Contentful Paint
-          const paintEntries = performance.getEntriesByType('paint');
-          paintEntries.forEach(entry => {
-            console.log(`${entry.name}: ${entry.startTime}ms`);
-          });
-          
-          // Navigation timing
-          const navTiming = performance.getEntriesByType('navigation')[0];
-          if (navTiming) {
-            console.log(`Page Load Time: ${navTiming.loadEventEnd - navTiming.fetchStart}ms`);
-            console.log(`DOM Content Loaded: ${navTiming.domContentLoadedEventEnd - navTiming.fetchStart}ms`);
-          }
-        }
-      });
-      
-      // Error tracking
-      window.addEventListener('error', (event) => {
-        console.error('JavaScript Error:', event.error);
-      });
-      
-      // Unhandled promise rejection tracking
-      window.addEventListener('unhandledrejection', (event) => {
-        console.error('Unhandled Promise Rejection:', event.reason);
-      });
-    </script>
   </body>
 </html>

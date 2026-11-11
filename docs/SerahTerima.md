@@ -275,7 +275,7 @@ Saat serah terima, semua rahasia (secret) dan password wajib dibuat baru oleh pi
 
 Sistem menyimpan NIM, nama, email, foto KTM, dan isi pengaduan yang bisa bersifat sensitif (mis. kekerasan seksual). Akses ke server, database, dan volume `upload_data` sebaiknya dibatasi pada petugas TI yang ditunjuk, dan backup disimpan terenkripsi.
 
-Setiap login dari IP publik, backend mengirim alamat IP pengguna ke layanan pihak ketiga `ip-api.com` (lewat HTTP tanpa enkripsi) untuk menampilkan perkiraan lokasi di daftar perangkat aktif (`services/authServices.js`, `getLocationFromIP`). Hal ini perlu disebut dalam kebijakan privasi, atau fiturnya dimatikan bila kampus tidak mengizinkan.
+Daftar perangkat aktif bisa menampilkan perkiraan lokasi dengan mengirim alamat IP pengguna ke layanan pihak ketiga `ip-api.com` (lewat HTTP tanpa enkripsi). Fitur ini **mati secara bawaan**. Aktifkan dengan `IP_GEOLOCATION_ENABLED=true` di `backend/.env` hanya bila kampus mengizinkan, dan sebutkan dalam kebijakan privasi.
 
 Kebijakan privasi untuk pengguna belum ada. Setelah kampus menyusunnya, isi `VITE_PRIVACY_POLICY_URL` agar tautannya muncul di Pusat Bantuan.
 

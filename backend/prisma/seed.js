@@ -1,6 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
+const KNOWN_EXAMPLE_PASSWORDS = new Set(['superadmin12345', 'postgres', 'changeme', 'password123']);
+
 const prisma = new PrismaClient();
 
 /**
@@ -67,15 +69,20 @@ async function ensureSuperAdmin() {
   } else if (process.env.NODE_ENV === 'production' && password.length < 12) {
     console.error('FATAL: SEED_SUPERADMIN_PASSWORD production minimal 12 karakter.');
     process.exit(1);
+  } else if (process.env.NODE_ENV === 'production' && KNOWN_EXAMPLE_PASSWORDS.has(password)) {
+    // Nilai ini pernah tercantum di .env.example (publik di repo).
+    console.error('FATAL: SEED_SUPERADMIN_PASSWORD masih memakai contoh dari .env.example. Ganti dengan password acak.');
+    process.exit(1);
   }
 
   const hash = await bcrypt.hash(password || 'superadmin12345', 10);
 
   await prisma.user.upsert({
     where: { email },
+    // Akun yang sudah ada tidak direset password-nya: password superadmin
+    // diganti lewat aplikasi, dan menjalankan seed ulang (mis. untuk menambah
+    // kategori) tidak boleh mengembalikannya ke nilai di .env.
     update: {
-      name,
-      password: hash,
       role: 'SUPERADMIN',
       isVerified: true,
     },

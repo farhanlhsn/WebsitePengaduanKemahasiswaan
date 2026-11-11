@@ -261,7 +261,6 @@ Ditemukan saat menyusun dan memeriksa dokumentasi serah terima. Belum diperbaiki
 
 | Prioritas | Masalah | Lokasi | Dampak |
 | --- | --- | --- | --- |
-| Sedang | Setiap login dari IP publik mengirim IP pengguna ke `http://ip-api.com` (HTTP tanpa enkripsi) untuk perkiraan lokasi perangkat. | `services/authServices.js` (`getLocationFromIP`) | Data pribadi dikirim ke pihak ketiga; perlu disebut di kebijakan privasi, dibuat opsional, atau diganti layanan HTTPS. |
 | Rendah | Respons `PUT /users/verify/:id`, `GET /users/search/:email`, dan `PUT /users/profile/me` masih menyertakan `tokenVersion` dan `preferences` (bukan password; controller sudah membuang field password). | `services/userServices.js`, `controllers/userControllers.js` | Informasi internal ikut terkirim; sebaiknya pakai `select` eksplisit juga. |
 | Sedang | Detail dan daftar laporan tidak mengembalikan `assignedToId`/`assignedTo`. | `services/reportServices.js` | UI admin tidak bisa menampilkan petugas yang sudah ditugaskan. |
 | Sedang | Mahasiswa tidak punya tombol untuk membatalkan laporan PENDING. Tombolnya ada di `pages/ReportDetailPage.jsx`, yang tidak lagi dipakai routing. | frontend | Pembatalan hanya bisa dilakukan admin. `ReportDetailPage.jsx` dan `AdminReportDetailPage.jsx` adalah kode mati. |
