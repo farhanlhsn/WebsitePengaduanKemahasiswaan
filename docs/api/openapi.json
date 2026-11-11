@@ -3654,7 +3654,7 @@
         "tags": [
           "Users"
         ],
-        "summary": "Admin yang belum terverifikasi (admin)",
+        "summary": "Admin yang belum terverifikasi (superadmin)",
         "responses": {
           "200": {
             "description": "Daftar admin belum terverifikasi.",
@@ -4002,7 +4002,7 @@
           "Users"
         ],
         "summary": "Ubah data pengguna lain (admin)",
-        "description": "Hanya `name`, `email`, `nim`. ADMIN hanya untuk akun MAHASISWA.",
+        "description": "Hanya `name` dan `nim`. ADMIN hanya untuk akun MAHASISWA. `email` boleh dikirim bila nilainya sama dengan email saat ini; mengganti email ditolak 403 karena email baru menerima tautan reset password. Pemilik akun mengganti email lewat `PUT /users/profile/me`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4015,7 +4015,8 @@
                   },
                   "email": {
                     "type": "string",
-                    "format": "email"
+                    "format": "email",
+                    "description": "Harus sama dengan email saat ini."
                   },
                   "nim": {
                     "type": "string",
@@ -4034,7 +4035,8 @@
             "description": "Tidak ada field yang diubah atau validasi gagal."
           },
           "403": {
-            "$ref": "#/components/responses/Forbidden"
+            "description": "Tidak berwenang atas akun ini",
+            "atau mencoba mengganti email.": null
           }
         }
       },

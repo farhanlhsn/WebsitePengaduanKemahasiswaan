@@ -248,3 +248,140 @@ describe('B5 aggregate/export scoping (regression)', () => {
     expect(names).not.toContain('KategoriRahasia');
   });
 });
+
+describe('AN-9 kebocoran identitas di respons mutasi, chat, audit log, dan statistik', () => {
+  test('PATCH /reports/:id/status tidak mengembalikan userId pelapor anonim', async () => {
+    const { admin, report } = await setupAnonymousReportScenario();
+    const res = await request(app)
+      .patch(`/v1/api/reports/${report.id}/status`)
+      .set(authHeader(admin))
+      .send({ status: 'IN_REVIEW' })
+      .expect(200);
+    expect(res.body.data.userId).toBeNull();
+    expect(res.body.data.user.name).toBe('Anonim');
+  });
+
+  test('hapus (soft) dan pulihkan laporan oleh admin tidak mengembalikan userId', async () => {
+    const { admin, report } = await setupAnonymousReportScenario();
+    const del = await request(app)
+      .delete(`/v1/api/reports/${report.id}`)
+      .set(authHeader(admin))
+      .expect(200);
+    expect(del.body.data.userId).toBeNull();
+    const restored = await request(app)
+      .post(`/v1/api/reports/${report.id}/restore`)
+      .set(authHeader(admin))
+      .expect(200);
+    expect(restored.body.data.userId).toBeNull();
+  });
+
+  test('GET pesan chat tidak menyertakan userId pelapor di objek report', async () => {
+    const { admin, report } = await setupAnonymousReportScenario();
+    const res = await request(app)
+      .get(`/v1/api/chat/reports/${report.id}/messages`)
+      .set(authHeader(admin))
+      .expect(200);
+    expect(res.body.data.report).toEqual({ id: report.id, isAnonymous: true });
+  });
+
+  test('kutipan balasan atas pesan pelapor tersamar di respons POST dan GET', async () => {
+    const { admin, report, reporterMsg } = await setupAnonymousReportScenario();
+    const sent = await request(app)
+      .post(`/v1/api/chat/reports/${report.id}/messages`)
+      .set(authHeader(admin))
+      .send({ content: 'membalas pelapor', replyToId: reporterMsg.id, clientMessageId: 'balas-0001' })
+      .expect(201);
+    expect(sent.body.data.replyTo.sender.name).toBe('Anonim');
+    expect(sent.body.data.replyTo.senderId).toBeNull();
+    expect(sent.body.data.reads).toBeUndefined();
+
+    const list = await request(app)
+      .get(`/v1/api/chat/reports/${report.id}/messages`)
+      .set(authHeader(admin))
+      .expect(200);
+    const reply = list.body.data.messages.find((m) => m.id === sent.body.data.id);
+    expect(reply.replyTo.sender.name).toBe('Anonim');
+    expect(JSON.stringify(list.body)).not.toContain('Budi Asli');
+  });
+
+  test('pengiriman ulang dengan clientMessageId yang sama tidak membocorkan daftar pembaca', async () => {
+    const { admin, reporter, report } = await setupAnonymousReportScenario();
+    const first = await request(app)
+      .post(`/v1/api/chat/reports/${report.id}/messages`)
+      .set(authHeader(admin))
+      .send({ content: 'halo', clientMessageId: 'ulang-0001' })
+      .expect(201);
+    await prisma.messageRead.create({ data: { messageId: first.body.data.id, userId: reporter.id } });
+    const replay = await request(app)
+      .post(`/v1/api/chat/reports/${report.id}/messages`)
+      .set(authHeader(admin))
+      .send({ content: 'halo', clientMessageId: 'ulang-0001' })
+      .expect(200);
+    expect(replay.body.data.reads).toBeUndefined();
+    expect(JSON.stringify(replay.body)).not.toContain(`"userId":${reporter.id}`);
+  });
+
+  test('aksi pelapor atas laporan anonimnya dicatat di audit log sebagai Anonim', async () => {
+    const { reporter, report } = await setupAnonymousReportScenario();
+    await request(app)
+      .put(`/v1/api/reports/${report.id}`)
+      .set(authHeader(reporter))
+      .send({ title: 'Judul diperbarui' })
+      .expect(200);
+    const logs = await prisma.auditLog.findMany({ where: { entityType: 'REPORT', entityId: report.id } });
+    expect(logs.length).toBeGreaterThan(0);
+    for (const log of logs) {
+      expect(log.actorId).not.toBe(reporter.id);
+      expect(log.actorName).toBe('Anonim');
+      expect(log.ip).toBeNull();
+      expect(log.userAgent).toBeNull();
+    }
+  });
+
+  test('statistik per mahasiswa tidak menghitung laporan anonim bagi admin', async () => {
+    const { admin, reporter } = await setupAnonymousReportScenario();
+    const asAdmin = await request(app)
+      .get(`/v1/api/users/${reporter.id}/stats`)
+      .set(authHeader(admin))
+      .expect(200);
+    expect(asAdmin.body.data.total).toBe(0);
+    const asSelf = await request(app)
+      .get(`/v1/api/users/${reporter.id}/stats`)
+      .set(authHeader(reporter))
+      .expect(200);
+    expect(asSelf.body.data.total).toBe(1);
+  });
+
+  test('admin tidak bisa mengganti email mahasiswa', async () => {
+    const { admin, reporter } = await setupAnonymousReportScenario();
+    await request(app)
+      .put(`/v1/api/users/${reporter.id}`)
+      .set(authHeader(admin))
+      .send({ email: 'penyerang@contoh.invalid' })
+      .expect(403);
+    const row = await prisma.user.findUnique({ where: { id: reporter.id }, select: { email: true } });
+    expect(row.email).toBe(reporter.email);
+  });
+
+  test('ekspor CSV menetralkan formula dan mengutip semua sel', async () => {
+    const { superadmin, category, reporter } = await setupAnonymousReportScenario();
+    await prisma.report.create({
+      data: {
+        title: '=HYPERLINK("http://contoh.invalid","klik")',
+        description: 'uji',
+        registrationNumber: `CSV-${Date.now()}`,
+        categoryId: category.id,
+        userId: reporter.id,
+        isAnonymous: false,
+        priority: 'MEDIUM',
+      },
+    });
+    const res = await request(app)
+      .get('/v1/api/admin/export/reports')
+      .set(authHeader(superadmin))
+      .expect(200);
+    const line = res.text.split('\n').find((l) => l.includes('HYPERLINK'));
+    expect(line).toContain(`"'=HYPERLINK(""http://contoh.invalid"",""klik"")"`);
+    expect(line).not.toMatch(/,=HYPERLINK/);
+  });
+});

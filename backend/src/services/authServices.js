@@ -5,20 +5,26 @@ const { getDeviceInfo } = require('../utils/deviceDetection');
 const { hashToken } = require('../utils/tokenHash');
 const axios = require('axios');
 const { getLogger } = require('../utils/logger');
+const { findUserByEmail, normalizeEmail } = require('../utils/emailLookup');
+
+// Dibandingkan saat email tidak ditemukan supaya waktu respons login sama
+// dengan email yang terdaftar (mencegah enumerasi akun lewat timing).
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('dummy-password-untuk-timing', 10);
 const log = getLogger('auth:service');
 
 class AuthServices {
   async login(data, req) {
     try {
       log.info('Service login invoked', { email: data?.email });
-      const user = await prisma.user.findUnique({
-        where: { email: data.email }
-      });
+      const user = await findUserByEmail(prisma, data.email);
 
       // Security (audit B4): user yang sudah soft-delete tidak boleh login.
       // Gunakan pesan generik yang sama dengan user-tidak-ditemukan agar
       // status deleted tidak bocor (mencegah enumerasi status akun).
-      if (!user || user.deletedAt) throw new Error('email/password salah');
+      if (!user || user.deletedAt) {
+        await bcrypt.compare(String(data.password || ''), DUMMY_PASSWORD_HASH);
+        throw new Error('email/password salah');
+      }
       
       const isPasswordValid = await bcrypt.compare(data.password, user.password);
       if (!isPasswordValid) throw new Error('email/password salah');
@@ -224,16 +230,16 @@ class AuthServices {
   async registerStudent(studentData, ktmPath) {
     try {
       // Validasi data
-      const { name, email, password, nim } = studentData;
+      const { name, password, nim } = studentData;
+      const email = normalizeEmail(studentData.email);
       
       if (!name || !email || !password || !nim) {
         throw new Error('Missing required fields');
       }
       
-      // Cek email sudah ada atau belum
-      const existingUserByEmail = await prisma.user.findUnique({
-        where: { email: email }
-      });
+      // Cek email sudah ada atau belum (tanpa membedakan huruf besar/kecil,
+      // supaya VICTIM@kampus.ac.id tidak bisa didaftarkan di samping victim@).
+      const existingUserByEmail = await findUserByEmail(prisma, email);
       
       if (existingUserByEmail && !existingUserByEmail.deletedAt) {
         throw new Error('Email already exists');
@@ -252,35 +258,67 @@ class AuthServices {
       const hashedPassword = await bcrypt.hash(password, 10);
 
       // Audit M8: akun lama yang soft-deleted (ditolak/dihapus) boleh mendaftar
-      // ulang. Alih-alih menolak karena email/NIM "sudah ada", reset baris lama
-      // menjadi akun mahasiswa baru yang belum diverifikasi — menjaga FK/referensi
-      // tetap utuh tanpa hard delete.
+      // ulang tanpa hard delete, supaya FK/referensi tetap utuh.
+      //
+      // Baris lama hanya dipakai ulang bila belum punya laporan maupun pesan
+      // (mis. pendaftaran yang ditolak). Bila punya, siapa pun yang mendaftar
+      // dengan email/NIM itu akan "mewarisi" laporan lama, termasuk laporan
+      // anonim — jadi baris lama dilepas dari email/NIM-nya dan akun baru dibuat.
       if (existingUserByEmail || existingUserByNim) {
-        // Jika email dan NIM milik dua baris soft-deleted berbeda, buang baris
-        // NIM agar tidak melanggar unique constraint saat reset.
-        if (existingUserByEmail && existingUserByNim && existingUserByEmail.id !== existingUserByNim.id) {
-          await prisma.user.delete({ where: { id: existingUserByNim.id } });
-        }
-        const target = existingUserByEmail || existingUserByNim;
-        if (target.role !== 'MAHASISWA') {
+        const oldRows = [existingUserByEmail, existingUserByNim]
+          .filter(Boolean)
+          .filter((row, i, arr) => arr.findIndex((r) => r.id === row.id) === i);
+        if (oldRows.some((row) => row.role !== 'MAHASISWA')) {
           throw new Error('Email already exists');
         }
-        const reactivated = await prisma.user.update({
-          where: { id: target.id },
-          data: {
-            name,
-            email,
-            password: hashedPassword,
-            nim,
-            role: 'MAHASISWA',
-            ktmPath,
-            isVerified: false,
-            deletedAt: null,
-            tokenVersion: { increment: 1 },
-          },
+
+        const [reportCount, messageCount] = await Promise.all([
+          prisma.report.count({ where: { userId: { in: oldRows.map((r) => r.id) } } }),
+          prisma.message.count({ where: { senderId: { in: oldRows.map((r) => r.id) } } }),
+        ]);
+
+        if (oldRows.length === 1 && reportCount === 0 && messageCount === 0) {
+          const [target] = oldRows;
+          const reactivated = await prisma.$transaction(async (tx) => {
+            await tx.refreshToken.deleteMany({ where: { userId: target.id } });
+            await tx.passwordResetToken.deleteMany({ where: { userId: target.id } });
+            return tx.user.update({
+              where: { id: target.id },
+              data: {
+                name,
+                email,
+                password: hashedPassword,
+                nim,
+                role: 'MAHASISWA',
+                ktmPath,
+                isVerified: false,
+                deletedAt: null,
+                tokenVersion: { increment: 1 },
+              },
+            });
+          });
+          log.info('Service registerStudent success (re-registered)', { userId: reactivated.id });
+          return reactivated;
+        }
+
+        const user = await prisma.$transaction(async (tx) => {
+          for (const row of oldRows) {
+            await tx.user.update({
+              where: { id: row.id },
+              data: { email: `terhapus-${row.id}-${Date.now()}@akun-terhapus.invalid`, nim: null },
+            });
+            await tx.refreshToken.deleteMany({ where: { userId: row.id } });
+            await tx.passwordResetToken.deleteMany({ where: { userId: row.id } });
+          }
+          return tx.user.create({
+            data: { name, email, password: hashedPassword, nim, role: 'MAHASISWA', ktmPath, isVerified: false },
+          });
         });
-        log.info('Service registerStudent success (re-registered)', { userId: reactivated.id });
-        return reactivated;
+        log.info('Service registerStudent success (old deleted account detached)', {
+          userId: user.id,
+          detachedIds: oldRows.map((r) => r.id),
+        });
+        return user;
       }
 
       // Create user

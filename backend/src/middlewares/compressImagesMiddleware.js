@@ -1,8 +1,10 @@
 const sharp = require('sharp');
 const fs = require('fs');
+const { deleteFileFromDisk } = require('../utils/fileDisk');
 
 module.exports = async function compressImagesMiddleware(req, res, next) {
   if (!req.files) return next();
+  let failed = false;
 
   const compressPromises = req.files.map(async (file) => {
     if (file.mimetype.startsWith('image/')) {
@@ -34,11 +36,17 @@ module.exports = async function compressImagesMiddleware(req, res, next) {
         file.size = data.length;
       } catch (err) {
         console.error('Error compressing image:', file.originalname, err);
-        // Fallback: keep the original file if sharp fails
+        // Jangan simpan berkas asli: hanya hasil sharp yang bebas metadata
+        // EXIF (lokasi GPS, model kamera) yang bisa membuka identitas pelapor.
+        failed = true;
       }
     }
   });
 
   await Promise.all(compressPromises);
+  if (failed) {
+    await Promise.allSettled(req.files.map((f) => deleteFileFromDisk(f.path)));
+    return res.status(400).json({ error: 'Gambar tidak dapat diproses. Coba unggah ulang dalam format JPG atau PNG.' });
+  }
   next();
 };

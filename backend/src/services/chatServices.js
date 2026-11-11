@@ -19,6 +19,9 @@ const MESSAGE_INCLUDE = {
       id: true,
       content: true,
       deletedAt: true,
+      // senderId wajib ada agar anonymizer bisa menyamarkan kutipan balasan
+      // dari pelapor anonim.
+      senderId: true,
       sender: { select: { name: true } },
     },
   },
@@ -386,6 +389,7 @@ class ChatServices {
           user: { select: { id: true, name: true, role: true } },
           category: { select: { id: true, name: true } },
           messages: {
+            where: { deletedAt: null },
             orderBy: { createdAt: 'desc' },
             take: 1,
             select: {

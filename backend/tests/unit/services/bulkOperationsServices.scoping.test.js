@@ -10,11 +10,17 @@
  * - Batch > 100 ditolak.
  */
 
-jest.mock('../../../src/utils/prisma', () => ({
-  user: { findFirst: jest.fn(), findUnique: jest.fn(), updateMany: jest.fn() },
-  report: { findMany: jest.fn(), updateMany: jest.fn(), groupBy: jest.fn() },
-  category: { updateMany: jest.fn() },
-}));
+jest.mock('../../../src/utils/prisma', () => {
+  const prismaMock = {
+    user: { findFirst: jest.fn(), findUnique: jest.fn(), updateMany: jest.fn(), count: jest.fn() },
+    report: { findMany: jest.fn(), updateMany: jest.fn(), groupBy: jest.fn() },
+    category: { updateMany: jest.fn() },
+    $executeRaw: jest.fn(),
+  };
+  // Transaksi memakai client yang sama supaya assertion pada updateMany tetap berlaku.
+  prismaMock.$transaction = jest.fn((fn) => fn(prismaMock));
+  return prismaMock;
+});
 jest.mock('../../../src/services/adminGovernanceServices', () => ({
   getAccessibleCategoryIds: jest.fn(),
   countActiveSuperAdmins: jest.fn(),
@@ -168,12 +174,28 @@ describe('bulk user operations — governance policy per item', () => {
       .mockResolvedValueOnce(2)
       .mockResolvedValueOnce(1);
     prisma.user.updateMany.mockResolvedValue({ count: 1 });
+    prisma.user.count.mockResolvedValue(1); // superadmin lain di bawah lock
 
     const result = await bulk.bulkDeleteUsers([2, 3], SUPERADMIN);
 
+    expect(prisma.$executeRaw).toHaveBeenCalled(); // advisory lock diambil
     expect(result.deleted).toBe(1);
     expect(result.userIds).toEqual([2]);
     expect(result.skipped[0].id).toBe(3);
+    expect(result.skipped[0].reason).toMatch(/last|SUPERADMIN/i);
+  });
+
+  test('SUPERADMIN bulk delete re-checks remaining superadmins under the lock', async () => {
+    // Pre-check lolos, tetapi di bawah lock ternyata tidak ada superadmin lain
+    // (aksi konkuren baru saja menurunkan yang lain) → ditolak.
+    prisma.user.findFirst.mockResolvedValueOnce(userRow({ id: 2, role: 'SUPERADMIN' }));
+    adminGovernanceServices.countActiveSuperAdmins.mockResolvedValueOnce(2);
+    prisma.user.count.mockResolvedValue(0);
+
+    const result = await bulk.bulkDeleteUsers([2], SUPERADMIN);
+
+    expect(result.deleted).toBe(0);
+    expect(prisma.user.updateMany).not.toHaveBeenCalled();
     expect(result.skipped[0].reason).toMatch(/last|SUPERADMIN/i);
   });
 

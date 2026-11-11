@@ -16,6 +16,7 @@ const { body, param } = require('express-validator');
 const validate = require('../middlewares/validationMiddleware');
 const {
   loginLimiter,
+  loginEmailLimiter,
   registerLimiter,
   forgotPasswordLimiter,
   refreshTokenLimiter,
@@ -36,6 +37,7 @@ const validateKtmUpload = createValidateUploadedMiddleware(KTM_MIMES, { required
 router.post(
   '/login',
   loginLimiter,
+  loginEmailLimiter,
   [
     body('email').isEmail().withMessage('Email is invalid'),
     body('password').isString().isLength({ min: 1 }).withMessage('Password is required'),

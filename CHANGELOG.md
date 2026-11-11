@@ -7,6 +7,22 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 ## Belum dirilis
 
 ### Keamanan
+- Audit keamanan dan pentest manual November 2026 menemukan beberapa jalur yang membuka identitas pelapor anonim kepada admin, termasuk SUPERADMIN. Semuanya ditutup:
+  - respons ubah status, hapus, pulihkan, dan batal laporan tidak lagi mengembalikan `userId` pelapor;
+  - riwayat chat tidak lagi menyertakan `report.userId`, dan kutipan balasan atas pesan pelapor kini tampil sebagai "Anonim" (sebelumnya nama asli muncul begitu admin menekan **Balas**);
+  - pengiriman ulang pesan dengan `clientMessageId` yang sama tidak lagi mengembalikan daftar pembaca (`reads`);
+  - aksi pelapor atas laporan anonimnya (edit, batal, hapus pesan) dicatat di audit log sebagai "Anonim" tanpa IP dan user agent;
+  - statistik per mahasiswa (`GET /users/:id/stats`) dan ekspor pengguna tidak lagi menghitung laporan anonim, karena selisih hitungan bisa menunjukkan pelapornya;
+  - pesan chat yang sudah dihapus tidak lagi tampil di detail laporan dan pratinjau daftar chat;
+  - ADMIN tidak bisa lagi mengganti email mahasiswa (email baru menerima tautan reset password, sehingga akun bisa diambil alih); pemilik akun tetap bisa menggantinya dari halaman profil;
+  - pendaftaran ulang dengan email/NIM akun yang pernah dihapus tidak lagi mewarisi laporan lama akun itu; formulir laporan anonim kini mengingatkan bahwa lampiran PDF/Word bisa menyimpan nama penulis.
+- Koneksi Socket.IO kini diputus saat access token kedaluwarsa, password diganti atau direset, email diganti, akun dihapus, perangkat di-logout, kategori admin dicabut, atau kategori laporan berubah. Sebelumnya socket yang sudah bergabung ke room tetap menerima pesan chat. Frontend menyambung ulang otomatis dengan token baru. `joinRoom` kini dibatasi 30 kali per menit per koneksi.
+- Login juga dibatasi per akun (10 percobaan gagal per 15 menit), sehingga tebak-password tetap terhenti walaupun IP dipalsukan lewat `X-Forwarded-For`. Login dengan email yang tidak terdaftar kini sama lambatnya dengan email terdaftar.
+- Email dicocokkan tanpa membedakan huruf besar/kecil saat login, reset password, dan pendaftaran, dan disimpan dalam huruf kecil. Sebelumnya `Budi@kampus.ac.id` bisa didaftarkan di samping `budi@kampus.ac.id`.
+- Nama, judul laporan, dan alasan penolakan di-escape sebelum masuk template email, supaya tidak bisa menyisipkan tautan phishing ke email resmi seperti email reset password.
+- Ekspor CSV mengutip setiap sel dan menetralkan sel yang diawali `=`, `+`, `-`, atau `@` (CSV injection). Tanggal yang memuat koma tidak lagi menggeser kolom.
+- Lampiran laporan kini diperiksa isi berkasnya (magic bytes) seperti lampiran chat, dibatasi 20 berkas per laporan, dan foto yang gagal diproses `sharp` ditolak alih-alih disimpan bersama metadata EXIF-nya.
+- Hapus massal dan hapus permanen SUPERADMIN kini memakai advisory lock yang sama dengan demote, sehingga dua aksi bersamaan tidak bisa menghabiskan semua superadmin. Respons promote untuk akun yang sudah ADMIN/SUPERADMIN tidak lagi menyertakan hash password, dan daftar admin belum terverifikasi hanya untuk SUPERADMIN.
 - Dependensi diperbarui karena advisory yang terbit 18–30 Oktober 2026 menggagalkan `npm audit` di CI. Semuanya versi patch atau minor. Backend: `multer` 2.4.0 → 2.5.0 (DoS lewat unggahan), `body-parser` 1.20.8 → 1.20.9 (DoS lewat badan permintaan terkompresi), `follow-redirects` 1.16.0 → 1.16.3 (header kredensial ikut saat redirect), `nodemailer` 10.0.16 → 10.4.0 (parser alamat email), `sanitize-html` 2.18.0 → 2.18.1, `qs`, `ip-address`. Frontend: `dompurify` 3.4.16 → 3.4.17 dan `follow-redirects` 1.16.3; dependensi dev `vite` 6.4.6, `vitest` 4.1.12, `sharp` 0.35.5, dan lainnya.
 - `npm audit --omit=dev` kini bersih di backend dan frontend. Sisa 18 temuan low/moderate di dependensi dev backend (rantai Jest) hanya bisa diperbaiki dengan versi mayor.
 - Runtime Node.js dinaikkan dari 20 ke 26 LTS ("Lithium", didukung sampai 30 April 2029) di Dockerfile backend/frontend dan CI, lewat Node 22 di PR #16. Node 20 sudah end-of-life sejak 30 April 2026 dan tidak lagi menerima patch keamanan, sementara `sanitize-html` ≥ 2.18 mensyaratkan Node ≥ 22.12. Versinya dikunci ke 26.13.0 di `.nvmrc`, `engines` di `package.json` (`>=26.13.0`), dan tag image Docker `node:26.13.0-alpine`; CI membaca `.nvmrc`. Developer perlu Node 26 secara lokal (`nvm install && nvm use`).
@@ -29,6 +45,7 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 - Isi Pusat Bantuan mahasiswa dipindah ke `frontend/src/pages/help/helpContent.js` dan diselaraskan dengan User Manual.
 
 ### Diperbaiki
+- Job pembersihan pukul 03.00 menghapus semua berkas chat yang sudah diunggah tetapi belum dikirim lebih dari 1 jam, padahal tokennya berlaku 24 jam, sehingga pengiriman pesan berikutnya gagal. Penyebabnya perbandingan path disk dengan path di database yang tidak pernah cocok.
 - Pusat Bantuan mahasiswa tidak lagi menyebut kolom "fakultas", verifikasi email, janji tanggapan 24 jam, atau kebijakan privasi yang belum ada; ditambah tanya jawab laporan anonim, status, edit/batal, dan sesi perangkat.
 - Formulir "Kirim Tiket Bantuan" yang hanya menampilkan pesan terkirim tanpa mengirim apa pun diganti tombol email ke Bagian Kemahasiswaan; tautan "Buku Panduan", "Kebijakan Privasi", dan "Laporkan Bug" yang tidak mengarah ke mana pun dihapus.
 - Tautan WhatsApp di Pusat Bantuan kini sesuai nomor yang ditampilkan.

@@ -1,5 +1,9 @@
 import { io } from 'socket.io-client';
 import { getAccessToken } from './authToken';
+import { refreshAccessToken } from './axiosClient';
+
+// Jeda minimum antar-percobaan sambung ulang dengan token baru (cegah loop).
+const RECONNECT_COOLDOWN_MS = 10_000;
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 const socketBaseUrl = import.meta.env.VITE_SOCKET_URL
@@ -11,6 +15,29 @@ class SocketService {
     this.isConnected = false;
     this.currentRoom = null;
     this.eventListeners = new Map();
+    this.lastReconnectAttempt = 0;
+  }
+
+  /**
+   * Server memutus socket saat access token habis atau sesi/hak akses berubah.
+   * socket.io-client tidak menyambung ulang sendiri untuk alasan itu, dan
+   * token lama sudah tidak berlaku — jadi refresh token dulu, lalu sambung ulang.
+   * Bila refresh gagal, sesi memang sudah berakhir dan alur login yang menangani.
+   */
+  async reconnectWithFreshToken() {
+    const socket = this.socket;
+    if (!socket) return;
+    const now = Date.now();
+    if (now - this.lastReconnectAttempt < RECONNECT_COOLDOWN_MS) return;
+    this.lastReconnectAttempt = now;
+    try {
+      await refreshAccessToken();
+    } catch {
+      return;
+    }
+    if (this.socket === socket && !socket.connected) {
+      socket.connect();
+    }
   }
 
   connect() {
@@ -18,15 +45,14 @@ class SocketService {
       return this.socket;
     }
 
-    const token = getAccessToken();
-
     this.socket = io(socketBaseUrl, {
       withCredentials: true,
       autoConnect: true,
       transports: ['websocket', 'polling'],
       timeout: 5000,
       forceNew: false,
-      auth: { token },
+      // Fungsi, bukan nilai tetap: setiap (re)connect memakai access token terbaru.
+      auth: (cb) => cb({ token: getAccessToken() }),
     });
 
     this.socket.on('connect', () => {
@@ -38,11 +64,18 @@ class SocketService {
       this.isConnected = false;
       this.currentRoom = null;
       this.emit('disconnected', { reason });
+      if (reason === 'io server disconnect') {
+        this.reconnectWithFreshToken();
+      }
     });
 
     this.socket.on('connect_error', (error) => {
       const code = error.data?.code ?? 'AUTH_INVALID';
       this.emit('connectionError', { code, message: error.message });
+      // Token di memori kedaluwarsa (mis. tab lama dibuka kembali).
+      if (code === 'AUTH_INVALID') {
+        this.reconnectWithFreshToken();
+      }
     });
 
     this.socket.on('chat:message', (message) => {
@@ -75,7 +108,8 @@ class SocketService {
 
     this.socket.on('chat:error', (data) => {
       this.emit('chat:error', data);
-      if (['AUTH_REVOKED', 'USER_DELETED', 'AUTH_INVALID'].includes(data?.code)) {
+      // Sesi dicabut atau akun dihapus: jangan sambung ulang.
+      if (['AUTH_REVOKED', 'USER_DELETED'].includes(data?.code)) {
         this.disconnect();
       }
     });

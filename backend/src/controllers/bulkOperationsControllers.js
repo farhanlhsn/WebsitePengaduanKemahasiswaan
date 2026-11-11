@@ -2,6 +2,7 @@ const bulkOperationsServices = require('../services/bulkOperationsServices');
 const auditLogServices = require('../services/auditLogServices');
 const ResponseFormatter = require('../utils/responseFormatter');
 const { getLogger } = require('../utils/logger');
+const { disconnectUserSockets } = require('../sockets/socketSessions');
 
 const log = getLogger('bulk-ops:controller');
 
@@ -51,6 +52,9 @@ exports.bulkDeleteUsers = async (req, res) => {
     log.info('Bulk delete users', { userIds, actorId: req.user.userId });
 
     const result = await bulkOperationsServices.bulkDeleteUsers(userIds, req.user);
+    for (const id of result.userIds || []) {
+      disconnectUserSockets(req.app.get('io'), id, 'USER_DELETED');
+    }
 
     // Create audit log
     try {

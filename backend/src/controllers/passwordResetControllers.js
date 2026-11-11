@@ -1,12 +1,14 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const prisma = require('../utils/prisma');
+const { findUserByEmail } = require('../utils/emailLookup');
 const emailService = require('../services/emailService');
 const ResponseFormatter = require('../utils/responseFormatter');
 const { getLogger } = require('../utils/logger');
 const { validatePassword } = require('../utils/passwordPolicy');
 const { clearRefreshCookie } = require('../utils/refreshCookie');
 const { hashToken } = require('../utils/tokenHash');
+const { disconnectUserSockets } = require('../sockets/socketSessions');
 
 const log = getLogger('password-reset:controller');
 
@@ -24,9 +26,8 @@ exports.forgotPassword = async (req, res) => {
     const successMessage = 'Jika email terdaftar, link reset password akan dikirim.';
 
     // Find user
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true, name: true, email: true, deletedAt: true }
+    const user = await findUserByEmail(prisma, email, {
+      id: true, name: true, email: true, deletedAt: true,
     });
 
     // If user not found or deleted, still return success
@@ -147,6 +148,7 @@ exports.resetPassword = async (req, res) => {
     }
 
     log.info('Password reset successful', { userId: resetToken.userId });
+    disconnectUserSockets(req.app.get('io'), resetToken.userId, 'AUTH_REVOKED');
     res.json(ResponseFormatter.success(null, 'Password berhasil direset. Silakan login dengan password baru.'));
   } catch (error) {
     log.error('resetPassword error', { error: error.message });
@@ -212,6 +214,7 @@ exports.changePassword = async (req, res) => {
     clearRefreshCookie(res);
 
     log.info('Password changed successfully — sessions invalidated', { userId });
+    disconnectUserSockets(req.app.get('io'), userId, 'AUTH_REVOKED');
     res.json(ResponseFormatter.success(
       { requireReLogin: true, code: 'SESSION_INVALIDATED' },
       'Password berhasil diubah. Silakan login kembali.'

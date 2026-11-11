@@ -12,6 +12,20 @@ const validate = require('../middlewares/validationMiddleware');
 const ResponseFormatter = require('../utils/responseFormatter');
 const { canAccessReport } = require('../utils/accessPolicy');
 const { isAdmin } = require('../utils/rbac');
+const prisma = require('../utils/prisma');
+const { REPORT_CHAT_MIMES, createValidateUploadedMiddleware } = require('../utils/fileValidation');
+const { deleteFileFromDisk } = require('../utils/fileDisk');
+
+// Batas total lampiran per laporan (di luar lampiran chat). Tanpa batas ini,
+// satu akun bisa mengisi disk server dengan unggahan berulang.
+const MAX_REPORT_ATTACHMENTS = 20;
+const validateReportUpload = createValidateUploadedMiddleware(REPORT_CHAT_MIMES);
+
+function countReportAttachments(reportId) {
+  return prisma.attachment.count({
+    where: { reportId: parseInt(reportId, 10), messageId: null, deletedAt: null },
+  });
+}
 
 // Semua route di bawah ini butuh autentikasi
 router.use(authMiddleware);
@@ -27,6 +41,11 @@ const canUploadReportAttachment = async (req, res, next) => {
     if (!isAdmin(req.user) && access.report.status !== 'PENDING') {
       return res.status(400).json(
         ResponseFormatter.error('Lampiran hanya bisa ditambahkan saat laporan masih PENDING', 400)
+      );
+    }
+    if ((await countReportAttachments(req.params.reportId)) >= MAX_REPORT_ATTACHMENTS) {
+      return res.status(400).json(
+        ResponseFormatter.error(`Laporan sudah memiliki ${MAX_REPORT_ATTACHMENTS} lampiran (batas maksimum)`, 400)
       );
     }
     req.reportAccess = access.report;
@@ -124,8 +143,15 @@ router.delete('/:id/permanent', isAdminMiddleware, [param('id').isInt().withMess
 // Upload attachment (max 10 file, 5MB per file, image akan di-compress <= 1MB)
 // POST /api/reports/:reportId/attachments
 // FormData: files[]
-router.post('/:reportId/attachments', uploadLimiter, [param('reportId').isInt().withMessage('reportId must be an integer')], validate, canUploadReportAttachment, AttachmentServices.uploadMiddleware, compressImagesMiddleware, async (req, res, next) => {
+router.post('/:reportId/attachments', uploadLimiter, [param('reportId').isInt().withMessage('reportId must be an integer')], validate, canUploadReportAttachment, AttachmentServices.uploadMiddleware, validateReportUpload, compressImagesMiddleware, async (req, res, next) => {
     try {
+      const files = req.files || [];
+      if ((await countReportAttachments(req.params.reportId)) + files.length > MAX_REPORT_ATTACHMENTS) {
+        await Promise.allSettled(files.map((f) => deleteFileFromDisk(f.path)));
+        return res.status(400).json(
+          ResponseFormatter.error(`Total lampiran per laporan maksimal ${MAX_REPORT_ATTACHMENTS} berkas`, 400)
+        );
+      }
       const attachments = await AttachmentServices.uploadAttachments(req.files, req.params.reportId);
       res.status(201).json({ attachments });
     } catch (err) {

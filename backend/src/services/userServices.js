@@ -202,11 +202,28 @@ class UserServices {
 
       const user = await prisma.user.findUnique({
         where: { id: parseInt(userId) },
-        select: { ktmPath: true },
+        select: { ktmPath: true, role: true, deletedAt: true },
       });
 
       await deletePendingUploadsByUploader(parseInt(userId));
-      const result = await SoftDeleteHelper.hardDelete(prisma.user, userId);
+      let result;
+      if (user && user.role === ROLES.SUPERADMIN && !user.deletedAt) {
+        // Audit B2: guard superadmin terakhir harus atomik dengan penghapusan.
+        result = await prisma.$transaction(async (tx) => {
+          await acquireSuperAdminGuardLock(tx);
+          const remaining = await tx.user.count({
+            where: { role: ROLES.SUPERADMIN, deletedAt: null, NOT: { id: parseInt(userId) } },
+          });
+          if (remaining < 1) {
+            const err = new Error('Cannot delete the last active SUPERADMIN');
+            err.code = 'LAST_SUPERADMIN';
+            throw err;
+          }
+          return tx.user.delete({ where: { id: parseInt(userId) } });
+        });
+      } else {
+        result = await SoftDeleteHelper.hardDelete(prisma.user, userId);
+      }
 
       if (user?.ktmPath) {
         await deleteFileFromDisk(user.ktmPath);
@@ -216,6 +233,7 @@ class UserServices {
       return result;
     } catch (error) {
       log.warn('permanentDeleteUser failed', { userId, error: error.message });
+      if (error.code === 'LAST_SUPERADMIN') throw error;
       throw new Error('Error permanently deleting user');
     }
   }
@@ -312,11 +330,18 @@ class UserServices {
     }
   }
 
-  async getUserStatsById(userId) {
+  /**
+   * @param {number} userId
+   * @param {{ includeAnonymous?: boolean }} [options] - laporan anonim hanya
+   *   dihitung bila yang melihat adalah pemiliknya sendiri. Bagi admin, selisih
+   *   hitungan sebelum/sesudah status laporan anonim diubah akan menunjukkan
+   *   siapa pelapornya.
+   */
+  async getUserStatsById(userId, { includeAnonymous = false } = {}) {
     try{
       const grouped = await prisma.report.groupBy({
         by: ['status'],
-        where: { userId, deletedAt: null },
+        where: { userId, deletedAt: null, ...(includeAnonymous ? {} : { isAnonymous: false }) },
         _count: { _all: true },
       });
       const counts = grouped.reduce((acc, item) => {

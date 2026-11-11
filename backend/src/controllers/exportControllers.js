@@ -77,8 +77,8 @@ exports.exportReports = async (req, res) => {
         const row = [
           rowNumber++,
           r.registrationNumber,
-          escapeCsv(r.title),
-          escapeCsv(r.description.substring(0, 200)),
+          r.title,
+          r.description.substring(0, 200),
           r.status,
           r.priority,
           r.category?.name || '-',
@@ -90,7 +90,7 @@ exports.exportReports = async (req, res) => {
           formatDate(r.createdAt),
           formatDate(r.updatedAt)
         ];
-        res.write(`${row.join(',')}\n`);
+        res.write(`${toCsvRow(row)}\n`);
       }
 
       cursor = reports.length === pageSize ? reports[reports.length - 1].id : null;
@@ -128,7 +128,9 @@ exports.exportUsers = async (req, res) => {
         select: {
           id: true, name: true, email: true, nim: true,
           role: true, isVerified: true, createdAt: true,
-          _count: { select: { reports: true } }
+          // Laporan anonim tidak dihitung: membandingkan dua ekspor akan
+          // menunjukkan siapa yang baru saja membuat laporan anonim.
+          _count: { select: { reports: { where: { isAnonymous: false } } } }
         },
         orderBy: { id: 'asc' },
         take: pageSize,
@@ -138,7 +140,7 @@ exports.exportUsers = async (req, res) => {
       for (const u of users) {
         const row = [
           rowNumber++,
-          escapeCsv(u.name),
+          u.name,
           u.email,
           u.nim || '-',
           u.role,
@@ -146,7 +148,7 @@ exports.exportUsers = async (req, res) => {
           u._count.reports,
           formatDate(u.createdAt)
         ];
-        res.write(`${row.join(',')}\n`);
+        res.write(`${toCsvRow(row)}\n`);
       }
 
       cursor = users.length === pageSize ? users[users.length - 1].id : null;
@@ -159,11 +161,20 @@ exports.exportUsers = async (req, res) => {
   }
 };
 
-// Helper: escape CSV field
-function escapeCsv(str) {
-  if (!str) return '""';
-  const escaped = str.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, '');
-  return `"${escaped}"`;
+// Helper: escape CSV field. Setiap sel dikutip, dan sel yang diawali karakter
+// formula spreadsheet (= + @ tab, atau - diikuti isi lain) diberi awalan '
+// supaya Excel/LibreOffice tidak menjalankannya (CSV injection).
+function escapeCsv(value) {
+  if (value === null || value === undefined || value === '') return '""';
+  let str = String(value).replace(/\r\n|\r|\n/g, ' ');
+  if (/^[=+@\t]/.test(str) || (str.length > 1 && str[0] === '-')) {
+    str = `'${str}`;
+  }
+  return `"${str.replace(/"/g, '""')}"`;
+}
+
+function toCsvRow(values) {
+  return values.map(escapeCsv).join(',');
 }
 
 // Helper: format date for display
