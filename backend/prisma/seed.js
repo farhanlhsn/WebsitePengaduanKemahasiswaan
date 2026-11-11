@@ -75,18 +75,39 @@ async function ensureSuperAdmin() {
     process.exit(1);
   }
 
+  // Sampai di sini berarti belum ada SUPERADMIN aktif.
   const hash = await bcrypt.hash(password || 'superadmin12345', 10);
-
-  await prisma.user.upsert({
+  const owner = await prisma.user.findUnique({
     where: { email },
-    // Akun yang sudah ada tidak direset password-nya: password superadmin
-    // diganti lewat aplikasi, dan menjalankan seed ulang (mis. untuk menambah
-    // kategori) tidak boleh mengembalikannya ke nilai di .env.
-    update: {
-      role: 'SUPERADMIN',
-      isVerified: true,
-    },
-    create: {
+    select: { id: true, role: true },
+  });
+
+  if (owner && owner.role !== 'SUPERADMIN') {
+    // Jangan menaikkan akun lain menjadi SUPERADMIN: siapa pun bisa mendaftar
+    // lebih dulu dengan email ini dan sesinya ikut mendapat akses penuh.
+    console.error(
+      `FATAL: email ${email} sudah dipakai akun ${owner.role}. Seed tidak akan menjadikannya SUPERADMIN. ` +
+        'Isi SEED_SUPERADMIN_EMAIL dengan email lain, atau periksa siapa pemilik akun itu.'
+    );
+    process.exit(1);
+  }
+
+  if (owner) {
+    // Superadmin lama yang terhapus: pulihkan dengan password dari .env dan
+    // cabut semua sesi lamanya.
+    await prisma.$transaction([
+      prisma.refreshToken.deleteMany({ where: { userId: owner.id } }),
+      prisma.user.update({
+        where: { id: owner.id },
+        data: { name, password: hash, isVerified: true, deletedAt: null, tokenVersion: { increment: 1 } },
+      }),
+    ]);
+    console.log(`SUPERADMIN dipulihkan: ${email}`);
+    return;
+  }
+
+  await prisma.user.create({
+    data: {
       name,
       email,
       password: hash,

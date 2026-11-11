@@ -49,7 +49,7 @@ Ada dua berkas konfigurasi. Keduanya tidak masuk Git; buat dari contohnya, batas
 | `POSTGRES_USER`, `POSTGRES_DB` | Tidak | Default `postgres` dan `pengaduan`. Perintah backup di bawah memakai nilai default. |
 | `PUBLIC_HTTP_PORT` | Tidak | `.env.example` mengisi `127.0.0.1:8085` (hanya bisa diakses dari server itu sendiri), cocok bila reverse proxy berada di server yang sama. Bila proxy di mesin lain, isi IP jaringan internal, mis. `10.0.0.5:8085`, dan batasi dengan firewall. Bila variabel ini tidak diisi sama sekali, compose memakai `8085` di semua interface. |
 | `SEED_SUPERADMIN_EMAIL`, `SEED_SUPERADMIN_NAME` | Tidak | Akun superadmin pertama. |
-| `SEED_SUPERADMIN_PASSWORD` | Ya | Compose menolak start bila kosong; seed produksi menolak password di bawah 12 karakter dan password contoh lama (`superadmin12345`). Hanya dipakai saat akun superadmin pertama kali dibuat: menjalankan seed ulang tidak mengubah password akun yang sudah ada. Ganti lewat aplikasi setelah login pertama, tetapi variabel ini tetap harus terisi. |
+| `SEED_SUPERADMIN_PASSWORD` | Ya | Compose menolak start bila kosong; seed produksi menolak password di bawah 12 karakter dan password contoh lama (`superadmin12345`). Hanya dipakai saat belum ada superadmin aktif; seed ulang tidak mengubah apa pun selama superadmin aktif ada. Seed berhenti dengan error bila email ini sudah dipakai akun ADMIN atau MAHASISWA. Ganti lewat aplikasi setelah login pertama, tetapi variabel ini tetap harus terisi. |
 | `VITE_USER_MANUAL_URL`, `VITE_PRIVACY_POLICY_URL` | Tidak | Tautan "Panduan Pengguna" dan "Kebijakan Privasi" di Pusat Bantuan. Dibaca saat **build** image frontend; setelah mengubahnya, jalankan ulang `up -d --build`. Kosong berarti tautan disembunyikan. |
 
 ### 3.2 `backend/.env`
