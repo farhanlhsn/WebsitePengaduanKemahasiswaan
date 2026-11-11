@@ -29,7 +29,7 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 - Isi Pusat Bantuan mahasiswa dipindah ke `frontend/src/pages/help/helpContent.js` dan diselaraskan dengan User Manual.
 
 ### Diperbaiki
-- Job CI `frontend` dan `e2e` gagal sejak runner `ubuntu-latest` GitHub berpindah ke Ubuntu 26.04 (`Playwright does not support chromium on ubuntu26.04-x64`). Playwright dinaikkan dari 1.60.0 ke 1.64.1, versi pertama yang mendukung Ubuntu 26.04. Karena `playwright install --with-deps` di runner 26.04 masih gagal mengunduh paket apt dari mirror Ubuntu, kedua job itu sementara dikunci ke `ubuntu-24.04`.
+- Job CI `frontend` dan `e2e` gagal sejak runner `ubuntu-latest` GitHub berpindah ke Ubuntu 26.04 (`Playwright does not support chromium on ubuntu26.04-x64`). Playwright dinaikkan dari 1.60.0 ke 1.64.1, versi pertama yang mendukung Ubuntu 26.04.
 - Pusat Bantuan mahasiswa tidak lagi menyebut kolom "fakultas", verifikasi email, janji tanggapan 24 jam, atau kebijakan privasi yang belum ada; ditambah tanya jawab laporan anonim, status, edit/batal, dan sesi perangkat.
 - Formulir "Kirim Tiket Bantuan" yang hanya menampilkan pesan terkirim tanpa mengirim apa pun diganti tombol email ke Bagian Kemahasiswaan; tautan "Buku Panduan", "Kebijakan Privasi", dan "Laporkan Bug" yang tidak mengarah ke mana pun dihapus.
 - Tautan WhatsApp di Pusat Bantuan kini sesuai nomor yang ditampilkan.
