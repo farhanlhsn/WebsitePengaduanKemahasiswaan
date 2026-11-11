@@ -29,6 +29,7 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 - Isi Pusat Bantuan mahasiswa dipindah ke `frontend/src/pages/help/helpContent.js` dan diselaraskan dengan User Manual.
 
 ### Diperbaiki
+- Laporan gagal dibuat (HTTP 400 dengan pesan unique constraint) di kategori kedua yang tidak ada di daftar kode nomor registrasi, misalnya kategori baru buatan superadmin: semua kategori itu berkode `XX`, sedangkan nomor urut dihitung per kategori, sehingga keduanya mendapat `XX/01/...`. Hal yang sama terjadi setelah laporan hari itu dihapus permanen. Nomor urut kini melanjutkan nomor tertinggi untuk kode dan tanggal yang sama. Tanggal di nomor registrasi kini mengikuti WIB; sebelumnya laporan pukul 00.00–07.00 WIB tercatat dengan tanggal kemarin karena kontainer berjalan di UTC.
 - Pusat Bantuan mahasiswa tidak lagi menyebut kolom "fakultas", verifikasi email, janji tanggapan 24 jam, atau kebijakan privasi yang belum ada; ditambah tanya jawab laporan anonim, status, edit/batal, dan sesi perangkat.
 - Formulir "Kirim Tiket Bantuan" yang hanya menampilkan pesan terkirim tanpa mengirim apa pun diganti tombol email ke Bagian Kemahasiswaan; tautan "Buku Panduan", "Kebijakan Privasi", dan "Laporkan Bug" yang tidak mengarah ke mana pun dihapus.
 - Tautan WhatsApp di Pusat Bantuan kini sesuai nomor yang ditampilkan.
