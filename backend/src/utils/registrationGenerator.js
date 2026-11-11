@@ -28,40 +28,51 @@ class RegistrationGenerator {
     'lainnya': 'LN'
   };
 
-  static async generateRegistrationNumber(categorySlug) {
+  /**
+   * Tanggal (dd, mm, yyyy) menurut WIB. Kontainer produksi berjalan di UTC,
+   * jadi tanpa ini laporan yang dibuat pukul 00.00–07.00 WIB tercatat dengan
+   * tanggal kemarin.
+   */
+  static jakartaDateParts(date) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+    const get = (type) => parts.find((p) => p.type === type).value;
+    return { day: get('day'), month: get('month'), year: get('year') };
+  }
+
+  /**
+   * Format: {kode aduan}/{nomor urut hari ini}/{hari}/{bulan}/{tahun}.
+   *
+   * Nomor urut dihitung dari nomor tertinggi yang sudah ada untuk awalan kode
+   * dan tanggal yang sama, bukan dari jumlah laporan kategori ini hari ini.
+   * Cara lama bertabrakan bila (1) dua kategori memakai kode yang sama, mis.
+   * semua kategori baru buatan superadmin mendapat "XX", atau (2) laporan hari
+   * ini ada yang dihapus permanen. Tabrakan karena dua laporan dibuat
+   * bersamaan ditangani retry di reportServices.createReport.
+   */
+  static async generateRegistrationNumber(categorySlug, now = new Date()) {
     try {
-      // Ambil kode aduan berdasarkan category slug
       const categoryCode = this.categoryCodeMap[categorySlug] || 'XX';
-      
-      // Tanggal hari ini
-      const today = new Date();
-      const day = String(today.getDate()).padStart(2, '0');
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const year = today.getFullYear();
-      
-      // Awal dan akhir hari ini untuk query
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-      
-      // Hitung berapa dokumen yang sudah dibuat hari ini untuk category ini
-      const todayCount = await prisma.report.count({
-        where: {
-          category: {
-            slug: categorySlug
-          },
-          createdAt: {
-            gte: startOfDay,
-            lt: endOfDay
-          }
-        }
+      const { day, month, year } = this.jakartaDateParts(now);
+      const prefix = `${categoryCode}/`;
+      const suffix = `/${day}/${month}/${year}`;
+
+      const existing = await prisma.report.findMany({
+        where: { registrationNumber: { startsWith: prefix, endsWith: suffix } },
+        select: { registrationNumber: true },
       });
-      
-      // Nomor urut dokumen hari ini (mulai dari 01)
-      const docNumber = String(todayCount + 1).padStart(2, '0');
-      
-      // Format: {kode aduan}/{dokumen ke berapa hari ini}/{hari}/{bulan}/{tahun}
-      return `${categoryCode}/${docNumber}/${day}/${month}/${year}`;
-      
+
+      const highest = existing.reduce((max, { registrationNumber }) => {
+        const seq = Number.parseInt(registrationNumber.slice(prefix.length, -suffix.length), 10);
+        return Number.isFinite(seq) && seq > max ? seq : max;
+      }, 0);
+
+      const docNumber = String(highest + 1).padStart(2, '0');
+      return `${categoryCode}/${docNumber}${suffix}`;
     } catch (error) {
       throw new Error('Error generating registration number: ' + error.message);
     }
