@@ -89,7 +89,10 @@ jobs:
         run: npm run test:integration:down
 
   frontend:
-    runs-on: ubuntu-latest
+    # Dikunci ke 24.04: di runner ubuntu-latest (26.04) `playwright install --with-deps`
+    # gagal mengunduh paket apt dari mirror Ubuntu (Nov 2026). Playwright >= 1.64
+    # sudah mendukung 26.04; kembalikan ke ubuntu-latest bila mirror sudah normal.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -157,7 +160,10 @@ jobs:
           docker compose -f docker-compose.prod.yml build
 
   e2e:
-    runs-on: ubuntu-latest
+    # Dikunci ke 24.04: di runner ubuntu-latest (26.04) `playwright install --with-deps`
+    # gagal mengunduh paket apt dari mirror Ubuntu (Nov 2026). Playwright >= 1.64
+    # sudah mendukung 26.04; kembalikan ke ubuntu-latest bila mirror sudah normal.
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
