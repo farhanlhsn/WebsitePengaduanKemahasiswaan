@@ -13,7 +13,8 @@ const mockTx = {
 };
 
 jest.mock('../../../src/utils/prisma', () => ({
-  user: { findFirst: jest.fn(), findUnique: jest.fn(), delete: jest.fn(), update: jest.fn(), create: jest.fn() },
+  user: { findUnique: jest.fn(), delete: jest.fn(), update: jest.fn(), create: jest.fn() },
+  $queryRaw: jest.fn(),
   report: { count: jest.fn() },
   message: { count: jest.fn() },
   $transaction: jest.fn((fn) => fn(mockTx)),
@@ -32,7 +33,8 @@ const DELETED = { id: 7, role: 'MAHASISWA', deletedAt: new Date(), email: 'korba
 describe('registerStudent with a soft-deleted account', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    prisma.user.findFirst.mockResolvedValue(DELETED);
+    // Lookup email: $queryRaw memberi id, lalu findUnique({ id }); lookup NIM: findUnique({ nim }).
+    prisma.$queryRaw.mockResolvedValue([{ id: DELETED.id }]);
     prisma.user.findUnique.mockResolvedValue(DELETED);
     mockTx.user.create.mockResolvedValue({ id: 99, email: 'korban@mahasiswa.ac.id' });
     mockTx.user.update.mockResolvedValue({ id: 7 });
@@ -73,7 +75,9 @@ describe('registerStudent with a soft-deleted account', () => {
   });
 
   test('never hard-deletes another account when email and NIM belong to different deleted rows', async () => {
-    prisma.user.findUnique.mockResolvedValue({ ...DELETED, id: 8, email: 'lain@mahasiswa.ac.id' });
+    prisma.user.findUnique.mockImplementation(({ where }) =>
+      Promise.resolve(where.nim ? { ...DELETED, id: 8, email: 'lain@mahasiswa.ac.id' } : DELETED)
+    );
     prisma.report.count.mockResolvedValue(0);
     prisma.message.count.mockResolvedValue(1);
 
@@ -85,7 +89,7 @@ describe('registerStudent with a soft-deleted account', () => {
   });
 
   test('active account with the same email (any letter case) is rejected', async () => {
-    prisma.user.findFirst.mockResolvedValue({ ...DELETED, deletedAt: null });
+    prisma.user.findUnique.mockResolvedValue({ ...DELETED, deletedAt: null });
     await expect(authServices.registerStudent(INPUT, '/uploads/ktm/x.png')).rejects.toThrow('Email already exists');
   });
 });
