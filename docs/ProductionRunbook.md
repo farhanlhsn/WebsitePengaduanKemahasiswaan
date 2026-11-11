@@ -47,9 +47,9 @@ Ada dua berkas konfigurasi. Keduanya tidak masuk Git; buat dari contohnya, batas
 | `FRONTEND_URL` | Ya | Alamat HTTPS publik, mis. `https://pengaduan.bunghatta.ac.id`. Dipakai untuk CORS dan tautan di email; harus sama persis dengan alamat yang dibuka pengguna. Boleh beberapa, dipisah koma. |
 | `POSTGRES_PASSWORD` | Ya | Compose menolak start bila kosong. Tetapkan sebelum `up` pertama: nilai ini hanya dipakai saat volume `pgdata` pertama kali dibuat (cara menggantinya di bagian 10). |
 | `POSTGRES_USER`, `POSTGRES_DB` | Tidak | Default `postgres` dan `pengaduan`. Perintah backup di bawah memakai nilai default. |
-| `PUBLIC_HTTP_PORT` | Tidak | Default `8085`. Bila reverse proxy berada di server yang sama, isi `127.0.0.1:8085` agar port ini tidak bisa diakses langsung dari luar. |
+| `PUBLIC_HTTP_PORT` | Tidak | `.env.example` mengisi `127.0.0.1:8085` (hanya bisa diakses dari server itu sendiri), cocok bila reverse proxy berada di server yang sama. Bila proxy di mesin lain, isi IP jaringan internal, mis. `10.0.0.5:8085`, dan batasi dengan firewall. Bila variabel ini tidak diisi sama sekali, compose memakai `8085` di semua interface. |
 | `SEED_SUPERADMIN_EMAIL`, `SEED_SUPERADMIN_NAME` | Tidak | Akun superadmin pertama. |
-| `SEED_SUPERADMIN_PASSWORD` | Ya | Compose menolak start bila kosong; seed menolak password di bawah 12 karakter. Ganti lewat aplikasi setelah login pertama, tetapi variabel ini tetap harus terisi. |
+| `SEED_SUPERADMIN_PASSWORD` | Ya | Compose menolak start bila kosong; seed produksi menolak password di bawah 12 karakter dan password contoh lama (`superadmin12345`). Hanya dipakai saat belum ada superadmin aktif; seed ulang tidak mengubah apa pun selama superadmin aktif ada. Seed berhenti dengan error bila email ini sudah dipakai akun ADMIN atau MAHASISWA. Ganti lewat aplikasi setelah login pertama, tetapi variabel ini tetap harus terisi. |
 | `VITE_USER_MANUAL_URL`, `VITE_PRIVACY_POLICY_URL` | Tidak | Tautan "Panduan Pengguna" dan "Kebijakan Privasi" di Pusat Bantuan. Dibaca saat **build** image frontend; setelah mengubahnya, jalankan ulang `up -d --build`. Kosong berarti tautan disembunyikan. |
 
 ### 3.2 `backend/.env`
@@ -62,6 +62,7 @@ Ada dua berkas konfigurasi. Keduanya tidak masuk Git; buat dari contohnya, batas
 | `TZ` | Tidak | Zona waktu job pembersihan harian 03.00. Default `Asia/Jakarta`. |
 | `LOG_LEVEL` | Tidak | Default `info`. |
 | `ENABLE_SWAGGER` | Tidak | `true` mengaktifkan `/api/docs` di produksi. Aktifkan sementara saja karena memperlihatkan seluruh permukaan API. |
+| `IP_GEOLOCATION_ENABLED` | Tidak | Default mati. `true` menampilkan perkiraan lokasi di daftar perangkat aktif dengan mengirim IP pengguna ke `ip-api.com` (pihak ketiga, HTTP tanpa enkripsi). Aktifkan hanya bila kampus mengizinkan dan kebijakan privasi menyebutnya. |
 
 Variabel berikut **diatur oleh `docker-compose.prod.yml`** dan menimpa nilai di `backend/.env`, jadi tidak perlu diisi di sana: `NODE_ENV=production`, `DATABASE_URL`, `REDIS_URL`, `TRUST_PROXY=2`, `FRONTEND_URL`, dan `SEED_SUPERADMIN_*`.
 
@@ -70,7 +71,12 @@ Variabel berikut **diatur oleh `docker-compose.prod.yml`** dan menimpa nilai di 
 Backend menghitung IP klien (untuk rate limit dan audit log) dari header `X-Forwarded-For`, dengan mempercayai sejumlah proxy terakhir. Compose produksi memakai `TRUST_PROXY: '2'`, artinya tepat dua proxy: reverse proxy HTTPS kampus dan Nginx di kontainer frontend.
 
 - Bila jumlah proxy berbeda (mis. ada load balancer tambahan di depan reverse proxy), ubah nilai itu di `docker-compose.prod.yml`.
-- Port `PUBLIC_HTTP_PORT` **tidak boleh** bisa diakses langsung dari internet. Bila bisa, klien dapat melewati proxy kampus, memalsukan IP lewat header, dan menghindari rate limit.
+- Port `PUBLIC_HTTP_PORT` **tidak boleh** bisa diakses langsung dari internet. Bila bisa, klien dapat melewati proxy kampus, memalsukan IP lewat header, dan menghindari rate limit per IP. Port yang dipublikasikan Docker melewati aturan `ufw`, jadi jangan mengandalkan firewall host saja.
+- Periksa dari komputer **di luar** server, setelah deploy dan setiap kali mengubah `PUBLIC_HTTP_PORT`. Perintah ini harus gagal (timeout atau connection refused):
+
+  ```bash
+  curl -m 5 http://<ip-publik-server>:8085/api/health/live
+  ```
 
 ## 4. Reverse Proxy HTTPS
 
@@ -136,7 +142,7 @@ Menutup akses langsung ke port aplikasi:
 git clone https://github.com/farhanlhsn/WebsitePengaduanKemahasiswaan.git
 cd WebsitePengaduanKemahasiswaan
 
-cp .env.example .env                    # isi sesuai bagian 3.1
+cp .env.example .env                    # isi sesuai bagian 3.1 (POSTGRES_PASSWORD dan SEED_SUPERADMIN_PASSWORD sengaja kosong)
 cp backend/.env.example backend/.env    # isi sesuai bagian 3.2
 chmod 600 .env backend/.env
 

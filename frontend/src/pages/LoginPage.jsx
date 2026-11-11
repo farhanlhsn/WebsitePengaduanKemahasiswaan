@@ -28,6 +28,11 @@ import {
   AccountCircle
 } from '@mui/icons-material';
 
+// Hanya path internal ("/dashboard/..."), bukan "//host" atau URL penuh yang
+// membuat navigasi keluar dari aplikasi (open redirect).
+const isSafeRedirect = (url) =>
+  typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/\\');
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const theme = useTheme();
@@ -65,7 +70,7 @@ export default function LoginPage() {
       
       // Check if redirectUrl exists in sessionStorage
       const redirectUrl = sessionStorage.getItem('redirectUrl');
-      if (redirectUrl) {
+      if (isSafeRedirect(redirectUrl)) {
         sessionStorage.removeItem('redirectUrl');
         navigate(redirectUrl);
       } else {

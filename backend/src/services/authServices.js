@@ -309,6 +309,12 @@ class AuthServices {
    * Get location from IP address
    */
   async getLocationFromIP(ipAddress) {
+    // Opt-in: mencari lokasi berarti mengirim IP pengguna ke ip-api.com
+    // (pihak ketiga, HTTP tanpa enkripsi). Aktifkan hanya bila kampus
+    // mengizinkan dan kebijakan privasi menyebutnya.
+    if (process.env.IP_GEOLOCATION_ENABLED !== 'true') {
+      return null;
+    }
     try {
       // Skip localhost and private IPs (kecuali dalam mode testing)
       const isTestingMode = process.env.GEOLOCATION_TEST_MODE === 'true';

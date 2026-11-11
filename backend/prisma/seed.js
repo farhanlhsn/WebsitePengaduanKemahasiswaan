@@ -1,6 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
+const KNOWN_EXAMPLE_PASSWORDS = new Set(['superadmin12345', 'postgres', 'changeme', 'password123']);
+
 const prisma = new PrismaClient();
 
 /**
@@ -67,19 +69,45 @@ async function ensureSuperAdmin() {
   } else if (process.env.NODE_ENV === 'production' && password.length < 12) {
     console.error('FATAL: SEED_SUPERADMIN_PASSWORD production minimal 12 karakter.');
     process.exit(1);
+  } else if (process.env.NODE_ENV === 'production' && KNOWN_EXAMPLE_PASSWORDS.has(password)) {
+    // Nilai ini pernah tercantum di .env.example (publik di repo).
+    console.error('FATAL: SEED_SUPERADMIN_PASSWORD masih memakai contoh dari .env.example. Ganti dengan password acak.');
+    process.exit(1);
   }
 
+  // Sampai di sini berarti belum ada SUPERADMIN aktif.
   const hash = await bcrypt.hash(password || 'superadmin12345', 10);
-
-  await prisma.user.upsert({
+  const owner = await prisma.user.findUnique({
     where: { email },
-    update: {
-      name,
-      password: hash,
-      role: 'SUPERADMIN',
-      isVerified: true,
-    },
-    create: {
+    select: { id: true, role: true },
+  });
+
+  if (owner && owner.role !== 'SUPERADMIN') {
+    // Jangan menaikkan akun lain menjadi SUPERADMIN: siapa pun bisa mendaftar
+    // lebih dulu dengan email ini dan sesinya ikut mendapat akses penuh.
+    console.error(
+      `FATAL: email ${email} sudah dipakai akun ${owner.role}. Seed tidak akan menjadikannya SUPERADMIN. ` +
+        'Isi SEED_SUPERADMIN_EMAIL dengan email lain, atau periksa siapa pemilik akun itu.'
+    );
+    process.exit(1);
+  }
+
+  if (owner) {
+    // Superadmin lama yang terhapus: pulihkan dengan password dari .env dan
+    // cabut semua sesi lamanya.
+    await prisma.$transaction([
+      prisma.refreshToken.deleteMany({ where: { userId: owner.id } }),
+      prisma.user.update({
+        where: { id: owner.id },
+        data: { name, password: hash, isVerified: true, deletedAt: null, tokenVersion: { increment: 1 } },
+      }),
+    ]);
+    console.log(`SUPERADMIN dipulihkan: ${email}`);
+    return;
+  }
+
+  await prisma.user.create({
+    data: {
       name,
       email,
       password: hash,

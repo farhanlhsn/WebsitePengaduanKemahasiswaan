@@ -7,6 +7,13 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 ## Belum dirilis
 
 ### Keamanan
+- Halaman SPA kini dikirim dengan header keamanan dari Nginx: Content-Security-Policy (skrip hanya dari origin sendiri, tidak boleh dibingkai situs lain), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, dan `Permissions-Policy`. Versi Nginx tidak lagi diumumkan. Skrip inline pemantau performa di `index.html` dihapus agar CSP tidak perlu `unsafe-inline` untuk skrip.
+- Geolokasi IP di daftar perangkat aktif kini **mati secara bawaan**. Sebelumnya IP pengguna selalu dikirim ke `ip-api.com` lewat HTTP tanpa enkripsi. Aktifkan dengan `IP_GEOLOCATION_ENABLED=true` di `backend/.env` bila diizinkan.
+- `.env.example` tidak lagi berisi password contoh (`postgres`, `superadmin12345`): kosong, sehingga compose menolak start sampai diisi. Seed produksi menolak `superadmin12345`. Seed juga tidak lagi menaikkan akun lain yang kebetulan memakai `SEED_SUPERADMIN_EMAIL` menjadi SUPERADMIN (sebelumnya akun itu, misalnya mahasiswa yang mendaftar lebih dulu dengan email tersebut, langsung mendapat peran SUPERADMIN); superadmin lama yang terhapus dipulihkan dan semua sesinya dicabut. `PUBLIC_HTTP_PORT` di `.env.example` kini `127.0.0.1:8085`; deployment lama yang tidak mengisinya tetap memakai `8085`.
+- CI memakai token GitHub hanya-baca (`permissions: contents: read`), `actions/checkout` tidak menyimpan kredensial, dan `gitleaks-action` dikunci ke commit.
+- `docker-compose.yml` (development) hanya membuka Postgres dan Redis ke `127.0.0.1`, bukan ke seluruh jaringan lokal.
+- Endpoint health tidak lagi mengembalikan pesan error internal; detailnya hanya di log.
+- Redirect setelah login hanya menerima path internal (bukan `//host`).
 - Dependensi diperbarui karena advisory yang terbit 18–30 Oktober 2026 menggagalkan `npm audit` di CI. Semuanya versi patch atau minor. Backend: `multer` 2.4.0 → 2.5.0 (DoS lewat unggahan), `body-parser` 1.20.8 → 1.20.9 (DoS lewat badan permintaan terkompresi), `follow-redirects` 1.16.0 → 1.16.3 (header kredensial ikut saat redirect), `nodemailer` 10.0.16 → 10.4.0 (parser alamat email), `sanitize-html` 2.18.0 → 2.18.1, `qs`, `ip-address`. Frontend: `dompurify` 3.4.16 → 3.4.17 dan `follow-redirects` 1.16.3; dependensi dev `vite` 6.4.6, `vitest` 4.1.12, `sharp` 0.35.5, dan lainnya.
 - `npm audit --omit=dev` kini bersih di backend dan frontend. Sisa 18 temuan low/moderate di dependensi dev backend (rantai Jest) hanya bisa diperbaiki dengan versi mayor.
 - Runtime Node.js dinaikkan dari 20 ke 26 LTS ("Lithium", didukung sampai 30 April 2029) di Dockerfile backend/frontend dan CI, lewat Node 22 di PR #16. Node 20 sudah end-of-life sejak 30 April 2026 dan tidak lagi menerima patch keamanan, sementara `sanitize-html` ≥ 2.18 mensyaratkan Node ≥ 22.12. Versinya dikunci ke 26.13.0 di `.nvmrc`, `engines` di `package.json` (`>=26.13.0`), dan tag image Docker `node:26.13.0-alpine`; CI membaca `.nvmrc`. Developer perlu Node 26 secara lokal (`nvm install && nvm use`).
@@ -29,6 +36,7 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 - Isi Pusat Bantuan mahasiswa dipindah ke `frontend/src/pages/help/helpContent.js` dan diselaraskan dengan User Manual.
 
 ### Diperbaiki
+- Build image frontend menyalin `node_modules` dan `.env` dari komputer host ke dalam image, karena `frontend/.dockerignore` belum ada. `node_modules` host bisa menimpa hasil `npm ci` dengan binary platform lain, dan variabel `VITE_*` di `.env` lokal ikut masuk ke bundle.
 - Pusat Bantuan mahasiswa tidak lagi menyebut kolom "fakultas", verifikasi email, janji tanggapan 24 jam, atau kebijakan privasi yang belum ada; ditambah tanya jawab laporan anonim, status, edit/batal, dan sesi perangkat.
 - Formulir "Kirim Tiket Bantuan" yang hanya menampilkan pesan terkirim tanpa mengirim apa pun diganti tombol email ke Bagian Kemahasiswaan; tautan "Buku Panduan", "Kebijakan Privasi", dan "Laporkan Bug" yang tidak mengarah ke mana pun dihapus.
 - Tautan WhatsApp di Pusat Bantuan kini sesuai nomor yang ditampilkan.

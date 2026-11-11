@@ -288,7 +288,8 @@ Tabel ini adalah referensi lengkap variabel backend. Untuk produksi, lihat juga 
 | `ENABLE_SWAGGER` | Tidak | `true` mengaktifkan Swagger UI di produksi (di luar produksi selalu aktif) |
 | `LOG_LEVEL` | Tidak | Default `info` |
 | `TZ` | Tidak | Zona waktu job pembersihan 03.00, default `Asia/Jakarta` |
-| `GEOLOCATION_TEST_MODE` | Tidak | `true` agar login dari IP lokal tetap dicari lokasinya (hanya untuk pengujian) |
+| `IP_GEOLOCATION_ENABLED` | Tidak | Default mati. `true` menampilkan perkiraan lokasi perangkat dengan mengirim IP pengguna ke `ip-api.com` (pihak ketiga, HTTP tanpa enkripsi) |
+| `GEOLOCATION_TEST_MODE` | Tidak | `true` agar IP lokal tetap dicari lokasinya (hanya untuk pengujian; perlu `IP_GEOLOCATION_ENABLED=true`) |
 
 `JWT_EXPIRES_IN`, `UPLOAD_DIR`, dan `FILE_SIZE_LIMIT` di `backend/.env.example` tidak dibaca kode; masa berlaku token dan batas unggah ditulis langsung di kode.
 
