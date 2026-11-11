@@ -277,7 +277,7 @@ Sistem menyimpan NIM, nama, email, foto KTM, dan isi pengaduan yang bisa bersifa
 
 Setiap login dari IP publik, backend mengirim alamat IP pengguna ke layanan pihak ketiga `ip-api.com` (lewat HTTP tanpa enkripsi) untuk menampilkan perkiraan lokasi di daftar perangkat aktif (`services/authServices.js`, `getLocationFromIP`). Hal ini perlu disebut dalam kebijakan privasi, atau fiturnya dimatikan bila kampus tidak mengizinkan.
 
-Kebijakan privasi untuk pengguna belum ada. Setelah kampus menyusunnya, isi `VITE_PRIVACY_POLICY_URL` agar tautannya muncul di Pusat Bantuan.
+Kebijakan privasi untuk pengguna belum berlaku. Drafnya, bersama SOP penanganan pengaduan dan kebijakan retensi data, ada di [`docs/kebijakan/`](kebijakan/README.md) dengan isian `[ISI: ...]` yang harus dilengkapi kampus. Setelah disahkan dan dipublikasikan, isi `VITE_PRIVACY_POLICY_URL` agar tautannya muncul di Pusat Bantuan.
 
 ## 9. Panduan Pengguna
 

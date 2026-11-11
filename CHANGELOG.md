@@ -12,6 +12,7 @@ Tambahkan entri di bagian **Belum dirilis** setiap kali menggabungkan perubahan 
 - Runtime Node.js dinaikkan dari 20 ke 26 LTS ("Lithium", didukung sampai 30 April 2029) di Dockerfile backend/frontend dan CI, lewat Node 22 di PR #16. Node 20 sudah end-of-life sejak 30 April 2026 dan tidak lagi menerima patch keamanan, sementara `sanitize-html` ≥ 2.18 mensyaratkan Node ≥ 22.12. Versinya dikunci ke 26.13.0 di `.nvmrc`, `engines` di `package.json` (`>=26.13.0`), dan tag image Docker `node:26.13.0-alpine`; CI membaca `.nvmrc`. Developer perlu Node 26 secara lokal (`nvm install && nvm use`).
 
 ### Ditambahkan
+- Draf kebijakan privasi, SOP penanganan pengaduan, dan kebijakan retensi data di `docs/kebijakan/`, disusun dari perilaku sistem yang sebenarnya. Isian bertanda `[ISI: ...]` (penanggung jawab data, target waktu, unit eskalasi, masa simpan) harus dilengkapi dan disahkan kampus sebelum berlaku.
 - Dokumentasi OpenAPI lengkap untuk 85 endpoint REST (`backend/src/docs/openapi/*.yaml`), dengan contoh request/response dari API asli.
 - Berkas statis `docs/api/openapi.json` dan skrip `npm run docs:openapi` untuk membuatnya ulang.
 - `docs/api/README.md` (konvensi API, paginasi, rate limit, unggah berkas) dan `docs/api/SocketEvents.md` (event Socket.IO chat).

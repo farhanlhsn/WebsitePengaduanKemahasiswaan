@@ -291,5 +291,6 @@ Saat mengubah kode, perbarui dokumen yang terdampak dalam pull request yang sama
 | Variabel lingkungan | Tabel env di `README.md`, `.env.example` yang terkait, dan Runbook bagian 3 bila dipakai di produksi |
 | Docker Compose, Nginx, atau langkah deploy | `docs/ProductionRunbook.md` (acuan utama); README dan SerahTerima hanya meringkas |
 | Perubahan yang terlihat pengguna/admin/operasional | `CHANGELOG.md` bagian **Belum dirilis** |
+| Data yang disimpan, dikirim ke pihak ketiga, atau dihapus; alur status laporan | Draf kebijakan di `docs/kebijakan/` (privasi, SOP penanganan, retensi data) |
 
 Folder `docs/superpowers/` berisi catatan perencanaan internal (spesifikasi dan rencana kerja Agustus 2026). Isinya adalah riwayat, bukan kondisi sistem saat ini; lihat README di folder tersebut.
