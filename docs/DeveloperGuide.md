@@ -15,7 +15,7 @@ Browser ──HTTPS──► Nginx (frontend/nginx.conf)
 
 | Bagian | Teknologi | Titik masuk |
 | --- | --- | --- |
-| Backend | Node.js 22, Express 4, Prisma 6, Socket.IO 4 | `backend/src/server.js` → `src/app.js` |
+| Backend | Node.js 26, Express 4, Prisma 6, Socket.IO 4 | `backend/src/server.js` → `src/app.js` |
 | Frontend | React 19, Vite, MUI 7, Zustand, Axios, Socket.IO client | `frontend/src/main.jsx` → `src/pages/routes.jsx` |
 | Database | PostgreSQL 16 | `backend/prisma/schema.prisma` |
 
@@ -28,7 +28,8 @@ Ikuti README (Docker Compose atau manual). Beberapa hal yang tidak tertulis di s
 - **CORS memakai origin persis.** Bila frontend dibuka di `http://127.0.0.1:5173` sementara `FRONTEND_URL=http://localhost:5173`, login akan gagal karena CORS. Gunakan host yang sama.
 - **Swagger UI**: `http://localhost:6060/api/docs`.
 - **Prisma Studio** untuk melihat data: `cd backend && npm run prisma:studio`.
-- **Versi Node.js ditulis di lima tempat:** `.nvmrc`, `engines` di `backend/package.json` dan `frontend/package.json`, serta baris `FROM node:...` di `backend/Dockerfile` dan `frontend/Dockerfile`. Saat Node merilis patch keamanan, naikkan semuanya sekaligus.
+- **Versi Node.js ditulis di lima tempat:** `.nvmrc`, `engines` di `backend/package.json` dan `frontend/package.json`, serta baris `FROM node:...` di `backend/Dockerfile` dan `frontend/Dockerfile`. CI membaca `.nvmrc`. Saat Node merilis patch keamanan, naikkan semuanya sekaligus.
+- **npm 11.20 (bawaan Node 26) memblokir install script dependensi.** `npm ci` diakhiri peringatan `install-scripts` untuk `prisma`, `@prisma/client`, `@prisma/engines`, `@scarf/scarf`, `@parcel/watcher` (backend) serta `esbuild` dan `@swc/core` (frontend). Proyek tidak membutuhkan script itu: CLI Prisma mengunduh mesinnya sendiri saat `prisma generate`, `esbuild`/`@swc/core` memakai biner dari paket opsional per platform, `@parcel/watcher` hanya untuk mode watch Jest, dan `@scarf/scarf` adalah telemetri. Jangan jalankan `npm install-scripts approve --all` tanpa memeriksa paketnya satu per satu.
 
 ## 3. Backend
 

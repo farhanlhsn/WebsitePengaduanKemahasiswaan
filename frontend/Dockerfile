@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM node:22.23.4-alpine AS build
+FROM node:26.13.0-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -17,5 +17,6 @@ FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
+# 127.0.0.1, bukan localhost: wget di Alpine mencoba ::1 dulu, sedangkan nginx.conf hanya IPv4.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:80 || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:80 || exit 1

@@ -10,7 +10,7 @@ Setelah berkas sumber diperbarui, naikkan versi dokumen (mis. v1.1.0), ekspor ul
 | --- | --- | --- | --- |
 | 1.3, 2.3 User Classes, 5.2.1 User Role | Dua kelas pengguna: Mahasiswa dan Admin | Tiga peran: MAHASISWA, ADMIN, SUPERADMIN. Admin hanya menangani kategori yang ditugaskan; kategori, audit log, dan tata kelola admin khusus SUPERADMIN | Tambah kelas SUPERADMIN dan ubah hak akses Admin menjadi "berdasarkan penugasan kategori" |
 | 2.2 Product Functions, 3.1 | Tidak menyebut laporan anonim, prioritas, petugas laporan, notifikasi email, reset password lewat email, atau preferensi akun | Semua fitur tersebut sudah ada | Tambah kebutuhan fungsional baru (mis. FR-REP-09 Laporan Anonim, FR-REP-10 Prioritas & Petugas, FR-AUTH-08 Reset Password, FR-USR-05 Preferensi, FR-NTF Notifikasi Email) |
-| 2.4 Operating Environment, 2.5 | Node.js ≥ 18, PostgreSQL ≥ 14 | Image Docker memakai Node 22 dan PostgreSQL 16; Redis 7 wajib di produksi | Perbarui versi; tambahkan Redis |
+| 2.4 Operating Environment, 2.5 | Node.js ≥ 18, PostgreSQL ≥ 14 | Image Docker memakai Node 26 dan PostgreSQL 16; Redis 7 wajib di produksi | Perbarui versi; tambahkan Redis |
 | 2.5, FR-AUTH-03, Glosarium c–d | Access token 15 menit, refresh token 7 hari | Sesuai | Tidak perlu diubah |
 | FR-AUTH-04, 3.2.2 Session Security | Token ditolak bila sidik jari perangkat tidak cocok | Sidik jari hanya dipakai membentuk ID perangkat; tidak ada penolakan token bila berbeda. Ada batas 3 perangkat per akun | Ubah kalimat sesuai implementasi, atau catat sebagai kebutuhan yang belum dipenuhi |
 | Tabel 3.1.2 (USR) | ID ditulis FR-AUTH-01 s.d. 04 | Seharusnya FR-USR-01 s.d. 04 | Perbaiki penomoran |
@@ -59,4 +59,4 @@ Setelah berkas sumber diperbarui, naikkan versi dokumen (mis. v1.1.0), ekspor ul
 | 6.1 Wireframes | Mockup awal | Ganti dengan screenshot aplikasi akhir (`docs/user-manual/images/`) | Perbarui |
 | 7.2.1 Activity Diagram Login | Validasi device fingerprint | Tidak ada validasi; login menolak akun belum terverifikasi atau sudah dihapus | Perbarui diagram |
 | 7.3 State Machine | (diagram) | Pastikan mencakup pembukaan kembali RESOLVED/REJECTED → IN_REVIEW dan CANCELED → PENDING (`backend/src/utils/reportTransitions.js`) | Periksa dan perbarui |
-| 8 System Constraints | Node.js ≥ 18, PostgreSQL ≥ 14, disk 20 GB, RAM 512 MB untuk backend | Versi produksi Node 22 dan PostgreSQL 16; batas kontainer: backend 512 MB, PostgreSQL 512 MB, Redis 256 MB | Perbarui versi; angka disk dan RAM masih sesuai |
+| 8 System Constraints | Node.js ≥ 18, PostgreSQL ≥ 14, disk 20 GB, RAM 512 MB untuk backend | Versi produksi Node 26 dan PostgreSQL 16; batas kontainer: backend 512 MB, PostgreSQL 512 MB, Redis 256 MB | Perbarui versi; angka disk dan RAM masih sesuai |

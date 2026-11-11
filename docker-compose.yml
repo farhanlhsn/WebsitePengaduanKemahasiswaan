@@ -80,7 +80,9 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      # 127.0.0.1, bukan localhost: wget di Alpine mencoba ::1 dulu, sedangkan
+      # frontend/nginx.conf hanya mendengarkan IPv4.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80"]
       interval: 10s
       timeout: 5s
       retries: 3
